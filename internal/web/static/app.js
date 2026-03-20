@@ -17,10 +17,13 @@
       nodes: {},
       expanded: { "": true },
       loading: {},
+      focusPath: "",
     },
   };
 
   let noticeTimer = 0;
+  let browserLoadTimer = 0;
+  let browserLoadToken = 0;
 
   const browserView = document.getElementById("browserView");
   const slideshowView = document.getElementById("slideshowView");
@@ -101,18 +104,43 @@
     }
   }
 
-  async function loadBrowser(path) {
+  function cancelScheduledBrowserLoad(clearFocus) {
+    if (browserLoadTimer) {
+      clearTimeout(browserLoadTimer);
+      browserLoadTimer = 0;
+    }
+    if (clearFocus) {
+      state.tree.focusPath = "";
+    }
+  }
+
+  function nextBrowserLoadToken() {
+    browserLoadToken += 1;
+    return browserLoadToken;
+  }
+
+  async function performBrowserLoad(path, options) {
+    const settings = options || {};
+    const expandTree = settings.expandTree !== false;
+    const requestToken = settings.requestToken || browserLoadToken;
     const previousMode = state.mode;
     const previousBrowserPath = state.browser ? state.browser.currentPath : "";
     const hadBrowserState = !!state.browser;
     const data = normalizeBrowserData(await apiGet(`/api/browser?path=${encodeURIComponent(path || "")}`));
+    if (requestToken !== browserLoadToken) {
+      return;
+    }
     state.browser = data;
     state.config = data.config || state.config;
     state.launchRoot = data.launchRoot || state.launchRoot;
     state.mode = "browser";
     browserView.hidden = false;
     slideshowView.hidden = true;
-    await syncTreeToCurrentPath(data);
+    await syncTreeToCurrentPath(data, { expandTree });
+    if (requestToken !== browserLoadToken) {
+      return;
+    }
+    state.tree.focusPath = "";
     if (data.notice) {
       showNotice(data.notice, "info");
       return;
@@ -126,6 +154,15 @@
       return;
     }
     render();
+  }
+
+  async function loadBrowser(path, options) {
+    cancelScheduledBrowserLoad(false);
+    return performBrowserLoad(path, {
+      expandTree: true,
+      requestToken: nextBrowserLoadToken(),
+      ...options,
+    });
   }
 
   async function loadSlideshow(path, preferredIndex) {
@@ -171,8 +208,15 @@
     }
   }
 
-  async function syncTreeToCurrentPath(browserData) {
+  async function syncTreeToCurrentPath(browserData, options) {
+    const settings = {
+      expandTree: true,
+      ...options,
+    };
     cacheTreeNode(browserData.currentPath, browserData.currentName, browserData.directories);
+    if (!settings.expandTree) {
+      return;
+    }
     const chain = pathChain(browserData.currentPath);
     chain.forEach((path) => {
       state.tree.expanded[path] = true;
@@ -194,8 +238,53 @@
 
   async function changeDirectory(path) {
     state.browserHelpOpen = false;
+    cancelScheduledBrowserLoad(true);
     return withBusy("Loading folder", async () => {
-      await loadBrowser(path || "");
+      await loadBrowser(path || "", { expandTree: true });
+    });
+  }
+
+  function currentTreeSelectionPath() {
+    if (state.mode === "browser" && state.tree.focusPath) {
+      return state.tree.focusPath;
+    }
+    return state.browser ? state.browser.currentPath : "";
+  }
+
+  function parentTreePath(path) {
+    const chain = pathChain(path);
+    if (chain.length < 2) {
+      return "";
+    }
+    return chain[chain.length - 2];
+  }
+
+  function scheduleKeyboardDirectoryLoad(path) {
+    const nextPath = path || "";
+    cancelScheduledBrowserLoad(false);
+    state.browserHelpOpen = false;
+    state.tree.focusPath = nextPath;
+    const requestToken = nextBrowserLoadToken();
+    render();
+    browserLoadTimer = window.setTimeout(() => {
+      browserLoadTimer = 0;
+      performBrowserLoad(nextPath, {
+        expandTree: false,
+        requestToken,
+      }).catch((error) => showNotice(error.message, "error"));
+    }, 100);
+  }
+
+  async function flushScheduledBrowserLoad() {
+    const focusedPath = state.tree.focusPath;
+    if (!focusedPath || (state.browser && focusedPath === state.browser.currentPath)) {
+      cancelScheduledBrowserLoad(true);
+      return;
+    }
+    cancelScheduledBrowserLoad(false);
+    await performBrowserLoad(focusedPath, {
+      expandTree: false,
+      requestToken: nextBrowserLoadToken(),
     });
   }
 
@@ -209,6 +298,8 @@
   }
 
   async function openWorkMode() {
+    await flushScheduledBrowserLoad();
+    cancelScheduledBrowserLoad(true);
     if (!canStartWorkFromBrowser()) {
       return null;
     }
@@ -246,6 +337,7 @@
   }
 
   function openPreview(index) {
+    cancelScheduledBrowserLoad(true);
     state.browserHelpOpen = false;
     state.preview = {
       open: true,
@@ -293,7 +385,110 @@
     }
   }
 
+  function rootTreeNode() {
+    return state.tree.nodes[""] || {
+      name: state.browser ? state.browser.breadcrumbs[0]?.name || state.browser.currentName || "Root" : "Root",
+      path: "",
+      directories: [],
+    };
+  }
+
+  function visibleTreeRows() {
+    if (!state.browser) {
+      return [];
+    }
+    const rootNode = rootTreeNode();
+    const rows = [{
+      path: "",
+      parentPath: "",
+      hasChildren: !!rootNode.directories.length || !!state.tree.loading[""],
+      expanded: !!state.tree.expanded[""],
+    }];
+    if (!rows[0].expanded) {
+      return rows;
+    }
+    rows.push(...visibleTreeBranchRows(""));
+    return rows;
+  }
+
+  function visibleTreeBranchRows(parentPath) {
+    const node = state.tree.nodes[parentPath || ""];
+    if (!node || !node.directories.length) {
+      return [];
+    }
+    return node.directories.flatMap((entry) => {
+      const key = entry.path || "";
+      const childNode = state.tree.nodes[key];
+      const row = {
+        path: key,
+        parentPath: parentPath || "",
+        hasChildren: !!entry.hasChildren || !!state.tree.loading[key] || (!!childNode && childNode.directories.length > 0),
+        expanded: !!state.tree.expanded[key],
+      };
+      if (!row.expanded) {
+        return [row];
+      }
+      return [row, ...visibleTreeBranchRows(key)];
+    });
+  }
+
+  function selectedTreePath(rows) {
+    const visibleRows = rows || visibleTreeRows();
+    const currentPath = currentTreeSelectionPath();
+    if (!visibleRows.length) {
+      return "";
+    }
+    if (visibleRows.some((row) => row.path === currentPath)) {
+      return currentPath;
+    }
+    return pathChain(currentPath)
+      .reverse()
+      .find((path) => visibleRows.some((row) => row.path === path)) || "";
+  }
+
+  async function moveTreeSelection(delta) {
+    const rows = visibleTreeRows();
+    if (!rows.length) {
+      return;
+    }
+    const currentPath = selectedTreePath(rows);
+    const currentIndex = rows.findIndex((row) => row.path === currentPath);
+    const nextIndex = clamp((currentIndex === -1 ? 0 : currentIndex) + delta, 0, rows.length - 1);
+    const nextPath = rows[nextIndex]?.path || "";
+    if (nextPath === currentPath) {
+      return;
+    }
+    scheduleKeyboardDirectoryLoad(nextPath);
+  }
+
+  async function expandCurrentTreeDirectory() {
+    const rows = visibleTreeRows();
+    const currentPath = selectedTreePath(rows);
+    const currentRow = rows.find((row) => row.path === currentPath);
+    if (!currentRow || !currentRow.hasChildren || currentRow.expanded) {
+      return;
+    }
+    await toggleTree(currentRow.path);
+  }
+
+  async function collapseCurrentTreeDirectory() {
+    const rows = visibleTreeRows();
+    const currentPath = selectedTreePath(rows);
+    const currentRow = rows.find((row) => row.path === currentPath);
+    if (!currentRow) {
+      return;
+    }
+    if (currentRow.expanded) {
+      await toggleTree(currentRow.path);
+      return;
+    }
+    if (currentRow.path) {
+      scheduleKeyboardDirectoryLoad(currentRow.parentPath);
+    }
+  }
+
   async function openSettings() {
+    cancelScheduledBrowserLoad(true);
     return withBusy("Loading settings", async () => {
       state.browserHelpOpen = false;
       state.config = await apiGet("/api/config");
@@ -477,12 +672,9 @@
   }
 
   function renderTree() {
-    const rootNode = state.tree.nodes[""] || {
-      name: state.browser ? state.browser.breadcrumbs[0]?.name || state.browser.currentName || "Root" : "Root",
-      path: "",
-      directories: [],
-    };
-    const rootClass = state.browser.currentPath === "" ? "current" : (isPathAncestor("", state.browser.currentPath) ? "ancestor" : "");
+    const rootNode = rootTreeNode();
+    const selectedPath = currentTreeSelectionPath();
+    const rootClass = selectedPath === "" ? "current" : (isPathAncestor("", selectedPath) ? "ancestor" : "");
     const rootExpanded = !!state.tree.expanded[""];
     const rootHasChildren = !!rootNode.directories.length || !!state.tree.loading[""];
     const rootToggleMarkup = rootHasChildren
@@ -522,8 +714,9 @@
 
   function renderTreeEntry(entry, depth) {
     const path = entry.path || "";
-    const selected = state.browser.currentPath === path;
-    const ancestor = !selected && isPathAncestor(path, state.browser.currentPath);
+    const selectedPath = currentTreeSelectionPath();
+    const selected = selectedPath === path;
+    const ancestor = !selected && isPathAncestor(path, selectedPath);
     const expanded = !!state.tree.expanded[path];
     const node = state.tree.nodes[path];
     const hasChildren = !!entry.hasChildren || (!!node && node.directories.length > 0);
@@ -649,6 +842,10 @@
       ${settingsSectionHtml("Browser Keys", [
         settingsFieldHtml("Start Session", ["keys", "browser", "startSession"]),
         settingsFieldHtml("End Session", ["keys", "browser", "endSession"]),
+        settingsFieldHtml("Tree Up", ["keys", "browser", "treeUp"]),
+        settingsFieldHtml("Tree Down", ["keys", "browser", "treeDown"]),
+        settingsFieldHtml("Expand Directory", ["keys", "browser", "expandDir"]),
+        settingsFieldHtml("Collapse Directory", ["keys", "browser", "collapseDir"]),
         settingsFieldHtml("Up Directory", ["keys", "browser", "upDir"]),
         settingsFieldHtml("Open Settings", ["keys", "browser", "openSettings"]),
       ])}
@@ -691,6 +888,7 @@
         <h3>How To Use</h3>
         <ol class="browser-help-list">
           <li>Browse folders in the tree on the left, and click the current folder again to collapse or reopen it.</li>
+          <li>Outside preview and slideshow, use Up and Down to switch folders, Right to expand, and Left to collapse.</li>
           <li>Click any image to open preview only.</li>
           <li>Use Sort Here, or Review Here in moved-photo folders, to start from the current folder.</li>
           <li>In slideshow, use Left and Right to move through images.</li>
@@ -700,6 +898,10 @@
         <h3>Shortcuts</h3>
         <div class="browser-info-hotkeys">
           ${browserInfoKeyHtml("Start / Review", getConfig(["keys", "browser", "startSession"]))}
+          ${browserInfoKeyHtml("Tree Up", getConfig(["keys", "browser", "treeUp"]))}
+          ${browserInfoKeyHtml("Tree Down", getConfig(["keys", "browser", "treeDown"]))}
+          ${browserInfoKeyHtml("Expand", getConfig(["keys", "browser", "expandDir"]))}
+          ${browserInfoKeyHtml("Collapse", getConfig(["keys", "browser", "collapseDir"]))}
           ${browserInfoKeyHtml("Up", getConfig(["keys", "browser", "upDir"]))}
           ${browserInfoKeyHtml("End", getConfig(["keys", "browser", "endSession"]))}
           ${browserInfoKeyHtml("Preview", "", `${compactKeyText(keyLabel(getConfig(["keys", "preview", "prev"])))} / ${compactKeyText(keyLabel(getConfig(["keys", "preview", "next"])))}`)}
@@ -980,9 +1182,11 @@
     if (!keys || !state.browser) {
       return;
     }
-    if (key === keys.startSession && canStartWorkFromBrowser()) {
+    if (key === keys.startSession) {
       event.preventDefault();
-      openWorkMode().catch((error) => showNotice(error.message, "error"));
+      flushScheduledBrowserLoad()
+        .then(() => openWorkMode())
+        .catch((error) => showNotice(error.message, "error"));
       return;
     }
     if (key === keys.endSession && currentSession().active) {
@@ -990,9 +1194,37 @@
       endSession().catch((error) => showNotice(error.message, "error"));
       return;
     }
-    if (key === keys.upDir && state.browser.canGoUp) {
+    if (key === keys.treeUp) {
       event.preventDefault();
-      changeDirectory(state.browser.parentPath || "").catch((error) => showNotice(error.message, "error"));
+      moveTreeSelection(-1).catch((error) => showNotice(error.message, "error"));
+      return;
+    }
+    if (key === keys.treeDown) {
+      event.preventDefault();
+      moveTreeSelection(1).catch((error) => showNotice(error.message, "error"));
+      return;
+    }
+    if (key === keys.expandDir) {
+      event.preventDefault();
+      expandCurrentTreeDirectory().catch((error) => showNotice(error.message, "error"));
+      return;
+    }
+    if (key === keys.collapseDir) {
+      event.preventDefault();
+      collapseCurrentTreeDirectory().catch((error) => showNotice(error.message, "error"));
+      return;
+    }
+    if (key === keys.upDir) {
+      const selectedPath = currentTreeSelectionPath();
+      if (!selectedPath) {
+        return;
+      }
+      event.preventDefault();
+      if (state.tree.focusPath && state.tree.focusPath !== state.browser.currentPath) {
+        scheduleKeyboardDirectoryLoad(parentTreePath(selectedPath));
+        return;
+      }
+      changeDirectory(parentTreePath(selectedPath)).catch((error) => showNotice(error.message, "error"));
       return;
     }
     if (key === keys.openSettings) {
@@ -1312,6 +1544,10 @@
     const labelMap = {
       "keys.browser.startSession": "browser start session",
       "keys.browser.endSession": "browser end session",
+      "keys.browser.treeUp": "browser tree up",
+      "keys.browser.treeDown": "browser tree down",
+      "keys.browser.expandDir": "browser expand directory",
+      "keys.browser.collapseDir": "browser collapse directory",
       "keys.browser.upDir": "browser up directory",
       "keys.browser.openSettings": "browser open settings",
       "keys.preview.close": "preview close",

@@ -25,6 +25,10 @@ type KeyConfig struct {
 type BrowserKeys struct {
 	StartSession string `yaml:"start_session" json:"startSession"`
 	EndSession   string `yaml:"end_session" json:"endSession"`
+	TreeUp       string `yaml:"tree_up" json:"treeUp"`
+	TreeDown     string `yaml:"tree_down" json:"treeDown"`
+	ExpandDir    string `yaml:"expand_dir" json:"expandDir"`
+	CollapseDir  string `yaml:"collapse_dir" json:"collapseDir"`
 	UpDir        string `yaml:"up_dir" json:"upDir"`
 	OpenSettings string `yaml:"open_settings" json:"openSettings"`
 }
@@ -82,6 +86,10 @@ func Default() *Config {
 			Browser: BrowserKeys{
 				StartSession: "space",
 				EndSession:   "q",
+				TreeUp:       "arrowup",
+				TreeDown:     "arrowdown",
+				ExpandDir:    "arrowright",
+				CollapseDir:  "arrowleft",
 				UpDir:        "backspace",
 				OpenSettings: "s",
 			},
@@ -180,6 +188,10 @@ func (c *Config) ValidateAndNormalize() error {
 			keys: map[string]*string{
 				"start_session": &c.Keys.Browser.StartSession,
 				"end_session":   &c.Keys.Browser.EndSession,
+				"tree_up":       &c.Keys.Browser.TreeUp,
+				"tree_down":     &c.Keys.Browser.TreeDown,
+				"expand_dir":    &c.Keys.Browser.ExpandDir,
+				"collapse_dir":  &c.Keys.Browser.CollapseDir,
 				"up_dir":        &c.Keys.Browser.UpDir,
 				"open_settings": &c.Keys.Browser.OpenSettings,
 			},

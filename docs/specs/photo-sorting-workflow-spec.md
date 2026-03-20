@@ -44,6 +44,8 @@ Users need to start from an arbitrary directory, browse to a folder that contain
 - [x] `restore` only works inside configured move-target directories and returns the image to the session root.
 - [x] Moving outside the session root subtree ends the session automatically and informs the user.
 - [x] Config edits in the browser are validated and saved back to `~/.photo-manager/config.yaml`.
+- [x] Outside preview and slideshow, configurable browser tree keys move through the visible directory list with Up / Down and expand or collapse the current directory with Right / Left.
+- [x] Keyboard-driven directory changes keep the tree expansion state unchanged and debounce browser loading by about 100 ms so rapid scans across image folders do not trigger repeated heavy refreshes.
 - [x] The default shortcut template uses `Space` to enter or end a session, `Left` and `Right` to change slides, `Del` to delete, `Down` to move into `0`, and `Up` to restore.
 - [x] Slideshow mode hides the top shell and keeps the document free of page scrollbars at common desktop sizes.
 - [x] Browser and tree directory lists place numeric names in natural order, such as `1`, `2`, then `10`.
@@ -53,6 +55,10 @@ Users need to start from an arbitrary directory, browse to a folder that contain
 - Browser:
   - `space` starts a work session from the current folder.
   - `q` ends the active session.
+  - `arrowup` and `arrowdown` move to the previous or next visible directory in the tree.
+  - `arrowright` expands the current directory in the tree.
+  - `arrowleft` collapses the current directory in the tree, or returns to its parent when already collapsed.
+  - Keyboard-driven directory switches do not auto-expand the newly selected folder and wait about `100 ms` before reloading the browser pane.
   - `backspace` goes up one folder.
   - `s` opens settings.
 - Preview:

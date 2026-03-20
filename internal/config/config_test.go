@@ -47,6 +47,18 @@ func TestValidateAndNormalizeNormalizesNamedKeys(t *testing.T) {
 func TestDefaultUsesUpdatedSlideshowAndActionKeys(t *testing.T) {
 	cfg := Default()
 
+	if cfg.Keys.Browser.TreeUp != "arrowup" {
+		t.Fatalf("expected browser tree-up default to be arrowup, got %q", cfg.Keys.Browser.TreeUp)
+	}
+	if cfg.Keys.Browser.TreeDown != "arrowdown" {
+		t.Fatalf("expected browser tree-down default to be arrowdown, got %q", cfg.Keys.Browser.TreeDown)
+	}
+	if cfg.Keys.Browser.ExpandDir != "arrowright" {
+		t.Fatalf("expected browser expand-dir default to be arrowright, got %q", cfg.Keys.Browser.ExpandDir)
+	}
+	if cfg.Keys.Browser.CollapseDir != "arrowleft" {
+		t.Fatalf("expected browser collapse-dir default to be arrowleft, got %q", cfg.Keys.Browser.CollapseDir)
+	}
 	if cfg.Keys.Slideshow.Next != "arrowright" {
 		t.Fatalf("expected slideshow next default to be arrowright, got %q", cfg.Keys.Slideshow.Next)
 	}
@@ -87,6 +99,10 @@ keys:
   browser:
     start_session: space
     end_session: q
+    tree_up: arrowup
+    tree_down: arrowdown
+    expand_dir: arrowright
+    collapse_dir: arrowleft
     up_dir: backspace
     open_settings: s
   preview:
@@ -118,6 +134,9 @@ actions:
 
 	if cfg.Keys.Slideshow.EndSession != "space" {
 		t.Fatalf("expected slideshow end-session to load, got %q", cfg.Keys.Slideshow.EndSession)
+	}
+	if cfg.Keys.Browser.TreeUp != "arrowup" {
+		t.Fatalf("expected browser tree-up to load, got %q", cfg.Keys.Browser.TreeUp)
 	}
 	if cfg.Actions[0].Key != "delete" {
 		t.Fatalf("expected actions to load, got %+v", cfg.Actions)

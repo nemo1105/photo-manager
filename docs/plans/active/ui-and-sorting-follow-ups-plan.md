@@ -24,6 +24,8 @@ Track the next round of UX and reliability work after the initial browse/preview
   Current execution focus on 2026-03-21: switch browser help from a sidebar popover to a centered modal, move the root tree row further left, and sort directory lists with natural numeric ordering.
   Current execution focus on 2026-03-21: simplify preview-modal controls by reducing the footer to thin `Prev/Next` buttons and moving close to a compact top-right button.
   Current execution focus on 2026-03-21: make repeated clicks on the current tree directory toggle that branch open and closed, instead of relying only on the chevron affordance.
+  Current execution focus on 2026-03-21: let browser-mode arrow keys drive the visible tree with configurable up/down selection plus right-expand and left-collapse behavior.
+  Current correction focus on 2026-03-21: keep keyboard tree movement from auto-expanding directories, and debounce browser loads by 100 ms so fast directory scans do not stutter on image-heavy folders.
 - [ ] Add zh-CN / en localization with default language chosen from the browser locale.
 - [ ] Prevent repeated operations on the same stale image state from surfacing as user-visible errors.
 - [ ] Make the settings key-capture mode visually obvious while waiting for the next key press.

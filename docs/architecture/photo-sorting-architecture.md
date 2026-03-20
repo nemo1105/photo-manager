@@ -30,10 +30,11 @@ This application is a single-binary Go tool that starts from an explicit launch 
   - A local HTTP server is bound to `127.0.0.1:random-port` and the default browser is opened.
 - Config shape:
   - `keys.browser`, `keys.preview`, and `keys.slideshow` define single-key bindings per mode.
+  - `keys.browser` exposes session start/end, tree up/down movement, tree expand/collapse, browser up-directory, and settings keys.
   - `keys.slideshow` currently exposes `next`, `prev`, and `end_session`; slideshow no longer has a separate browser-return binding.
   - `actions[]` defines `move`, `delete`, and `restore` buttons/shortcuts.
   - `move.target` accepts relative or absolute paths.
-  - The default template maps `space` to session enter/exit, `arrowleft` and `arrowright` to slide navigation, `delete` to delete, `arrowdown` to move into `0`, and `arrowup` to restore.
+  - The default template maps `space` to session enter/exit, `arrowup` / `arrowdown` / `arrowright` / `arrowleft` to browser-tree navigation, `arrowleft` and `arrowright` to slide navigation, `delete` to delete, `arrowdown` to move into `0`, and `arrowup` to restore.
 - HTTP API:
   - `GET /api/browser`: current directory listing, breadcrumbs, session status, config, and whether starting here should be framed as reviewing moved photos.
   - `POST /api/session/start`: creates or reuses a session for the current directory.
@@ -54,6 +55,8 @@ This application is a single-binary Go tool that starts from an explicit launch 
 
 - The product currently separates browse, preview, and slideshow modes instead of mixing them.
 - Session creation is explicit to protect the sorting logic from accidental clicks while browsing.
+- Browser-mode tree navigation follows the currently visible tree rows, so collapsing an already collapsed directory steps selection back to its parent instead of hiding the active location.
+- Keyboard-driven browser navigation keeps a transient tree focus separate from the last loaded browser directory, preserves the existing expansion state, and debounces browser reloads by `100 ms` to reduce image-list churn during rapid scans.
 - Relative target directories intentionally use `sessionRoot` so any configured review folder, including the default `0`, still restores back to the original work root.
 - Review-folder entry is explained in the UI as checking already moved photos, rather than exposing the session-root fallback directly.
 - The default action template now favors a single hot folder, `0`, so a fresh install exposes one high-risk move target instead of several competing move destinations.

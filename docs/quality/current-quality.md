@@ -16,6 +16,8 @@ Status: active
 - Keep browser mode compact enough that the tree and image list own the viewport instead of a persistent header shell.
 - Keep browser-mode chrome reduced to a single primary sort action plus a help affordance, with low-frequency details moved behind the help panel.
 - Keep browser directory ordering human-readable, especially for numbered folders and dated folder names.
+- Keep browser-mode tree navigation usable by keyboard alone, with directional keys and visible-button behavior staying aligned.
+- Keep rapid keyboard directory scans responsive by avoiding unintended auto-expansion and by debouncing browser reloads before image-heavy panes redraw.
 
 ## Known issues
 
@@ -28,7 +30,7 @@ Status: active
 
 - Existing coverage:
   - Config normalization and key-conflict validation.
-  - Default shortcut template for slideshow and action keys.
+  - Default shortcut template for browser, slideshow, and action keys.
   - Session-root-based `move` and `restore` behavior.
   - Session-start fallback from target folders to the parent work root.
   - Review-folder slideshow filtering that hides the current target move action while keeping restore and other actions available.
