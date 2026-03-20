@@ -199,6 +199,15 @@
     });
   }
 
+  async function handleTreePathClick(path, hasChildren) {
+    const key = path || "";
+    if (hasChildren && state.browser && state.browser.currentPath === key) {
+      await toggleTree(key);
+      return;
+    }
+    await changeDirectory(key);
+  }
+
   async function openWorkMode() {
     if (!canStartWorkFromBrowser()) {
       return null;
@@ -272,11 +281,6 @@
       return;
     }
     const key = path || "";
-    if (key === "") {
-      state.tree.expanded[""] = true;
-      render();
-      return;
-    }
     if (state.tree.expanded[key]) {
       delete state.tree.expanded[key];
       render();
@@ -479,16 +483,28 @@
       directories: [],
     };
     const rootClass = state.browser.currentPath === "" ? "current" : (isPathAncestor("", state.browser.currentPath) ? "ancestor" : "");
+    const rootExpanded = !!state.tree.expanded[""];
+    const rootHasChildren = !!rootNode.directories.length || !!state.tree.loading[""];
+    const rootToggleMarkup = rootHasChildren
+      ? `
+          <button class="tree-toggle" data-toggle-tree="" aria-expanded="${rootExpanded}">
+            <span class="tree-chevron"></span>
+            <span class="visually-hidden">Toggle ${escapeHtml(rootNode.name || "Root")}</span>
+          </button>
+        `
+      : `<span class="tree-spacer" aria-hidden="true"></span>`;
+    const rootChildrenMarkup = rootExpanded ? renderTreeBranch("", 1) : "";
     return `
       <div class="tree-branch">
         <div class="tree-node">
           <div class="tree-row tree-row--root" style="--depth:0">
-            <button class="tree-link ${rootClass}" data-tree-path="">
+            ${rootToggleMarkup}
+            <button class="tree-link ${rootClass}" data-tree-path="" data-tree-has-children="${rootHasChildren}">
               <strong>${escapeHtml(rootNode.name || "Root")}</strong>
             </button>
           </div>
         </div>
-        ${renderTreeBranch("", 1)}
+        ${rootChildrenMarkup}
       </div>
     `;
   }
@@ -529,7 +545,11 @@
       <div class="tree-node">
         <div class="tree-row" style="--depth:${depth}">
           ${toggleMarkup}
-          <button class="tree-link ${selected ? "current" : (ancestor ? "ancestor" : "")}" data-tree-path="${escapeHtml(path)}">
+          <button
+            class="tree-link ${selected ? "current" : (ancestor ? "ancestor" : "")}"
+            data-tree-path="${escapeHtml(path)}"
+            data-tree-has-children="${hasChildren}"
+          >
             <strong>${escapeHtml(entry.name)}</strong>
           </button>
         </div>
@@ -670,7 +690,7 @@
       <section class="settings-section help-section">
         <h3>How To Use</h3>
         <ol class="browser-help-list">
-          <li>Browse folders in the tree on the left.</li>
+          <li>Browse folders in the tree on the left, and click the current folder again to collapse or reopen it.</li>
           <li>Click any image to open preview only.</li>
           <li>Use Sort Here, or Review Here in moved-photo folders, to start from the current folder.</li>
           <li>In slideshow, use Left and Right to move through images.</li>
@@ -778,7 +798,8 @@
       }
       button.dataset.boundTreePath = "true";
       button.addEventListener("click", () => {
-        changeDirectory(button.dataset.treePath || "").catch((error) => showNotice(error.message, "error"));
+        handleTreePathClick(button.dataset.treePath || "", button.dataset.treeHasChildren === "true")
+          .catch((error) => showNotice(error.message, "error"));
       });
     });
     browserView.querySelectorAll("[data-toggle-tree]").forEach((button) => {
