@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Photo Manager</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <div id="app" class="app-shell">
+    <header id="statusBar" class="status-bar">
+      <div class="status-copy">
+        <div class="status-title">Photo Manager</div>
+        <div id="statusLine" class="status-line"></div>
+      </div>
+      <div id="toolbar" class="toolbar"></div>
+    </header>
+
+    <nav id="breadcrumbs" class="breadcrumbs"></nav>
+    <div id="notice" class="notice" hidden></div>
+
+    <main class="main-layout">
+      <section id="browserView" class="view"></section>
+      <section id="slideshowView" class="view" hidden></section>
+    </main>
+  </div>
+
+  <div id="previewModal" class="modal" hidden>
+    <div class="modal-backdrop" data-close-preview="true"></div>
+    <div class="modal-card preview-card">
+      <div class="modal-header">
+        <h2>Preview</h2>
+        <button id="previewCloseButton" class="ghost-button">Close</button>
+      </div>
+      <div id="previewBody" class="preview-body"></div>
+      <div id="previewControls" class="modal-footer"></div>
+    </div>
+  </div>
+
+  <div id="settingsModal" class="modal" hidden>
+    <div class="modal-backdrop" data-close-settings="true"></div>
+    <div class="modal-card settings-card">
+      <div class="modal-header">
+        <h2>Settings</h2>
+        <button id="settingsCloseButton" class="ghost-button">Close</button>
+      </div>
+      <div id="settingsBody" class="settings-body"></div>
+      <div class="modal-footer">
+        <button id="addMoveActionButton" class="secondary-button">Add Move</button>
+        <button id="addDeleteActionButton" class="secondary-button">Add Delete</button>
+        <button id="addRestoreActionButton" class="secondary-button">Add Restore</button>
+        <span id="captureHint" class="capture-hint"></span>
+        <button id="saveSettingsButton" class="primary-button">Save Settings</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/app.js" defer></script>
+</body>
+</html>
