@@ -595,7 +595,7 @@
     previewModal.hidden = false;
     document.getElementById("previewBody").innerHTML = `
       <div class="preview-stage">
-        <img src="${escapeHtml(current.url)}" alt="${escapeHtml(current.name)}">
+        <img class="preview-image" src="${escapeHtml(current.url)}" alt="${escapeHtml(current.name)}">
       </div>
       <div class="preview-meta">
         <strong>${escapeHtml(current.name)}</strong>
@@ -603,9 +603,8 @@
       </div>
     `;
     document.getElementById("previewControls").innerHTML = `
-      ${railButtonHtml("Previous", keyLabel(getConfig(["keys", "preview", "prev"])), "preview-prev", state.preview.index > 0, "data-preview-action")}
-      ${railButtonHtml("Next", keyLabel(getConfig(["keys", "preview", "next"])), "preview-next", state.preview.index < images.length - 1, "data-preview-action")}
-      ${railButtonHtml("Close", keyLabel(getConfig(["keys", "preview", "close"])), "preview-close", true, "data-preview-action")}
+      ${slideBarButtonHtml("Prev", keyLabel(getConfig(["keys", "preview", "prev"])), "preview-prev", state.preview.index > 0, "data-preview-action")}
+      ${slideBarButtonHtml("Next", keyLabel(getConfig(["keys", "preview", "next"])), "preview-next", state.preview.index < images.length - 1, "data-preview-action")}
     `;
     bindPreviewEvents();
   }

@@ -19,6 +19,7 @@ Track the next round of UX and reliability work after the initial browse/preview
   Current execution focus on 2026-03-20: restyle the browser into a dark, compact resource explorer with a minimal tree, mini breadcrumb, toast notices, and an info-only metadata affordance.
   Current execution focus on 2026-03-20: collapse the browser toolbar to `Sort Here` plus a click-open help panel, move `Settings` into that panel, widen the explorer rail, and tighten tree indentation.
   Current execution focus on 2026-03-21: switch browser help from a sidebar popover to a centered modal, move the root tree row further left, and sort directory lists with natural numeric ordering.
+  Current execution focus on 2026-03-21: simplify preview-modal controls by reducing the footer to thin `Prev/Next` buttons and moving close to a compact top-right button.
 - [ ] Add zh-CN / en localization with default language chosen from the browser locale.
 - [ ] Prevent repeated operations on the same stale image state from surfacing as user-visible errors.
 - [ ] Make the settings key-capture mode visually obvious while waiting for the next key press.
