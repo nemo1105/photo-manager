@@ -8,6 +8,7 @@ Status: active
 - Keep all file-system operations contained inside the launch root unless the user explicitly configured an absolute move target.
 - Make session-root-based sorting predictable enough that review and restore never depend on the current image's parent folder.
 - Make review-folder entry explicit from the user's point of view, so moved-photo checks do not expose session-root internals.
+- Prevent review folders from surfacing a redundant self-target move action in slideshow.
 - Keep image actions available both by keyboard and by visible buttons.
 - Preserve platform-native recycle-bin / Trash behavior for deletes.
 - Keep slideshow mode visually immersive, chrome-light, and free of browser-level scrollbars in common desktop window sizes.
@@ -29,6 +30,7 @@ Status: active
   - Default shortcut template for slideshow and action keys.
   - Session-root-based `move` and `restore` behavior.
   - Session-start fallback from target folders to the parent work root.
+  - Review-folder slideshow filtering that hides the current target move action while keeping restore and other actions available.
   - Auto-ending sessions when browsing outside the session subtree.
   - Auto-renaming on target conflicts.
   - Legacy config loading after removing the slideshow back-to-browser binding.

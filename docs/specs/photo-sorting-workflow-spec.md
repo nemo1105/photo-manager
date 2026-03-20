@@ -38,6 +38,7 @@ Users need to start from an arbitrary directory, browse to a folder that contain
 - [x] Starting a work session is only possible from the browser view through the fixed button or its configured key.
 - [x] When the current folder is a configured relative move target, the browser frames it as reviewing already moved photos and starting there uses the parent folder as the work root.
 - [x] While a session is active, the page shows a persistent session indicator and enables action buttons in the slideshow.
+- [x] In a review folder, slideshow hides the move action that points to the current directory while still exposing other actions and `restore`.
 - [x] `move` creates missing target folders and auto-renames on conflicts.
 - [x] `delete` sends the image to the platform recycle bin / Trash.
 - [x] `restore` only works inside configured move-target directories and returns the image to the session root.

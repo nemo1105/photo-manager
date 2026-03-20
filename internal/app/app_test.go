@@ -149,6 +149,57 @@ func TestOpenSessionDoesNotFallbackOutsideLaunchRoot(t *testing.T) {
 	}
 }
 
+func TestSlideshowHidesCurrentReviewTargetAction(t *testing.T) {
+	root := t.TempDir()
+	mustWriteFile(t, filepath.Join(root, "work", "0", "review.jpg"))
+
+	cfg := config.Default()
+	cfg.Actions = []config.ActionBinding{
+		{Key: "delete", Action: "delete"},
+		{Key: "arrowdown", Action: "move", Target: "0"},
+		{Key: "m", Action: "move", Target: "keep"},
+		{Key: "arrowup", Action: "restore"},
+	}
+	app := New(root, filepath.Join(root, "config.yaml"), cfg, &fakeTrash{})
+
+	if _, err := app.OpenSession("work/0"); err != nil {
+		t.Fatalf("open session from review target: %v", err)
+	}
+
+	data, err := app.Slideshow("work/0")
+	if err != nil {
+		t.Fatalf("load slideshow from review target: %v", err)
+	}
+	if !data.CurrentDirIsTarget {
+		t.Fatal("expected review folder to be marked as target")
+	}
+
+	keys := make([]string, 0, len(data.ActionButtons))
+	enabled := map[string]bool{}
+	for _, action := range data.ActionButtons {
+		keys = append(keys, action.Key)
+		enabled[action.Key] = action.Enabled
+	}
+
+	if reflect.DeepEqual(keys, []string{}) {
+		t.Fatal("expected some actions to remain visible")
+	}
+	if contains(keys, "arrowdown") {
+		t.Fatalf("expected current target move action to be hidden, got %v", keys)
+	}
+	for _, key := range []string{"delete", "m", "arrowup"} {
+		if !contains(keys, key) {
+			t.Fatalf("expected action %q to remain visible, got %v", key, keys)
+		}
+	}
+	if !enabled["arrowup"] {
+		t.Fatal("expected restore to remain enabled in review folder")
+	}
+	if !enabled["m"] {
+		t.Fatal("expected non-current move action to remain enabled in review folder")
+	}
+}
+
 func TestBrowserAutoEndsSessionOutsideRoot(t *testing.T) {
 	root := t.TempDir()
 	mustWriteFile(t, filepath.Join(root, "work", "a.jpg"))
@@ -305,4 +356,13 @@ func dirNames(entries []DirEntry) []string {
 		names = append(names, entry.Name)
 	}
 	return names
+}
+
+func contains(items []string, want string) bool {
+	for _, item := range items {
+		if item == want {
+			return true
+		}
+	}
+	return false
 }

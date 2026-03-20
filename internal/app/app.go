@@ -244,6 +244,9 @@ func (a *App) Slideshow(relPath string) (*SlideshowData, error) {
 
 	actions := make([]ActionButton, 0, len(a.cfg.Actions))
 	for _, binding := range a.cfg.Actions {
+		if binding.Action == "move" && a.moveTargetMatchesCurrentDirLocked(binding, absPath) {
+			continue
+		}
 		enabled := a.session != nil
 		if binding.Action == "restore" {
 			enabled = a.session != nil && isTarget
@@ -438,18 +441,22 @@ func (a *App) dirMatchesMoveTargetLocked(currentAbs string) bool {
 		return false
 	}
 	for _, binding := range a.cfg.Actions {
-		if binding.Action != "move" {
-			continue
-		}
-		targetAbs, err := resolveTargetDir(binding.Target, a.session.RootAbs)
-		if err != nil {
-			continue
-		}
-		if samePath(targetAbs, currentAbs) {
+		if a.moveTargetMatchesCurrentDirLocked(binding, currentAbs) {
 			return true
 		}
 	}
 	return false
+}
+
+func (a *App) moveTargetMatchesCurrentDirLocked(binding config.ActionBinding, currentAbs string) bool {
+	if a.session == nil || binding.Action != "move" {
+		return false
+	}
+	targetAbs, err := resolveTargetDir(binding.Target, a.session.RootAbs)
+	if err != nil {
+		return false
+	}
+	return samePath(targetAbs, currentAbs)
 }
 
 func (a *App) sessionInfoLocked() SessionInfo {

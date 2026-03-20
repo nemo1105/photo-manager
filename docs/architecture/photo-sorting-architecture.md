@@ -15,6 +15,7 @@ This application is a single-binary Go tool that starts from an explicit launch 
 - Starting from a relative move-target folder reuses that folder as the slideshow directory but sets `sessionRoot` to its parent, so review folders still restore back to the work root.
 - Leaving `sessionRoot` or any of its descendants during browser navigation automatically ends the session.
 - `restore` is only valid when the current directory matches one of the configured `move` targets resolved against `sessionRoot`.
+- When slideshow is opened inside a move-target directory, the action list omits any `move` binding whose destination is that same directory.
 - Directory listing is shallow: only direct child folders and direct child images of the current directory are returned.
 - Returned directory lists use natural numeric ordering, so names like `1`, `2`, and `10` sort in human order.
 - Hidden entries are ignored. Supported image formats are `.jpg`, `.jpeg`, `.png`, `.gif`, `.webp`, and `.bmp`.
@@ -37,7 +38,7 @@ This application is a single-binary Go tool that starts from an explicit launch 
   - `GET /api/browser`: current directory listing, breadcrumbs, session status, config, and whether starting here should be framed as reviewing moved photos.
   - `POST /api/session/start`: creates or reuses a session for the current directory.
   - `POST /api/session/end`: clears the active session.
-  - `GET /api/slideshow`: current directory image list plus action availability.
+- `GET /api/slideshow`: current directory image list plus action availability.
   - `POST /api/action`: executes one image action using the configured key.
   - `GET /api/config` and `POST /api/config`: load and save validated config.
   - `GET /image`: streams the original image file.
