@@ -10,6 +10,7 @@
     settingsOpen: false,
     settingsDraft: null,
     captureTarget: null,
+    browserHelpOpen: false,
     busy: false,
     busyLabel: "",
     tree: {
@@ -35,6 +36,16 @@
 
   function bindStaticEvents() {
     document.addEventListener("keydown", onKeyDown);
+    document.addEventListener("click", (event) => {
+      if (!state.browserHelpOpen) {
+        return;
+      }
+      if (event.target.closest("[data-browser-help-shell]")) {
+        return;
+      }
+      state.browserHelpOpen = false;
+      render();
+    }, true);
     document.getElementById("previewCloseButton").addEventListener("click", closePreview);
     document.getElementById("settingsCloseButton").addEventListener("click", closeSettings);
     document.getElementById("saveSettingsButton").addEventListener("click", () => {
@@ -113,6 +124,7 @@
     const data = normalizeSlideshowData(await apiGet(`/api/slideshow?path=${encodeURIComponent(path || "")}`));
     state.slideshow = data;
     state.config = data.config || state.config;
+    state.browserHelpOpen = false;
     if (!data.session.active) {
       await loadBrowser(path || "");
       if (data.notice) {
@@ -173,6 +185,7 @@
   }
 
   async function changeDirectory(path) {
+    state.browserHelpOpen = false;
     return withBusy("Loading folder", async () => {
       await loadBrowser(path || "");
     });
@@ -226,6 +239,7 @@
   }
 
   function openPreview(index) {
+    state.browserHelpOpen = false;
     state.preview = {
       open: true,
       images: normalizeImages(state.browser ? state.browser.images : []),
@@ -271,6 +285,7 @@
 
   async function openSettings() {
     return withBusy("Loading settings", async () => {
+      state.browserHelpOpen = false;
       state.config = await apiGet("/api/config");
       state.settingsDraft = clone(state.config);
       state.settingsOpen = true;
@@ -330,10 +345,19 @@
     const title = state.mode === "slideshow" ? "Sorting workspace" : "Explorer workspace";
     const statusLabel = session.active ? "Work session active" : "Browsing only";
     const statusTone = session.active ? "session" : "";
+    const browserMode = state.mode === "browser";
 
+    document.body.classList.toggle("browser-mode", browserMode);
     document.body.classList.toggle("session-active", !!session.active);
     document.body.classList.toggle("app-busy", !!state.busy);
     document.body.classList.toggle("slideshow-mode", state.mode === "slideshow");
+
+    if (browserMode) {
+      document.getElementById("statusBar").innerHTML = "";
+      document.getElementById("breadcrumbs").innerHTML = "";
+      renderNotice();
+      return;
+    }
 
     document.getElementById("statusBar").innerHTML = `
       <div class="shell-strip">
@@ -365,7 +389,6 @@
       .join("");
 
     renderNotice();
-    bindShellEvents();
   }
 
   function renderNotice() {
@@ -374,18 +397,19 @@
       notice.hidden = true;
       notice.className = "notice";
       notice.innerHTML = "";
+      notice.removeAttribute("role");
       return;
     }
 
     const kind = state.notice.type === "error" ? "Error" : "Notice";
     notice.hidden = false;
     notice.className = `notice ${state.notice.type}`;
+    notice.setAttribute("role", state.notice.type === "error" ? "alert" : "status");
     notice.innerHTML = `
-      <div class="notice-copy">
+      <div class="notice-copy notice-toast-copy">
         <strong>${kind}</strong>
         <span>${escapeHtml(state.notice.text)}</span>
       </div>
-      <button class="notice-close ghost-button utility-button" data-dismiss-notice="true">Dismiss</button>
     `;
   }
 
@@ -396,55 +420,30 @@
     }
 
     const session = currentSession();
-    const startLabel = session.active ? "Open Current Folder" : "Start Sorting Here";
-    const startTone = session.active ? "secondary-button" : "primary-button";
+    const startLabel = session.active ? "Open Here" : "Sort Here";
 
     browserView.innerHTML = `
       <div class="browser-layout">
-        <aside class="explorer-pane">
-          <div class="pane-head">
-            <div>
-              <p class="pane-kicker">Explorer</p>
-              <h2 class="section-title">Folder Tree</h2>
-              <p class="pane-caption">Navigation stays on the left. Work actions live in the image workbench.</p>
-            </div>
-            <div class="pane-tools">
-              ${utilityButtonHtml("Up", keyLabel(getConfig(["keys", "browser", "upDir"])), "up-dir", !!state.browser.canGoUp)}
-            </div>
+        <aside class="explorer-pane browser-sidebar">
+          <div class="browser-toolbar">
+            ${browserToolButtonHtml(startLabel, getConfig(["keys", "browser", "startSession"]), "start-work", canStartWorkFromBrowser(), session.active ? "session" : "primary")}
+            ${browserInfoButtonHtml(session)}
           </div>
-          <div class="stat-row">
-            ${statPillHtml("Folders", String(state.browser.directories.length))}
-            ${statPillHtml("Images", String(state.browser.images.length))}
-          </div>
-          <div class="tree-shell">
+          <div class="tree-shell browser-tree-shell">
             ${renderTree()}
           </div>
         </aside>
 
-        <section class="workbench-pane">
-          <div class="workbench-head">
-            <div>
-              <p class="section-kicker">Workbench</p>
-              <h2 class="section-title">${escapeHtml(state.browser.currentName || "Current directory")}</h2>
-              <p class="section-caption">Click any image to preview it only. Sorting starts exclusively from the action buttons or configured keys.</p>
-              <div class="stat-row">
-                ${statPillHtml("Path", pathLabel(state.browser.currentPath, state.browser.currentName || "Root"))}
-                ${statPillHtml("Visible folders", String(state.browser.directories.length))}
-                ${statPillHtml("Visible images", String(state.browser.images.length))}
-              </div>
-            </div>
-            <div class="workbench-actions">
-              ${controlTileHtml(startLabel, keyLabel(getConfig(["keys", "browser", "startSession"])), "start-work", canStartWorkFromBrowser(), startTone)}
-              ${controlTileHtml("End Session", keyLabel(getConfig(["keys", "browser", "endSession"])), "end-session", !!session.active, "secondary-button")}
-            </div>
+        <section class="workbench-pane browser-workbench">
+          <div class="browser-crumbs" aria-label="Current directory">
+            ${browserMiniBreadcrumbHtml()}
           </div>
-
-          <div class="workbench-grid">
+          <div class="browser-gallery">
             ${state.browser.images.length ? `
-              <div class="card-grid">
+              <div class="card-grid browser-card-grid">
                 ${state.browser.images.map((image, index) => imageCardHtml(image, index)).join("")}
               </div>
-            ` : `<div class="empty-state">No supported pictures in this directory.</div>`}
+            ` : `<div class="empty-state browser-empty-state">No images in this folder.</div>`}
           </div>
         </section>
       </div>
@@ -462,15 +461,16 @@
     };
     const rootClass = state.browser.currentPath === "" ? "current" : (isPathAncestor("", state.browser.currentPath) ? "ancestor" : "");
     return `
-      <div class="tree-root">
-        <button class="tree-link ${rootClass}" data-tree-path="">
-          <strong>${escapeHtml(rootNode.name || "Root")}</strong>
-          <span>Launch root</span>
-        </button>
-        <div class="tree-root-path">${escapeHtml(state.launchRoot || "")}</div>
-      </div>
       <div class="tree-branch">
-        ${renderTreeBranch("", 0)}
+        <div class="tree-node">
+          <div class="tree-row tree-row--root" style="--depth:0">
+            <span class="tree-spacer" aria-hidden="true"></span>
+            <button class="tree-link ${rootClass}" data-tree-path="">
+              <strong>${escapeHtml(rootNode.name || "Root")}</strong>
+            </button>
+          </div>
+        </div>
+        ${renderTreeBranch("", 1)}
       </div>
     `;
   }
@@ -481,7 +481,7 @@
       return state.tree.loading[parentPath || ""] ? `<div class="tree-loading muted-text">Loading folders...</div>` : "";
     }
     if (!node.directories.length) {
-      return depth === 0 ? `<div class="tree-empty muted-text">No visible subfolders here.</div>` : "";
+      return "";
     }
     return node.directories.map((entry) => renderTreeEntry(entry, depth)).join("");
   }
@@ -495,20 +495,24 @@
     const hasChildren = !!entry.hasChildren || (!!node && node.directories.length > 0);
     const childMarkup = expanded
       ? (node
-          ? (node.directories.length ? `<div class="tree-children">${renderTreeBranch(path, depth + 1)}</div>` : `<div class="tree-empty muted-text">No visible subfolders.</div>`)
+          ? (node.directories.length ? `<div class="tree-children">${renderTreeBranch(path, depth + 1)}</div>` : "")
           : `<div class="tree-loading muted-text">Loading folders...</div>`)
       : "";
+    const toggleMarkup = hasChildren
+      ? `
+          <button class="tree-toggle" data-toggle-tree="${escapeHtml(path)}" aria-expanded="${expanded}">
+            <span class="tree-chevron"></span>
+            <span class="visually-hidden">Toggle ${escapeHtml(entry.name)}</span>
+          </button>
+        `
+      : `<span class="tree-spacer" aria-hidden="true"></span>`;
 
     return `
       <div class="tree-node">
         <div class="tree-row" style="--depth:${depth}">
-          <button class="tree-toggle" data-toggle-tree="${escapeHtml(path)}" ${hasChildren ? "" : "disabled"} aria-expanded="${expanded}">
-            <span class="tree-chevron"></span>
-            <span class="visually-hidden">Toggle ${escapeHtml(entry.name)}</span>
-          </button>
+          ${toggleMarkup}
           <button class="tree-link ${selected ? "current" : (ancestor ? "ancestor" : "")}" data-tree-path="${escapeHtml(path)}">
             <strong>${escapeHtml(entry.name)}</strong>
-            <span>${hasChildren ? "Has subfolders" : "Leaf folder"}</span>
           </button>
         </div>
         ${childMarkup}
@@ -590,7 +594,7 @@
       </div>
       <div class="preview-meta">
         <strong>${escapeHtml(current.name)}</strong>
-        <span class="muted-text">${state.preview.index + 1} / ${images.length} | ${escapeHtml(current.path)}</span>
+        <span class="muted-text">${state.preview.index + 1} / ${images.length}</span>
       </div>
     `;
     document.getElementById("previewControls").innerHTML = `
@@ -680,16 +684,20 @@
         }
       });
     });
-    document.querySelectorAll("[data-dismiss-notice]").forEach((button) => {
-      if (button.dataset.boundNotice === "true") {
-        return;
-      }
-      button.dataset.boundNotice = "true";
-      button.addEventListener("click", clearNotice);
-    });
   }
 
   function bindBrowserEvents() {
+    browserView.querySelectorAll("[data-browser-help-toggle]").forEach((button) => {
+      if (button.dataset.boundHelpToggle === "true") {
+        return;
+      }
+      button.dataset.boundHelpToggle = "true";
+      button.addEventListener("click", (event) => {
+        event.stopPropagation();
+        state.browserHelpOpen = !state.browserHelpOpen;
+        render();
+      });
+    });
     browserView.querySelectorAll("[data-tree-path]").forEach((button) => {
       if (button.dataset.boundTreePath === "true") {
         return;
@@ -837,6 +845,13 @@
   function onKeyDown(event) {
     const key = canonicalKey(event);
     if (!key) {
+      return;
+    }
+
+    if (state.browserHelpOpen && key === "escape") {
+      event.preventDefault();
+      state.browserHelpOpen = false;
+      render();
       return;
     }
 
@@ -1043,12 +1058,128 @@
           <img class="thumb" src="${escapeHtml(image.url)}" alt="${escapeHtml(image.name)}" loading="lazy" decoding="async">
         </div>
         <div class="image-meta">
-          <strong>${escapeHtml(image.name)}</strong>
-          <span class="entry-meta">${escapeHtml(image.path)}</span>
-          <span class="muted-text">Preview only</span>
+          <strong class="image-name">${escapeHtml(image.name)}</strong>
         </div>
       </button>
     `;
+  }
+
+  function browserToolButtonHtml(label, key, action, enabled, tone) {
+    const keyText = compactKeyText(keyLabel(key));
+    const toneClass = tone ? ` browser-tool-button--${tone}` : "";
+    return `
+      <button class="browser-tool-button${toneClass}" type="button" data-toolbar-action="${escapeHtml(action)}" ${enabled && !state.busy ? "" : "disabled"}>
+        <span class="browser-tool-label">${escapeHtml(label)}</span>
+        ${keyText ? `<span class="browser-tool-key">${escapeHtml(keyText)}</span>` : ""}
+      </button>
+    `;
+  }
+
+  function browserInfoButtonHtml(session) {
+    const expanded = state.browserHelpOpen ? "true" : "false";
+    return `
+      <div class="browser-info" data-browser-help-shell>
+        <button
+          class="browser-icon-button ${state.browserHelpOpen ? "is-active" : ""}"
+          type="button"
+          aria-label="Open help"
+          aria-expanded="${expanded}"
+          aria-controls="browserHelpPanel"
+          data-browser-help-toggle
+        >
+          ${browserInfoIconHtml()}
+        </button>
+        ${browserInfoPanelHtml(session)}
+      </div>
+    `;
+  }
+
+  function browserInfoPanelHtml(session) {
+    const currentPath = currentData().currentPath || "Root";
+    const sessionRoot = session.active ? (session.rootPath || "Root") : "Not started";
+    return `
+      <div class="browser-info-panel ${state.browserHelpOpen ? "is-open" : ""}" id="browserHelpPanel" role="dialog" aria-modal="false" aria-label="Explorer help">
+        <div class="browser-help-header">
+          <strong>Help</strong>
+          <span>Browse, preview, and start sorting without extra chrome.</span>
+        </div>
+        <div class="browser-info-section">
+          <strong>How to use</strong>
+          <ol class="browser-help-list">
+            <li>Browse folders in the tree on the left.</li>
+            <li>Click any image to open preview only.</li>
+            <li>Use Sort Here to start sorting the current folder.</li>
+            <li>In slideshow, use Left and Right to move through images.</li>
+          </ol>
+        </div>
+        <div class="browser-info-section">
+          <strong>Shortcuts</strong>
+          <div class="browser-info-hotkeys">
+            ${browserInfoKeyHtml("Sort", getConfig(["keys", "browser", "startSession"]))}
+            ${browserInfoKeyHtml("Up", getConfig(["keys", "browser", "upDir"]))}
+            ${browserInfoKeyHtml("End", getConfig(["keys", "browser", "endSession"]))}
+            ${browserInfoKeyHtml("Preview", "", `${compactKeyText(keyLabel(getConfig(["keys", "preview", "prev"])))} / ${compactKeyText(keyLabel(getConfig(["keys", "preview", "next"])))}`)}
+            ${(state.config?.actions || []).map((action) => browserInfoKeyHtml(shortActionLabel(action), action.key)).join("")}
+          </div>
+        </div>
+        <div class="browser-info-section">
+          <strong>Workspace</strong>
+          <span>${escapeHtml(state.launchRoot || "(unknown)")}</span>
+        </div>
+        <div class="browser-info-section">
+          <strong>Current folder</strong>
+          <span>${escapeHtml(currentPath)}</span>
+        </div>
+        <div class="browser-info-section">
+          <strong>Session</strong>
+          <span>${escapeHtml(session.active ? `Active | ${sessionRoot}` : "Idle")}</span>
+        </div>
+        <div class="browser-info-row">
+          <span>Folders</span>
+          <strong>${escapeHtml(String(state.browser?.directories?.length || 0))}</strong>
+        </div>
+        <div class="browser-info-row">
+          <span>Images</span>
+          <strong>${escapeHtml(String(state.browser?.images?.length || 0))}</strong>
+        </div>
+        <div class="browser-help-actions">
+          <button class="browser-help-settings" type="button" data-toolbar-action="open-settings">
+            <span>Settings</span>
+            <span class="browser-tool-key">${escapeHtml(compactKeyText(keyLabel(getConfig(["keys", "browser", "openSettings"]))))}</span>
+          </button>
+        </div>
+      </div>
+    `;
+  }
+
+  function browserInfoIconHtml() {
+    return `
+      <svg class="browser-icon-svg" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+        <circle cx="12" cy="12" r="9"></circle>
+        <path d="M12 10v6"></path>
+        <circle cx="12" cy="7.25" r="1"></circle>
+      </svg>
+    `;
+  }
+
+  function browserInfoKeyHtml(label, key, textOverride) {
+    const keyText = textOverride || compactKeyText(keyLabel(key));
+    return `
+      <span class="browser-info-key">
+        <strong>${escapeHtml(label)}</strong>
+        ${keyText ? `<span>${escapeHtml(keyText)}</span>` : ""}
+      </span>
+    `;
+  }
+
+  function browserMiniBreadcrumbHtml() {
+    const crumbs = normalizeBreadcrumbs(state.browser?.breadcrumbs);
+    return crumbs.map((crumb) => {
+      if (crumb.path === state.browser.currentPath) {
+        return `<span class="browser-crumb browser-crumb--current">${escapeHtml(crumb.name)}</span>`;
+      }
+      return `<button class="browser-crumb" data-browse-path="${escapeHtml(crumb.path)}">${escapeHtml(crumb.name)}</button>`;
+    }).join(`<span class="browser-crumb-separator" aria-hidden="true">/</span>`);
   }
 
   function metaChipHtml(label, value, tone) {

@@ -10,13 +10,15 @@ Status: active
 - Keep image actions available both by keyboard and by visible buttons.
 - Preserve platform-native recycle-bin / Trash behavior for deletes.
 - Keep slideshow mode visually immersive, chrome-light, and free of browser-level scrollbars in common desktop window sizes.
+- Keep browser mode compact enough that the tree and image list own the viewport instead of a persistent header shell.
+- Keep browser-mode chrome reduced to a single primary sort action plus a help affordance, with low-frequency details moved behind the help panel.
 
 ## Known issues
 
-- P1 UX: the browser tree still needs another density pass on narrower desktop widths.
 - P1 product gap: the UI does not support Chinese/English switching yet.
 - P1 bug: the same image can still be acted on twice from stale UI state, which produces an avoidable error on the second request.
 - P1 bug: settings key capture does not expose a strong enough waiting state in the UI.
+- P1 test gap: the dark browser shell still has no automated visual regression coverage.
 
 ## Test coverage
 
@@ -29,6 +31,7 @@ Status: active
   - Windows PowerShell path quoting for recycle-bin deletion.
 - Missing coverage:
   - Browser-side UI flows in `internal/web/static/app.js`.
+  - Layout verification that browser mode keeps the tree and image list inside the viewport without a large header shell.
   - Layout verification that slideshow mode stays scrollbar-free at runtime.
   - End-to-end verification of delete-to-recycle-bin behavior.
   - Repeated-action protection for stale slideshow state.

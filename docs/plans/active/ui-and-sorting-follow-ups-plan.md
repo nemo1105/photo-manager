@@ -10,12 +10,14 @@ Track the next round of UX and reliability work after the initial browse/preview
 
 ## Tasks
 
-- [ ] Rework the browser layout so image previews keep their aspect ratio, the top area consumes less vertical space, and navigation controls are separated from work-session actions.
+- [x] Rework the browser layout so image previews keep their aspect ratio, the top area consumes less vertical space, and navigation controls are separated from work-session actions.
   Current execution focus on 2026-03-20: compact the shared shell, move work-session controls into the right-hand image workbench, and keep navigation inside a dedicated explorer rail.
   Current correction focus on 2026-03-20: replace the slideshow shell with a true immersive viewer that hides the top chrome and reduces controls to a thin bottom dock.
   Current correction focus on 2026-03-20: remove slideshow overflow/white-edge regressions and reset the default shortcut template to `Space`, `Left`, `Right`, `Del`, `Down`, and `Up`.
-- [ ] Replace the folder card list with a narrower tree-like folder view that still makes hierarchy obvious.
+- [x] Replace the folder card list with a narrower tree-like folder view that still makes hierarchy obvious.
   Current execution focus on 2026-03-20: implement a lazily expanded explorer tree, backed by a tree-only API path so expanding the tree does not accidentally end an active session.
+  Current execution focus on 2026-03-20: restyle the browser into a dark, compact resource explorer with a minimal tree, mini breadcrumb, toast notices, and an info-only metadata affordance.
+  Current execution focus on 2026-03-20: collapse the browser toolbar to `Sort Here` plus a click-open help panel, move `Settings` into that panel, widen the explorer rail, and tighten tree indentation.
 - [ ] Add zh-CN / en localization with default language chosen from the browser locale.
 - [ ] Prevent repeated operations on the same stale image state from surfacing as user-visible errors.
 - [ ] Make the settings key-capture mode visually obvious while waiting for the next key press.
