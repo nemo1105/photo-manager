@@ -16,6 +16,7 @@ Track the next round of UX and reliability work after the initial browse/preview
   Current correction focus on 2026-03-20: remove slideshow overflow/white-edge regressions and reset the default shortcut template to `Space`, `Left`, `Right`, `Del`, `Down`, and `Up`.
   Current execution focus on 2026-03-21: remove the slideshow browser-return path, keep `Space` as the single exit, and frame target-folder entry as reviewing already moved photos while restoring to the parent work root.
   Current execution focus on 2026-03-21: center slideshow metadata in the bottom bar and hide the self-target move button while reviewing moved photos.
+  Current execution focus on 2026-03-21: route review hints and action feedback through animated bottom-right toast notifications, and drop low-value session start/end notices.
 - [x] Replace the folder card list with a narrower tree-like folder view that still makes hierarchy obvious.
   Current execution focus on 2026-03-20: implement a lazily expanded explorer tree, backed by a tree-only API path so expanding the tree does not accidentally end an active session.
   Current execution focus on 2026-03-20: restyle the browser into a dark, compact resource explorer with a minimal tree, mini breadcrumb, toast notices, and an info-only metadata affordance.
@@ -43,7 +44,7 @@ Track the next round of UX and reliability work after the initial browse/preview
 
 - Run `go test ./...` and `go build ./...`.
 - Manually verify browse, preview, start-session, move, delete, restore, and auto-end-session behavior in the browser.
-- Manually verify target folders show the review-oriented prompt before session start and the review state inside slideshow.
+- Manually verify target folders trigger the review toast before session start and the review state inside slideshow.
 - Confirm any UI work still keeps action buttons usable without keyboard shortcuts.
 
 ## Next update trigger

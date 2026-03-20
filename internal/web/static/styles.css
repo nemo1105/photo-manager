@@ -257,35 +257,57 @@ body.app-busy select {
 }
 
 .notice {
+  position: fixed;
+  right: 18px;
+  bottom: 18px;
+  z-index: 120;
+  width: min(380px, calc(100vw - 32px));
   border-radius: 18px;
   padding: 12px 14px;
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: 12px;
+  border: 1px solid rgba(103, 232, 249, 0.16);
+  background: rgba(7, 12, 22, 0.9);
+  box-shadow: 0 20px 44px rgba(1, 6, 16, 0.5);
+  backdrop-filter: blur(16px);
+  animation: toast-enter 220ms cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
 .notice.info {
-  background: rgba(3, 105, 161, 0.09);
+  background: rgba(7, 12, 22, 0.9);
 }
 
 .notice.error {
-  background: var(--danger-soft);
+  background: rgba(38, 10, 15, 0.94);
+  border-color: rgba(248, 113, 113, 0.28);
 }
 
 .notice-copy {
   display: grid;
-  gap: 4px;
+  gap: 0;
 }
 
-.notice-copy strong {
-  font-size: 0.82rem;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
+.notice-message {
+  color: rgba(230, 238, 252, 0.94);
+  font-size: 0.84rem;
+  line-height: 1.45;
 }
 
-.notice-copy span {
-  color: var(--text);
+.notice.error .notice-message {
+  color: #ffe4e6;
+}
+
+@keyframes toast-enter {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 14px, 0) scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
 }
 
 .main-layout {
@@ -1172,42 +1194,6 @@ body.browser-mode .main-layout {
   height: calc(100dvh - 24px);
 }
 
-body.browser-mode .notice {
-  position: fixed;
-  left: 18px;
-  bottom: 18px;
-  z-index: 80;
-  width: min(380px, calc(100vw - 32px));
-  padding: 10px 14px;
-  border-radius: 16px;
-  border: 1px solid rgba(103, 232, 249, 0.16);
-  background: rgba(7, 12, 22, 0.88);
-  box-shadow: 0 20px 44px rgba(1, 6, 16, 0.5);
-  backdrop-filter: blur(16px);
-}
-
-body.browser-mode .notice.info {
-  background: rgba(7, 12, 22, 0.88);
-}
-
-body.browser-mode .notice.error {
-  background: rgba(38, 10, 15, 0.92);
-  border-color: rgba(248, 113, 113, 0.28);
-}
-
-body.browser-mode .notice-toast-copy strong {
-  color: #8edcff;
-}
-
-body.browser-mode .notice.error .notice-toast-copy strong,
-body.browser-mode .notice.error .notice-toast-copy span {
-  color: #ffe4e6;
-}
-
-body.browser-mode .notice-copy span {
-  color: rgba(230, 238, 252, 0.9);
-}
-
 body.browser-mode .browser-layout {
   height: 100%;
   display: grid;
@@ -1261,20 +1247,6 @@ body.browser-mode .browser-tool-group {
 
 body.browser-mode .browser-tool-group--end {
   margin-left: auto;
-}
-
-body.browser-mode .browser-review-hint {
-  min-height: 32px;
-  padding: 0 10px;
-  border-radius: 12px;
-  display: inline-flex;
-  align-items: center;
-  border: 1px solid rgba(56, 189, 248, 0.2);
-  background: rgba(8, 47, 73, 0.24);
-  color: rgba(196, 232, 255, 0.92);
-  font-size: 0.72rem;
-  line-height: 1.2;
-  white-space: nowrap;
 }
 
 body.browser-mode .browser-tool-button,
@@ -1852,10 +1824,6 @@ body.browser-mode input::placeholder {
     justify-content: space-between;
   }
 
-  body.browser-mode .browser-review-hint {
-    white-space: normal;
-  }
-
   body.browser-mode .browser-card-grid {
     grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
     gap: 12px;
@@ -1865,8 +1833,7 @@ body.browser-mode input::placeholder {
     min-height: 200px;
   }
 
-  body.browser-mode .notice {
-    left: 10px;
+  .notice {
     right: 10px;
     bottom: 10px;
     width: auto;
@@ -1950,27 +1917,6 @@ body.slideshow-mode .slide-empty-state {
   border-color: rgba(255, 255, 255, 0.12);
   background: rgba(255, 255, 255, 0.03);
   color: rgba(226, 232, 240, 0.86);
-}
-
-body.slideshow-mode .slide-toast {
-  position: absolute;
-  left: 16px;
-  bottom: 92px;
-  max-width: min(44vw, 380px);
-  padding: 8px 12px;
-  border-radius: 999px;
-  background: rgba(14, 165, 233, 0.18);
-  color: #d8f3ff;
-  font-size: 0.82rem;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  backdrop-filter: blur(12px);
-}
-
-body.slideshow-mode .slide-toast.error {
-  background: rgba(180, 35, 24, 0.22);
-  color: #ffe4e6;
 }
 
 body.slideshow-mode .slide-bottom-bar {
@@ -2137,12 +2083,6 @@ body.slideshow-mode .slide-bar-button--danger .slide-bar-key {
     max-height: 100%;
   }
 
-  body.slideshow-mode .slide-toast {
-    left: 12px;
-    bottom: 94px;
-    max-width: calc(100vw - 24px);
-  }
-
   body.slideshow-mode .slide-bottom-bar {
     left: 12px;
     right: 12px;
@@ -2165,11 +2105,6 @@ body.slideshow-mode .slide-bar-button--danger .slide-bar-key {
 @media (max-width: 720px) {
   body.slideshow-mode .slide-stage {
     padding-bottom: 112px;
-  }
-
-  body.slideshow-mode .slide-toast {
-    bottom: 118px;
-    max-width: calc(100vw - 24px);
   }
 
   body.slideshow-mode .slide-toolbar,

@@ -9,6 +9,7 @@ Status: active
 - Make session-root-based sorting predictable enough that review and restore never depend on the current image's parent folder.
 - Make review-folder entry explicit from the user's point of view, so moved-photo checks do not expose session-root internals.
 - Prevent review folders from surfacing a redundant self-target move action in slideshow.
+- Keep transient feedback in a single animated bottom-right toast pattern instead of mixing inline hints with overlays.
 - Keep image actions available both by keyboard and by visible buttons.
 - Preserve platform-native recycle-bin / Trash behavior for deletes.
 - Keep slideshow mode visually immersive, chrome-light, and free of browser-level scrollbars in common desktop window sizes.

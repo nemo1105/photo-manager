@@ -102,6 +102,9 @@
   }
 
   async function loadBrowser(path) {
+    const previousMode = state.mode;
+    const previousBrowserPath = state.browser ? state.browser.currentPath : "";
+    const hadBrowserState = !!state.browser;
     const data = normalizeBrowserData(await apiGet(`/api/browser?path=${encodeURIComponent(path || "")}`));
     state.browser = data;
     state.config = data.config || state.config;
@@ -112,6 +115,14 @@
     await syncTreeToCurrentPath(data);
     if (data.notice) {
       showNotice(data.notice, "info");
+      return;
+    }
+    if (
+      !data.session.active &&
+      data.currentDirStartsAsReview &&
+      (!hadBrowserState || previousMode !== "browser" || previousBrowserPath !== data.currentPath)
+    ) {
+      showNotice("Checking photos already moved here.", "info");
       return;
     }
     render();
@@ -194,14 +205,6 @@
     }
     return withBusy("Opening work session", async () => {
       const result = await apiPost("/api/session/start", { path: state.browser.currentPath });
-      if (result.session && result.session.active && !state.browser.session.active) {
-        showNotice(
-          state.browser.currentDirStartsAsReview
-            ? "checking photos already moved here"
-            : "work session started",
-          "info",
-        );
-      }
       await loadSlideshow(result.slideshowPath || state.browser.currentPath, 0);
     });
   }
@@ -209,7 +212,6 @@
   async function endSession() {
     return withBusy("Ending work session", async () => {
       await apiPost("/api/session/end", {});
-      showNotice("work session ended", "info");
       const currentPath = state.mode === "slideshow" && state.slideshow
         ? state.slideshow.currentPath
         : (state.browser ? state.browser.currentPath : "");
@@ -398,22 +400,29 @@
 
   function renderNotice() {
     const notice = document.getElementById("notice");
-    if (state.mode === "slideshow" || !state.notice.text) {
+    if (!state.notice.text) {
       notice.hidden = true;
       notice.className = "notice";
       notice.innerHTML = "";
       notice.removeAttribute("role");
+      delete notice.dataset.text;
+      delete notice.dataset.type;
       return;
     }
 
-    const kind = state.notice.type === "error" ? "Error" : "Notice";
+    const type = state.notice.type === "error" ? "error" : "info";
+    if (!notice.hidden && notice.dataset.text === state.notice.text && notice.dataset.type === type) {
+      return;
+    }
+
     notice.hidden = false;
-    notice.className = `notice ${state.notice.type}`;
-    notice.setAttribute("role", state.notice.type === "error" ? "alert" : "status");
+    notice.className = `notice ${type}`;
+    notice.setAttribute("role", type === "error" ? "alert" : "status");
+    notice.dataset.text = state.notice.text;
+    notice.dataset.type = type;
     notice.innerHTML = `
-      <div class="notice-copy notice-toast-copy">
-        <strong>${kind}</strong>
-        <span>${escapeHtml(state.notice.text)}</span>
+      <div class="notice-copy">
+        <span class="notice-message">${escapeHtml(state.notice.text)}</span>
       </div>
     `;
   }
@@ -425,8 +434,8 @@
     }
 
     const session = currentSession();
-    const showReviewHint = !session.active && state.browser.currentDirStartsAsReview;
-    const startLabel = session.active ? "Open Here" : (showReviewHint ? "Review Here" : "Sort Here");
+    const isReviewStart = !session.active && state.browser.currentDirStartsAsReview;
+    const startLabel = session.active ? "Open Here" : (isReviewStart ? "Review Here" : "Sort Here");
 
     browserView.innerHTML = `
       <div class="browser-layout">
@@ -434,7 +443,6 @@
           <div class="browser-toolbar">
             <div class="browser-tool-group">
               ${browserToolButtonHtml(startLabel, getConfig(["keys", "browser", "startSession"]), "start-work", canStartWorkFromBrowser(), session.active ? "session" : "primary")}
-              ${showReviewHint ? browserReviewHintHtml("Checking photos already moved here.") : ""}
             </div>
             <div class="browser-tool-group browser-tool-group--end">
               ${browserInfoButtonHtml()}
@@ -550,8 +558,6 @@
           ` : `
             <div class="empty-state slide-empty-state">This directory has no remaining images.</div>
           `}
-
-          ${state.notice.text ? `<div class="slide-toast ${state.notice.type}">${escapeHtml(state.notice.text)}</div>` : ""}
 
           <div class="slide-bottom-bar">
             <div class="slide-meta-inline">
@@ -1152,10 +1158,6 @@
         </button>
       </div>
     `;
-  }
-
-  function browserReviewHintHtml(text) {
-    return `<span class="browser-review-hint" role="status">${escapeHtml(text)}</span>`;
   }
 
   function browserInfoIconHtml() {
