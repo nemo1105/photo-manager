@@ -28,6 +28,7 @@ Users need to start from an arbitrary directory, browse to a folder that contain
 - Work-session state must not be created implicitly by image preview.
 - Deletion must go to the platform recycle bin / Trash, not permanent removal.
 - Slideshow mode is an immersive full-viewport viewer and must not introduce browser-level scrollbars during normal desktop use.
+- Browser and tree directory lists should sort naturally by numeric segments instead of pure lexicographic order.
 
 ## Acceptance criteria
 
@@ -42,6 +43,7 @@ Users need to start from an arbitrary directory, browse to a folder that contain
 - [x] Config edits in the browser are validated and saved back to `~/.photo-manager/config.yaml`.
 - [x] The default shortcut template uses `Space` to enter or end a session, `Left` and `Right` to change slides, `Del` to delete, `Down` to move into `0`, and `Up` to restore.
 - [x] Slideshow mode hides the top shell and keeps the document free of page scrollbars at common desktop sizes.
+- [x] Browser and tree directory lists place numeric names in natural order, such as `1`, `2`, then `10`.
 
 ## Default shortcut template
 

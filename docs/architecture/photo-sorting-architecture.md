@@ -15,6 +15,7 @@ This application is a single-binary Go tool that starts from an explicit launch 
 - Leaving `sessionRoot` or any of its descendants during browser navigation automatically ends the session.
 - `restore` is only valid when the current directory matches one of the configured `move` targets resolved against `sessionRoot`.
 - Directory listing is shallow: only direct child folders and direct child images of the current directory are returned.
+- Returned directory lists use natural numeric ordering, so names like `1`, `2`, and `10` sort in human order.
 - Hidden entries are ignored. Supported image formats are `.jpg`, `.jpeg`, `.png`, `.gif`, `.webp`, and `.bmp`.
 - Name conflicts for `move` and `restore` are resolved by creating `name (N).ext` variants.
 - Slideshow mode is rendered as an immersive single-viewer surface. It hides the shared shell and is expected to fit inside the viewport without page scrollbars.

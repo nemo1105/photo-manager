@@ -61,6 +61,20 @@
     </div>
   </div>
 
+  <div id="helpModal" class="modal" hidden>
+    <div class="modal-backdrop" data-close-help="true"></div>
+    <div class="modal-card help-card" role="dialog" aria-modal="true" aria-labelledby="helpTitle">
+      <div class="modal-header">
+        <div>
+          <p class="modal-kicker">Help</p>
+          <h2 id="helpTitle" class="modal-title">Sorting Guide</h2>
+        </div>
+        <button id="helpCloseButton" class="ghost-button utility-button">Close</button>
+      </div>
+      <div id="helpBody" class="help-body"></div>
+    </div>
+  </div>
+
   <script src="/app.js" defer></script>
 </body>
 </html>

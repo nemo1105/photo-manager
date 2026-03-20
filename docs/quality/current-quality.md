@@ -12,6 +12,7 @@ Status: active
 - Keep slideshow mode visually immersive, chrome-light, and free of browser-level scrollbars in common desktop window sizes.
 - Keep browser mode compact enough that the tree and image list own the viewport instead of a persistent header shell.
 - Keep browser-mode chrome reduced to a single primary sort action plus a help affordance, with low-frequency details moved behind the help panel.
+- Keep browser directory ordering human-readable, especially for numbered folders and dated folder names.
 
 ## Known issues
 

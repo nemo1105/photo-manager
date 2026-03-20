@@ -26,6 +26,7 @@
   const slideshowView = document.getElementById("slideshowView");
   const previewModal = document.getElementById("previewModal");
   const settingsModal = document.getElementById("settingsModal");
+  const helpModal = document.getElementById("helpModal");
 
   bindStaticEvents();
   init().catch((error) => showNotice(error.message, "error"));
@@ -36,18 +37,9 @@
 
   function bindStaticEvents() {
     document.addEventListener("keydown", onKeyDown);
-    document.addEventListener("click", (event) => {
-      if (!state.browserHelpOpen) {
-        return;
-      }
-      if (event.target.closest("[data-browser-help-shell]")) {
-        return;
-      }
-      state.browserHelpOpen = false;
-      render();
-    }, true);
     document.getElementById("previewCloseButton").addEventListener("click", closePreview);
     document.getElementById("settingsCloseButton").addEventListener("click", closeSettings);
+    document.getElementById("helpCloseButton").addEventListener("click", closeHelp);
     document.getElementById("saveSettingsButton").addEventListener("click", () => {
       saveSettings().catch((error) => showNotice(error.message, "error"));
     });
@@ -62,6 +54,11 @@
     settingsModal.addEventListener("click", (event) => {
       if (event.target.dataset.closeSettings === "true") {
         closeSettings();
+      }
+    });
+    helpModal.addEventListener("click", (event) => {
+      if (event.target.dataset.closeHelp === "true") {
+        closeHelp();
       }
     });
   }
@@ -253,6 +250,14 @@
     render();
   }
 
+  function closeHelp() {
+    if (!state.browserHelpOpen) {
+      return;
+    }
+    state.browserHelpOpen = false;
+    render();
+  }
+
   function movePreview(delta) {
     if (!state.preview.open || !state.preview.images.length) {
       return;
@@ -337,6 +342,7 @@
     renderSlideshow();
     renderPreview();
     renderSettings();
+    renderHelp();
   }
 
   function renderShell() {
@@ -427,7 +433,7 @@
         <aside class="explorer-pane browser-sidebar">
           <div class="browser-toolbar">
             ${browserToolButtonHtml(startLabel, getConfig(["keys", "browser", "startSession"]), "start-work", canStartWorkFromBrowser(), session.active ? "session" : "primary")}
-            ${browserInfoButtonHtml(session)}
+            ${browserInfoButtonHtml()}
           </div>
           <div class="tree-shell browser-tree-shell">
             ${renderTree()}
@@ -464,7 +470,6 @@
       <div class="tree-branch">
         <div class="tree-node">
           <div class="tree-row tree-row--root" style="--depth:0">
-            <span class="tree-spacer" aria-hidden="true"></span>
             <button class="tree-link ${rootClass}" data-tree-path="">
               <strong>${escapeHtml(rootNode.name || "Root")}</strong>
             </button>
@@ -643,6 +648,68 @@
     bindSettingsEvents();
   }
 
+  function renderHelp() {
+    helpModal.hidden = !state.browserHelpOpen;
+    if (!state.browserHelpOpen) {
+      return;
+    }
+
+    const session = currentSession();
+    const currentPath = currentData().currentPath || "Root";
+    const sessionRoot = session.active ? (session.rootPath || "Root") : "Not started";
+
+    document.getElementById("helpBody").innerHTML = `
+      <section class="settings-section help-section">
+        <h3>How To Use</h3>
+        <ol class="browser-help-list">
+          <li>Browse folders in the tree on the left.</li>
+          <li>Click any image to open preview only.</li>
+          <li>Use Sort Here to start sorting the current folder.</li>
+          <li>In slideshow, use Left and Right to move through images.</li>
+        </ol>
+      </section>
+      <section class="settings-section help-section">
+        <h3>Shortcuts</h3>
+        <div class="browser-info-hotkeys">
+          ${browserInfoKeyHtml("Sort", getConfig(["keys", "browser", "startSession"]))}
+          ${browserInfoKeyHtml("Up", getConfig(["keys", "browser", "upDir"]))}
+          ${browserInfoKeyHtml("End", getConfig(["keys", "browser", "endSession"]))}
+          ${browserInfoKeyHtml("Preview", "", `${compactKeyText(keyLabel(getConfig(["keys", "preview", "prev"])))} / ${compactKeyText(keyLabel(getConfig(["keys", "preview", "next"])))}`)}
+          ${(state.config?.actions || []).map((action) => browserInfoKeyHtml(shortActionLabel(action), action.key)).join("")}
+        </div>
+      </section>
+      <section class="settings-section help-section">
+        <div class="browser-info-section">
+          <strong>Workspace</strong>
+          <span>${escapeHtml(state.launchRoot || "(unknown)")}</span>
+        </div>
+        <div class="browser-info-section">
+          <strong>Current folder</strong>
+          <span>${escapeHtml(currentPath)}</span>
+        </div>
+        <div class="browser-info-section">
+          <strong>Session</strong>
+          <span>${escapeHtml(session.active ? `Active | ${sessionRoot}` : "Idle")}</span>
+        </div>
+        <div class="browser-info-row">
+          <span>Folders</span>
+          <strong>${escapeHtml(String(state.browser?.directories?.length || 0))}</strong>
+        </div>
+        <div class="browser-info-row">
+          <span>Images</span>
+          <strong>${escapeHtml(String(state.browser?.images?.length || 0))}</strong>
+        </div>
+        <div class="browser-help-actions">
+          <button class="browser-help-settings" type="button" data-toolbar-action="open-settings">
+            <span>Settings</span>
+            <span class="browser-tool-key">${escapeHtml(compactKeyText(keyLabel(getConfig(["keys", "browser", "openSettings"]))))}</span>
+          </button>
+        </div>
+      </section>
+    `;
+    bindShellEvents();
+  }
+
   function bindShellEvents() {
     document.querySelectorAll("[data-browse-path]").forEach((button) => {
       if (button.dataset.boundBrowse === "true") {
@@ -692,8 +759,7 @@
         return;
       }
       button.dataset.boundHelpToggle = "true";
-      button.addEventListener("click", (event) => {
-        event.stopPropagation();
+      button.addEventListener("click", () => {
         state.browserHelpOpen = !state.browserHelpOpen;
         render();
       });
@@ -848,13 +914,6 @@
       return;
     }
 
-    if (state.browserHelpOpen && key === "escape") {
-      event.preventDefault();
-      state.browserHelpOpen = false;
-      render();
-      return;
-    }
-
     if (state.captureTarget) {
       event.preventDefault();
       if (state.captureTarget.type === "path") {
@@ -864,6 +923,14 @@
       }
       state.captureTarget = null;
       render();
+      return;
+    }
+
+    if (state.browserHelpOpen) {
+      if (key === "escape") {
+        event.preventDefault();
+        closeHelp();
+      }
       return;
     }
 
@@ -1075,79 +1142,20 @@
     `;
   }
 
-  function browserInfoButtonHtml(session) {
+  function browserInfoButtonHtml() {
     const expanded = state.browserHelpOpen ? "true" : "false";
     return `
-      <div class="browser-info" data-browser-help-shell>
+      <div class="browser-info">
         <button
           class="browser-icon-button ${state.browserHelpOpen ? "is-active" : ""}"
           type="button"
           aria-label="Open help"
           aria-expanded="${expanded}"
-          aria-controls="browserHelpPanel"
+          aria-controls="helpModal"
           data-browser-help-toggle
         >
           ${browserInfoIconHtml()}
         </button>
-        ${browserInfoPanelHtml(session)}
-      </div>
-    `;
-  }
-
-  function browserInfoPanelHtml(session) {
-    const currentPath = currentData().currentPath || "Root";
-    const sessionRoot = session.active ? (session.rootPath || "Root") : "Not started";
-    return `
-      <div class="browser-info-panel ${state.browserHelpOpen ? "is-open" : ""}" id="browserHelpPanel" role="dialog" aria-modal="false" aria-label="Explorer help">
-        <div class="browser-help-header">
-          <strong>Help</strong>
-          <span>Browse, preview, and start sorting without extra chrome.</span>
-        </div>
-        <div class="browser-info-section">
-          <strong>How to use</strong>
-          <ol class="browser-help-list">
-            <li>Browse folders in the tree on the left.</li>
-            <li>Click any image to open preview only.</li>
-            <li>Use Sort Here to start sorting the current folder.</li>
-            <li>In slideshow, use Left and Right to move through images.</li>
-          </ol>
-        </div>
-        <div class="browser-info-section">
-          <strong>Shortcuts</strong>
-          <div class="browser-info-hotkeys">
-            ${browserInfoKeyHtml("Sort", getConfig(["keys", "browser", "startSession"]))}
-            ${browserInfoKeyHtml("Up", getConfig(["keys", "browser", "upDir"]))}
-            ${browserInfoKeyHtml("End", getConfig(["keys", "browser", "endSession"]))}
-            ${browserInfoKeyHtml("Preview", "", `${compactKeyText(keyLabel(getConfig(["keys", "preview", "prev"])))} / ${compactKeyText(keyLabel(getConfig(["keys", "preview", "next"])))}`)}
-            ${(state.config?.actions || []).map((action) => browserInfoKeyHtml(shortActionLabel(action), action.key)).join("")}
-          </div>
-        </div>
-        <div class="browser-info-section">
-          <strong>Workspace</strong>
-          <span>${escapeHtml(state.launchRoot || "(unknown)")}</span>
-        </div>
-        <div class="browser-info-section">
-          <strong>Current folder</strong>
-          <span>${escapeHtml(currentPath)}</span>
-        </div>
-        <div class="browser-info-section">
-          <strong>Session</strong>
-          <span>${escapeHtml(session.active ? `Active | ${sessionRoot}` : "Idle")}</span>
-        </div>
-        <div class="browser-info-row">
-          <span>Folders</span>
-          <strong>${escapeHtml(String(state.browser?.directories?.length || 0))}</strong>
-        </div>
-        <div class="browser-info-row">
-          <span>Images</span>
-          <strong>${escapeHtml(String(state.browser?.images?.length || 0))}</strong>
-        </div>
-        <div class="browser-help-actions">
-          <button class="browser-help-settings" type="button" data-toolbar-action="open-settings">
-            <span>Settings</span>
-            <span class="browser-tool-key">${escapeHtml(compactKeyText(keyLabel(getConfig(["keys", "browser", "openSettings"]))))}</span>
-          </button>
-        </div>
       </div>
     `;
   }

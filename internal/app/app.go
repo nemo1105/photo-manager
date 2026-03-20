@@ -8,6 +8,8 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"unicode"
+	"unicode/utf8"
 
 	"github.com/nemo1105/photo-manager/internal/config"
 )
@@ -604,12 +606,96 @@ func listDirectory(absPath, launchRoot string) ([]DirEntry, []ImageEntry, error)
 	}
 
 	sort.Slice(dirs, func(i, j int) bool {
-		return strings.ToLower(dirs[i].Name) < strings.ToLower(dirs[j].Name)
+		return naturalNameLess(dirs[i].Name, dirs[j].Name)
 	})
 	sort.Slice(images, func(i, j int) bool {
 		return strings.ToLower(images[i].Name) < strings.ToLower(images[j].Name)
 	})
 	return dirs, images, nil
+}
+
+func naturalNameLess(a, b string) bool {
+	ai := 0
+	bi := 0
+	for ai < len(a) && bi < len(b) {
+		ar, as := utf8.DecodeRuneInString(a[ai:])
+		br, bs := utf8.DecodeRuneInString(b[bi:])
+		if isASCIIDigit(ar) && isASCIIDigit(br) {
+			nextA, digitsA := readDigitRun(a, ai)
+			nextB, digitsB := readDigitRun(b, bi)
+			if cmp := compareDigitRuns(digitsA, digitsB); cmp != 0 {
+				return cmp < 0
+			}
+			ai = nextA
+			bi = nextB
+			continue
+		}
+
+		lowerA := unicode.ToLower(ar)
+		lowerB := unicode.ToLower(br)
+		if lowerA != lowerB {
+			return lowerA < lowerB
+		}
+		ai += as
+		bi += bs
+	}
+
+	if ai != len(a) || bi != len(b) {
+		return ai == len(a)
+	}
+
+	lowerA := strings.ToLower(a)
+	lowerB := strings.ToLower(b)
+	if lowerA != lowerB {
+		return lowerA < lowerB
+	}
+	return a < b
+}
+
+func isASCIIDigit(r rune) bool {
+	return r >= '0' && r <= '9'
+}
+
+func readDigitRun(value string, start int) (int, string) {
+	end := start
+	for end < len(value) {
+		r, size := utf8.DecodeRuneInString(value[end:])
+		if !isASCIIDigit(r) {
+			break
+		}
+		end += size
+	}
+	return end, value[start:end]
+}
+
+func compareDigitRuns(a, b string) int {
+	trimmedA := strings.TrimLeft(a, "0")
+	trimmedB := strings.TrimLeft(b, "0")
+	if trimmedA == "" {
+		trimmedA = "0"
+	}
+	if trimmedB == "" {
+		trimmedB = "0"
+	}
+	if len(trimmedA) != len(trimmedB) {
+		if len(trimmedA) < len(trimmedB) {
+			return -1
+		}
+		return 1
+	}
+	if trimmedA != trimmedB {
+		if trimmedA < trimmedB {
+			return -1
+		}
+		return 1
+	}
+	if len(a) != len(b) {
+		if len(a) < len(b) {
+			return -1
+		}
+		return 1
+	}
+	return 0
 }
 
 func hasVisibleChildDirectory(absPath string) bool {

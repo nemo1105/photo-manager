@@ -825,6 +825,16 @@ textarea:focus-visible {
   overflow: auto;
 }
 
+#helpModal {
+  display: grid;
+  place-items: center;
+  padding: 12px;
+}
+
+#helpModal[hidden] {
+  display: none;
+}
+
 .preview-card {
   width: min(1280px, calc(100vw - 24px));
 }
@@ -1257,7 +1267,7 @@ body.browser-mode .browser-icon-button.is-active {
 }
 
 body.browser-mode .browser-info {
-  position: relative;
+  position: static;
 }
 
 body.browser-mode .browser-icon-svg {
@@ -1268,53 +1278,6 @@ body.browser-mode .browser-icon-svg {
   stroke-width: 1.8;
   stroke-linecap: round;
   stroke-linejoin: round;
-}
-
-body.browser-mode .browser-info-panel {
-  position: absolute;
-  top: calc(100% + 10px);
-  right: 0;
-  z-index: 10;
-  width: min(320px, calc(100vw - 44px));
-  padding: 12px;
-  border-radius: 18px;
-  border: 1px solid rgba(103, 232, 249, 0.16);
-  background: rgba(7, 12, 22, 0.96);
-  box-shadow: 0 24px 60px rgba(0, 5, 16, 0.52);
-  backdrop-filter: blur(18px);
-  display: grid;
-  gap: 10px;
-  opacity: 0;
-  visibility: hidden;
-  transform: translateY(6px);
-  pointer-events: none;
-  transition: opacity 180ms ease, transform 180ms ease, visibility 180ms ease;
-}
-
-body.browser-mode .browser-info-panel.is-open {
-  opacity: 1;
-  visibility: visible;
-  transform: translateY(0);
-  pointer-events: auto;
-}
-
-body.browser-mode .browser-help-header {
-  display: grid;
-  gap: 3px;
-}
-
-body.browser-mode .browser-help-header strong {
-  font-size: 0.72rem;
-  color: #8edcff;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
-body.browser-mode .browser-help-header span {
-  color: rgba(226, 232, 240, 0.72);
-  font-size: 0.76rem;
-  line-height: 1.5;
 }
 
 body.browser-mode .browser-info-section,
@@ -1377,6 +1340,22 @@ body.browser-mode .browser-help-actions {
   justify-content: flex-start;
 }
 
+body.browser-mode .help-card {
+  width: min(760px, calc(100vw - 32px));
+  max-height: calc(100vh - 48px);
+  margin: 0;
+}
+
+body.browser-mode .help-body {
+  display: grid;
+  gap: 16px;
+}
+
+body.browser-mode .help-section {
+  display: grid;
+  gap: 12px;
+}
+
 body.browser-mode .browser-help-settings {
   min-height: 32px;
   padding: 0 10px;
@@ -1423,6 +1402,7 @@ body.browser-mode .tree-node {
 }
 
 body.browser-mode .tree-row--root {
+  grid-template-columns: minmax(0, 1fr);
   padding-left: 0;
 }
 

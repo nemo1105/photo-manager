@@ -3,6 +3,8 @@ package app
 import (
 	"os"
 	"path/filepath"
+	"reflect"
+	"sort"
 	"testing"
 
 	"github.com/nemo1105/photo-manager/internal/config"
@@ -115,6 +117,70 @@ func TestMoveAutoRenamesOnConflict(t *testing.T) {
 	}
 }
 
+func TestNaturalNameLessSortsNumericSegments(t *testing.T) {
+	names := []string{
+		"10",
+		"2",
+		"1",
+		"02",
+		"a10",
+		"a2",
+		"2026-03-10",
+		"2026-03-2",
+	}
+
+	sort.Slice(names, func(i, j int) bool {
+		return naturalNameLess(names[i], names[j])
+	})
+
+	want := []string{
+		"1",
+		"2",
+		"02",
+		"10",
+		"2026-03-2",
+		"2026-03-10",
+		"a2",
+		"a10",
+	}
+	if !reflect.DeepEqual(names, want) {
+		t.Fatalf("unexpected natural sort order: got %v want %v", names, want)
+	}
+}
+
+func TestBrowserAndTreeUseNaturalDirectoryOrder(t *testing.T) {
+	root := t.TempDir()
+	for _, dir := range []string{
+		"10",
+		"2",
+		"1",
+		filepath.Join("tree", "10"),
+		filepath.Join("tree", "2"),
+		filepath.Join("tree", "1"),
+	} {
+		mustMkdir(t, filepath.Join(root, dir))
+	}
+
+	cfg := config.Default()
+	app := New(root, filepath.Join(root, "config.yaml"), cfg, &fakeTrash{})
+
+	browserData, err := app.Browser("")
+	if err != nil {
+		t.Fatalf("browse root: %v", err)
+	}
+	if got := dirNames(browserData.Directories); !reflect.DeepEqual(got, []string{"1", "2", "10", "tree"}) {
+		t.Fatalf("unexpected browser directory order: %v", got)
+	}
+
+	treeData, err := app.Tree("tree")
+	if err != nil {
+		t.Fatalf("tree browse: %v", err)
+	}
+	if got := dirNames(treeData.Directories); !reflect.DeepEqual(got, []string{"1", "2", "10"}) {
+		t.Fatalf("unexpected tree directory order: %v", got)
+	}
+}
+
 func mustWriteFile(t *testing.T, path string) {
 	t.Helper()
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
@@ -123,4 +189,19 @@ func mustWriteFile(t *testing.T, path string) {
 	if err := os.WriteFile(path, []byte("x"), 0o644); err != nil {
 		t.Fatalf("write %s: %v", path, err)
 	}
+}
+
+func mustMkdir(t *testing.T, path string) {
+	t.Helper()
+	if err := os.MkdirAll(path, 0o755); err != nil {
+		t.Fatalf("mkdir %s: %v", path, err)
+	}
+}
+
+func dirNames(entries []DirEntry) []string {
+	names := make([]string, 0, len(entries))
+	for _, entry := range entries {
+		names = append(names, entry.Name)
+	}
+	return names
 }
