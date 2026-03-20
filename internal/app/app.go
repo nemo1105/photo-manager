@@ -36,8 +36,9 @@ type Breadcrumb struct {
 }
 
 type DirEntry struct {
-	Name string `json:"name"`
-	Path string `json:"path"`
+	Name        string `json:"name"`
+	Path        string `json:"path"`
+	HasChildren bool   `json:"hasChildren"`
 }
 
 type ImageEntry struct {
@@ -66,6 +67,12 @@ type BrowserData struct {
 	Session     SessionInfo    `json:"session"`
 	Config      *config.Config `json:"config"`
 	Notice      string         `json:"notice,omitempty"`
+}
+
+type TreeData struct {
+	CurrentPath string     `json:"currentPath"`
+	CurrentName string     `json:"currentName"`
+	Directories []DirEntry `json:"directories"`
 }
 
 type SlideshowData struct {
@@ -146,6 +153,27 @@ func (a *App) Browser(relPath string) (*BrowserData, error) {
 		Session:     a.sessionInfoLocked(),
 		Config:      a.cfg.Clone(),
 		Notice:      notice,
+	}, nil
+}
+
+func (a *App) Tree(relPath string) (*TreeData, error) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+
+	relPath, absPath, err := a.resolveDir(relPath)
+	if err != nil {
+		return nil, err
+	}
+
+	dirs, _, err := listDirectory(absPath, a.launchRoot)
+	if err != nil {
+		return nil, err
+	}
+
+	return &TreeData{
+		CurrentPath: relPath,
+		CurrentName: displayName(absPath),
+		Directories: dirs,
 	}, nil
 }
 
@@ -540,8 +568,8 @@ func listDirectory(absPath, launchRoot string) ([]DirEntry, []ImageEntry, error)
 		return nil, nil, err
 	}
 
-	var dirs []DirEntry
-	var images []ImageEntry
+	dirs := make([]DirEntry, 0)
+	images := make([]ImageEntry, 0)
 	for _, entry := range entries {
 		entryPath := filepath.Join(absPath, entry.Name())
 		hidden, err := isHidden(entryPath, entry)
@@ -555,8 +583,9 @@ func listDirectory(absPath, launchRoot string) ([]DirEntry, []ImageEntry, error)
 				continue
 			}
 			dirs = append(dirs, DirEntry{
-				Name: entry.Name(),
-				Path: filepath.ToSlash(rel),
+				Name:        entry.Name(),
+				Path:        filepath.ToSlash(rel),
+				HasChildren: hasVisibleChildDirectory(entryPath),
 			})
 			continue
 		}
@@ -581,6 +610,25 @@ func listDirectory(absPath, launchRoot string) ([]DirEntry, []ImageEntry, error)
 		return strings.ToLower(images[i].Name) < strings.ToLower(images[j].Name)
 	})
 	return dirs, images, nil
+}
+
+func hasVisibleChildDirectory(absPath string) bool {
+	entries, err := os.ReadDir(absPath)
+	if err != nil {
+		return false
+	}
+	for _, entry := range entries {
+		if !entry.IsDir() {
+			continue
+		}
+		entryPath := filepath.Join(absPath, entry.Name())
+		hidden, err := isHidden(entryPath, entry)
+		if err != nil || hidden {
+			continue
+		}
+		return true
+	}
+	return false
 }
 
 func isSupportedImage(name string) bool {

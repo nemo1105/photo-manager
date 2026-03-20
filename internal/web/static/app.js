@@ -10,7 +10,16 @@
     settingsOpen: false,
     settingsDraft: null,
     captureTarget: null,
+    busy: false,
+    busyLabel: "",
+    tree: {
+      nodes: {},
+      expanded: { "": true },
+      loading: {},
+    },
   };
+
+  let noticeTimer = 0;
 
   const browserView = document.getElementById("browserView");
   const slideshowView = document.getElementById("slideshowView");
@@ -28,7 +37,9 @@
     document.addEventListener("keydown", onKeyDown);
     document.getElementById("previewCloseButton").addEventListener("click", closePreview);
     document.getElementById("settingsCloseButton").addEventListener("click", closeSettings);
-    document.getElementById("saveSettingsButton").addEventListener("click", saveSettings);
+    document.getElementById("saveSettingsButton").addEventListener("click", () => {
+      saveSettings().catch((error) => showNotice(error.message, "error"));
+    });
     document.getElementById("addMoveActionButton").addEventListener("click", () => addAction("move"));
     document.getElementById("addDeleteActionButton").addEventListener("click", () => addAction("delete"));
     document.getElementById("addRestoreActionButton").addEventListener("click", () => addAction("restore"));
@@ -66,14 +77,31 @@
     return data;
   }
 
+  async function withBusy(label, work) {
+    if (state.busy) {
+      return null;
+    }
+    state.busy = true;
+    state.busyLabel = label || "Working";
+    render();
+    try {
+      return await work();
+    } finally {
+      state.busy = false;
+      state.busyLabel = "";
+      render();
+    }
+  }
+
   async function loadBrowser(path) {
-    const data = await apiGet(`/api/browser?path=${encodeURIComponent(path || "")}`);
+    const data = normalizeBrowserData(await apiGet(`/api/browser?path=${encodeURIComponent(path || "")}`));
     state.browser = data;
-    state.config = data.config;
+    state.config = data.config || state.config;
     state.launchRoot = data.launchRoot || state.launchRoot;
     state.mode = "browser";
     browserView.hidden = false;
     slideshowView.hidden = true;
+    await syncTreeToCurrentPath(data);
     if (data.notice) {
       showNotice(data.notice, "info");
       return;
@@ -82,9 +110,9 @@
   }
 
   async function loadSlideshow(path, preferredIndex) {
-    const data = await apiGet(`/api/slideshow?path=${encodeURIComponent(path || "")}`);
+    const data = normalizeSlideshowData(await apiGet(`/api/slideshow?path=${encodeURIComponent(path || "")}`));
     state.slideshow = data;
-    state.config = data.config;
+    state.config = data.config || state.config;
     if (!data.session.active) {
       await loadBrowser(path || "");
       if (data.notice) {
@@ -93,9 +121,9 @@
       return;
     }
     state.mode = "slideshow";
+    state.slideshow.index = clamp(preferredIndex || 0, 0, Math.max(0, data.images.length - 1));
     browserView.hidden = true;
     slideshowView.hidden = false;
-    state.slideshow.index = clamp(preferredIndex || 0, 0, Math.max(0, data.images.length - 1));
     if (data.notice) {
       showNotice(data.notice, "info");
       return;
@@ -103,41 +131,106 @@
     render();
   }
 
-  async function openWorkMode() {
-    const result = await apiPost("/api/session/start", { path: state.browser.currentPath });
-    if (result.session && result.session.active && !state.browser.session.active) {
-      showNotice("work session started", "info");
+  async function loadTreeNode(path) {
+    const key = path || "";
+    if (state.tree.nodes[key]) {
+      return state.tree.nodes[key];
     }
-    await loadSlideshow(result.slideshowPath || state.browser.currentPath, 0);
+    if (state.tree.loading[key]) {
+      return null;
+    }
+    state.tree.loading[key] = true;
+    render();
+    try {
+      const data = normalizeTreeData(await apiGet(`/api/tree?path=${encodeURIComponent(key)}`));
+      cacheTreeNode(data.currentPath, data.currentName, data.directories);
+      return state.tree.nodes[key];
+    } finally {
+      delete state.tree.loading[key];
+      render();
+    }
+  }
+
+  async function syncTreeToCurrentPath(browserData) {
+    cacheTreeNode(browserData.currentPath, browserData.currentName, browserData.directories);
+    const chain = pathChain(browserData.currentPath);
+    chain.forEach((path) => {
+      state.tree.expanded[path] = true;
+    });
+    for (const ancestor of chain.slice(0, -1)) {
+      if (!state.tree.nodes[ancestor]) {
+        await loadTreeNode(ancestor);
+      }
+    }
+  }
+
+  function cacheTreeNode(path, name, directories) {
+    state.tree.nodes[path || ""] = {
+      path: path || "",
+      name: name || pathLabel(path, "Root"),
+      directories: normalizeDirectories(directories),
+    };
+  }
+
+  async function changeDirectory(path) {
+    return withBusy("Loading folder", async () => {
+      await loadBrowser(path || "");
+    });
+  }
+
+  async function openWorkMode() {
+    if (!canStartWorkFromBrowser()) {
+      return null;
+    }
+    return withBusy("Opening work session", async () => {
+      const result = await apiPost("/api/session/start", { path: state.browser.currentPath });
+      if (result.session && result.session.active && !state.browser.session.active) {
+        showNotice("work session started", "info");
+      }
+      await loadSlideshow(result.slideshowPath || state.browser.currentPath, 0);
+    });
   }
 
   async function backToBrowser() {
-    await loadBrowser(state.slideshow.currentPath);
+    return withBusy("Returning to browser", async () => {
+      await loadBrowser(state.slideshow ? state.slideshow.currentPath : "");
+    });
   }
 
   async function endSession() {
-    await apiPost("/api/session/end", {});
-    showNotice("work session ended", "info");
-    await loadBrowser(state.mode === "slideshow" ? state.slideshow.currentPath : state.browser.currentPath);
+    return withBusy("Ending work session", async () => {
+      await apiPost("/api/session/end", {});
+      showNotice("work session ended", "info");
+      const currentPath = state.mode === "slideshow" && state.slideshow
+        ? state.slideshow.currentPath
+        : (state.browser ? state.browser.currentPath : "");
+      await loadBrowser(currentPath);
+    });
   }
 
   async function runAction(actionKey) {
-    const currentImage = state.slideshow.images[state.slideshow.index];
+    const currentImage = currentSlideImage();
     if (!currentImage) {
-      return;
+      return null;
     }
-    const preferred = state.slideshow.index;
-    const result = await apiPost("/api/action", {
-      currentPath: state.slideshow.currentPath,
-      imagePath: currentImage.path,
-      actionKey,
+    return withBusy(`Running ${actionKey}`, async () => {
+      const preferredIndex = state.slideshow.index;
+      const result = await apiPost("/api/action", {
+        currentPath: state.slideshow.currentPath,
+        imagePath: currentImage.path,
+        actionKey,
+      });
+      showNotice(result.notice, "info");
+      await loadSlideshow(state.slideshow.currentPath, preferredIndex);
     });
-    showNotice(result.notice, "info");
-    await loadSlideshow(state.slideshow.currentPath, preferred);
   }
 
   function openPreview(index) {
-    state.preview = { open: true, images: state.browser.images || [], index };
+    state.preview = {
+      open: true,
+      images: normalizeImages(state.browser ? state.browser.images : []),
+      index: clamp(index, 0, Math.max(0, (state.browser?.images || []).length - 1)),
+    };
     render();
   }
 
@@ -154,12 +247,36 @@
     render();
   }
 
-  async function openSettings() {
-    state.config = await apiGet("/api/config");
-    state.settingsDraft = clone(state.config);
-    state.settingsOpen = true;
-    state.captureTarget = null;
+  async function toggleTree(path) {
+    if (state.busy) {
+      return;
+    }
+    const key = path || "";
+    if (key === "") {
+      state.tree.expanded[""] = true;
+      render();
+      return;
+    }
+    if (state.tree.expanded[key]) {
+      delete state.tree.expanded[key];
+      render();
+      return;
+    }
+    state.tree.expanded[key] = true;
     render();
+    if (!state.tree.nodes[key]) {
+      await loadTreeNode(key);
+    }
+  }
+
+  async function openSettings() {
+    return withBusy("Loading settings", async () => {
+      state.config = await apiGet("/api/config");
+      state.settingsDraft = clone(state.config);
+      state.settingsOpen = true;
+      state.captureTarget = null;
+      render();
+    });
   }
 
   function closeSettings() {
@@ -172,6 +289,7 @@
     if (!state.settingsDraft) {
       return;
     }
+    state.settingsDraft.actions = state.settingsDraft.actions || [];
     state.settingsDraft.actions.push({
       key: "",
       action: type,
@@ -182,18 +300,20 @@
 
   async function saveSettings() {
     if (!state.settingsDraft) {
-      return;
+      return null;
     }
-    const saved = await apiPost("/api/config", state.settingsDraft);
-    state.config = saved;
-    state.settingsOpen = false;
-    state.captureTarget = null;
-    showNotice("settings saved", "info");
-    if (state.mode === "slideshow" && state.slideshow) {
-      await loadSlideshow(state.slideshow.currentPath, state.slideshow.index || 0);
-      return;
-    }
-    await loadBrowser(state.browser ? state.browser.currentPath : "");
+    return withBusy("Saving settings", async () => {
+      const saved = await apiPost("/api/config", state.settingsDraft);
+      state.config = saved;
+      state.settingsOpen = false;
+      state.captureTarget = null;
+      showNotice("settings saved", "info");
+      if (state.mode === "slideshow" && state.slideshow) {
+        await loadSlideshow(state.slideshow.currentPath, state.slideshow.index || 0);
+        return;
+      }
+      await loadBrowser(state.browser ? state.browser.currentPath : "");
+    });
   }
 
   function render() {
@@ -206,42 +326,67 @@
 
   function renderShell() {
     const session = currentSession();
+    const current = currentData();
+    const title = state.mode === "slideshow" ? "Sorting workspace" : "Explorer workspace";
+    const statusLabel = session.active ? "Work session active" : "Browsing only";
+    const statusTone = session.active ? "session" : "";
+
     document.body.classList.toggle("session-active", !!session.active);
-    document.getElementById("statusLine").textContent = session.active
-      ? `Launch root: ${state.launchRoot} | Active work root: ${session.rootPath || "(root)"}`
-      : `Launch root: ${state.launchRoot} | No active work session`;
+    document.body.classList.toggle("app-busy", !!state.busy);
+    document.body.classList.toggle("slideshow-mode", state.mode === "slideshow");
 
-    document.getElementById("toolbar").innerHTML = [
-      controlButton("Up", keyLabel(getConfig(["keys", "browser", "upDir"])), !!currentData().canGoUp, "up-dir"),
-      controlButton(toolbarStartLabel(), keyLabel(toolbarStartKey()), true, "start-work"),
-      controlButton("End Session", keyLabel(getConfig(["keys", state.mode === "slideshow" ? "slideshow" : "browser", "endSession"])), !!session.active, "end-session"),
-      controlButton("Settings", keyLabel(getConfig(["keys", "browser", "openSettings"])), true, "open-settings"),
-    ].join("");
+    document.getElementById("statusBar").innerHTML = `
+      <div class="shell-strip">
+        <div class="brand-stack">
+          <p class="brand-kicker">Photo Manager</p>
+          <div class="brand-title-row">
+            <h1 class="shell-title">${escapeHtml(title)}</h1>
+            <span class="status-pill ${statusTone}"><strong>${escapeHtml(statusLabel)}</strong></span>
+          </div>
+        </div>
+        <div class="shell-tools">
+          ${utilityButtonHtml("Settings", keyLabel(getConfig(["keys", "browser", "openSettings"])), "open-settings", true)}
+        </div>
+      </div>
+      <div class="shell-meta">
+        ${metaChipHtml("Launch root", state.launchRoot || "(unknown)")}
+        ${metaChipHtml("Current directory", pathLabel(current.currentPath, current.currentName || "Root"))}
+        ${metaChipHtml("Work root", session.active ? pathLabel(session.rootPath, "Root") : "Not started", session.active ? "session" : "")}
+        ${state.busy ? metaChipHtml("Status", state.busyLabel || "Working", "busy") : ""}
+      </div>
+    `;
 
-    document.getElementById("breadcrumbs").innerHTML = (currentData().breadcrumbs || [])
-      .map((crumb) => `<button class="crumb ${crumb.path === currentData().currentPath ? "current" : ""}" data-browse-path="${escapeHtml(crumb.path)}">${escapeHtml(crumb.name)}</button>`)
+    document.getElementById("breadcrumbs").innerHTML = normalizeBreadcrumbs(current.breadcrumbs)
+      .map((crumb) => `
+        <button class="crumb ${crumb.path === current.currentPath ? "current" : ""}" data-browse-path="${escapeHtml(crumb.path)}">
+          ${escapeHtml(crumb.name)}
+        </button>
+      `)
       .join("");
-    document.querySelectorAll("[data-browse-path]").forEach((button) => {
-      button.addEventListener("click", async () => {
-        await loadBrowser(button.dataset.browsePath || "");
-      });
-    });
 
     renderNotice();
-    bindToolbar();
+    bindShellEvents();
   }
 
   function renderNotice() {
     const notice = document.getElementById("notice");
-    if (state.notice.text) {
-      notice.hidden = false;
-      notice.className = `notice ${state.notice.type}`;
-      notice.textContent = state.notice.text;
+    if (state.mode === "slideshow" || !state.notice.text) {
+      notice.hidden = true;
+      notice.className = "notice";
+      notice.innerHTML = "";
       return;
     }
-    notice.hidden = true;
-    notice.className = "notice";
-    notice.textContent = "";
+
+    const kind = state.notice.type === "error" ? "Error" : "Notice";
+    notice.hidden = false;
+    notice.className = `notice ${state.notice.type}`;
+    notice.innerHTML = `
+      <div class="notice-copy">
+        <strong>${kind}</strong>
+        <span>${escapeHtml(state.notice.text)}</span>
+      </div>
+      <button class="notice-close ghost-button utility-button" data-dismiss-notice="true">Dismiss</button>
+    `;
   }
 
   function renderBrowser() {
@@ -249,47 +394,126 @@
       browserView.innerHTML = `<div class="empty-state">Loading browser...</div>`;
       return;
     }
+
     const session = currentSession();
+    const startLabel = session.active ? "Open Current Folder" : "Start Sorting Here";
+    const startTone = session.active ? "secondary-button" : "primary-button";
+
     browserView.innerHTML = `
-      <div class="button-row">
-        ${controlButton(session.active ? "Enter Current Directory" : "Start Current Directory", keyLabel(getConfig(["keys", "browser", "startSession"])), true, "start-work")}
-        ${controlButton("End Session", keyLabel(getConfig(["keys", "browser", "endSession"])), !!session.active, "end-session")}
-        ${controlButton("Up", keyLabel(getConfig(["keys", "browser", "upDir"])), !!state.browser.canGoUp, "up-dir")}
-        ${controlButton("Settings", keyLabel(getConfig(["keys", "browser", "openSettings"])), true, "open-settings")}
-      </div>
-      <div class="browser-grid">
-        <section class="browser-column">
-          <h2>Folders</h2>
-          <div class="hint">Double-click a folder card to enter it.</div>
-          ${state.browser.directories.length ? state.browser.directories.map((dir) => `
-            <article class="entry-card" data-enter-dir="${escapeHtml(dir.path)}">
-              <strong>${escapeHtml(dir.name)}</strong>
-              <span class="entry-meta">${escapeHtml(dir.path || "(root)")}</span>
-            </article>
-          `).join("") : `<div class="empty-state">No visible folders in this directory.</div>`}
-        </section>
-        <section class="browser-column">
-          <h2>Pictures</h2>
-          <div class="hint">Click an image to preview only. Preview does not start a work session.</div>
-          ${state.browser.images.length ? state.browser.images.map((image, index) => `
-            <article class="image-card" data-preview-index="${index}">
-              <img class="thumb" src="${escapeHtml(image.url)}" alt="${escapeHtml(image.name)}">
-              <strong>${escapeHtml(image.name)}</strong>
-              <span class="entry-meta">${escapeHtml(image.path)}</span>
-            </article>
-          `).join("") : `<div class="empty-state">No supported pictures in this directory.</div>`}
+      <div class="browser-layout">
+        <aside class="explorer-pane">
+          <div class="pane-head">
+            <div>
+              <p class="pane-kicker">Explorer</p>
+              <h2 class="section-title">Folder Tree</h2>
+              <p class="pane-caption">Navigation stays on the left. Work actions live in the image workbench.</p>
+            </div>
+            <div class="pane-tools">
+              ${utilityButtonHtml("Up", keyLabel(getConfig(["keys", "browser", "upDir"])), "up-dir", !!state.browser.canGoUp)}
+            </div>
+          </div>
+          <div class="stat-row">
+            ${statPillHtml("Folders", String(state.browser.directories.length))}
+            ${statPillHtml("Images", String(state.browser.images.length))}
+          </div>
+          <div class="tree-shell">
+            ${renderTree()}
+          </div>
+        </aside>
+
+        <section class="workbench-pane">
+          <div class="workbench-head">
+            <div>
+              <p class="section-kicker">Workbench</p>
+              <h2 class="section-title">${escapeHtml(state.browser.currentName || "Current directory")}</h2>
+              <p class="section-caption">Click any image to preview it only. Sorting starts exclusively from the action buttons or configured keys.</p>
+              <div class="stat-row">
+                ${statPillHtml("Path", pathLabel(state.browser.currentPath, state.browser.currentName || "Root"))}
+                ${statPillHtml("Visible folders", String(state.browser.directories.length))}
+                ${statPillHtml("Visible images", String(state.browser.images.length))}
+              </div>
+            </div>
+            <div class="workbench-actions">
+              ${controlTileHtml(startLabel, keyLabel(getConfig(["keys", "browser", "startSession"])), "start-work", canStartWorkFromBrowser(), startTone)}
+              ${controlTileHtml("End Session", keyLabel(getConfig(["keys", "browser", "endSession"])), "end-session", !!session.active, "secondary-button")}
+            </div>
+          </div>
+
+          <div class="workbench-grid">
+            ${state.browser.images.length ? `
+              <div class="card-grid">
+                ${state.browser.images.map((image, index) => imageCardHtml(image, index)).join("")}
+              </div>
+            ` : `<div class="empty-state">No supported pictures in this directory.</div>`}
+          </div>
         </section>
       </div>
     `;
-    bindToolbar();
-    browserView.querySelectorAll("[data-enter-dir]").forEach((card) => {
-      card.addEventListener("dblclick", async () => {
-        await loadBrowser(card.dataset.enterDir || "");
-      });
-    });
-    browserView.querySelectorAll("[data-preview-index]").forEach((card) => {
-      card.addEventListener("click", () => openPreview(Number(card.dataset.previewIndex)));
-    });
+
+    bindShellEvents();
+    bindBrowserEvents();
+  }
+
+  function renderTree() {
+    const rootNode = state.tree.nodes[""] || {
+      name: state.browser ? state.browser.breadcrumbs[0]?.name || state.browser.currentName || "Root" : "Root",
+      path: "",
+      directories: [],
+    };
+    const rootClass = state.browser.currentPath === "" ? "current" : (isPathAncestor("", state.browser.currentPath) ? "ancestor" : "");
+    return `
+      <div class="tree-root">
+        <button class="tree-link ${rootClass}" data-tree-path="">
+          <strong>${escapeHtml(rootNode.name || "Root")}</strong>
+          <span>Launch root</span>
+        </button>
+        <div class="tree-root-path">${escapeHtml(state.launchRoot || "")}</div>
+      </div>
+      <div class="tree-branch">
+        ${renderTreeBranch("", 0)}
+      </div>
+    `;
+  }
+
+  function renderTreeBranch(parentPath, depth) {
+    const node = state.tree.nodes[parentPath || ""];
+    if (!node) {
+      return state.tree.loading[parentPath || ""] ? `<div class="tree-loading muted-text">Loading folders...</div>` : "";
+    }
+    if (!node.directories.length) {
+      return depth === 0 ? `<div class="tree-empty muted-text">No visible subfolders here.</div>` : "";
+    }
+    return node.directories.map((entry) => renderTreeEntry(entry, depth)).join("");
+  }
+
+  function renderTreeEntry(entry, depth) {
+    const path = entry.path || "";
+    const selected = state.browser.currentPath === path;
+    const ancestor = !selected && isPathAncestor(path, state.browser.currentPath);
+    const expanded = !!state.tree.expanded[path];
+    const node = state.tree.nodes[path];
+    const hasChildren = !!entry.hasChildren || (!!node && node.directories.length > 0);
+    const childMarkup = expanded
+      ? (node
+          ? (node.directories.length ? `<div class="tree-children">${renderTreeBranch(path, depth + 1)}</div>` : `<div class="tree-empty muted-text">No visible subfolders.</div>`)
+          : `<div class="tree-loading muted-text">Loading folders...</div>`)
+      : "";
+
+    return `
+      <div class="tree-node">
+        <div class="tree-row" style="--depth:${depth}">
+          <button class="tree-toggle" data-toggle-tree="${escapeHtml(path)}" ${hasChildren ? "" : "disabled"} aria-expanded="${expanded}">
+            <span class="tree-chevron"></span>
+            <span class="visually-hidden">Toggle ${escapeHtml(entry.name)}</span>
+          </button>
+          <button class="tree-link ${selected ? "current" : (ancestor ? "ancestor" : "")}" data-tree-path="${escapeHtml(path)}">
+            <strong>${escapeHtml(entry.name)}</strong>
+            <span>${hasChildren ? "Has subfolders" : "Leaf folder"}</span>
+          </button>
+        </div>
+        ${childMarkup}
+      </div>
+    `;
   }
 
   function renderSlideshow() {
@@ -297,56 +521,53 @@
       slideshowView.innerHTML = "";
       return;
     }
+
     const images = state.slideshow.images || [];
-    const current = images[state.slideshow.index];
+    const current = currentSlideImage();
+    const counterText = current ? `${state.slideshow.index + 1} / ${images.length}` : "No images";
+
     slideshowView.innerHTML = `
-      <div class="slideshow-stage">
-        <section class="slide-panel">
+      <div class="slideshow-layout">
+        <section class="slide-stage">
           ${current ? `
-            <div class="slide-title">${escapeHtml(current.name)}</div>
-            <img class="slide-image" src="${escapeHtml(current.url)}" alt="${escapeHtml(current.name)}">
-            <div class="hint">${state.slideshow.index + 1} / ${images.length} | ${escapeHtml(current.path)}</div>
-          ` : `<div class="empty-state">No images left in this directory.</div>`}
+            <div class="slide-frame">
+              <img class="slide-image" src="${escapeHtml(current.url)}" alt="${escapeHtml(current.name)}">
+            </div>
+          ` : `
+            <div class="empty-state slide-empty-state">This directory has no remaining images.</div>
+          `}
+
+          ${state.notice.text ? `<div class="slide-toast ${state.notice.type}">${escapeHtml(state.notice.text)}</div>` : ""}
+
+          <div class="slide-bottom-bar">
+            <div class="slide-meta-inline">
+              <strong class="slide-file-name">${escapeHtml(current ? current.name : state.slideshow.currentName)}</strong>
+              <div class="slide-meta-row">
+                <span class="slide-counter">${escapeHtml(counterText)}</span>
+                <span class="slide-state-pill">Sorting</span>
+                ${state.slideshow.currentDirIsTarget ? `<span class="slide-state-pill">Target</span>` : ""}
+              </div>
+            </div>
+            <div class="slide-toolbar">
+              <div class="slide-button-group">
+                ${slideBarButtonHtml("Prev", keyLabel(getConfig(["keys", "slideshow", "prev"])), "slide-prev", !!current)}
+                ${slideBarButtonHtml("Next", keyLabel(getConfig(["keys", "slideshow", "next"])), "slide-next", !!current)}
+              </div>
+              <div class="slide-button-group">
+                ${slideBarButtonHtml("Browser", keyLabel(getConfig(["keys", "slideshow", "backToBrowser"])), "slide-back", true)}
+                ${slideBarButtonHtml("End", keyLabel(getConfig(["keys", "slideshow", "endSession"])), "end-session", true, "data-toolbar-action")}
+              </div>
+              <div class="slide-button-group slide-button-group--actions">
+                ${(state.slideshow.actionButtons || []).map((action) => slideBarActionHtml(action, !!current)).join("")}
+              </div>
+            </div>
+          </div>
         </section>
-        <aside class="side-panel">
-          <div class="button-row">
-            ${slideButton("Previous", "slide-prev", keyLabel(getConfig(["keys", "slideshow", "prev"])), !!current)}
-            ${slideButton("Next", "slide-next", keyLabel(getConfig(["keys", "slideshow", "next"])), !!current)}
-            ${slideButton("Back To Browser", "slide-back", keyLabel(getConfig(["keys", "slideshow", "backToBrowser"])), true)}
-            ${slideButton("End Session", "end-session", keyLabel(getConfig(["keys", "slideshow", "endSession"])), true)}
-          </div>
-          <p class="muted-block">Current directory: ${escapeHtml(state.slideshow.currentPath || "(root)")}</p>
-          ${state.slideshow.currentDirIsTarget ? `<div class="tag session">Configured target directory</div>` : ""}
-          <div class="button-row">
-            ${(state.slideshow.actionButtons || []).map((action) => `
-              <button class="action-button ${action.action === "delete" ? "danger-button" : "secondary-button"}" data-run-action="${escapeHtml(action.key)}" ${action.enabled ? "" : "disabled"}>
-                <strong>${escapeHtml(action.label)}</strong>
-                <span>${keyLabel(action.key)}</span>
-              </button>
-            `).join("")}
-          </div>
-        </aside>
       </div>
     `;
-    bindToolbar();
-    document.querySelectorAll("[data-slideshow-action]").forEach((button) => {
-      button.addEventListener("click", async () => {
-        try {
-          await handleSlideshowAction(button.dataset.slideshowAction);
-        } catch (error) {
-          showNotice(error.message, "error");
-        }
-      });
-    });
-    document.querySelectorAll("[data-run-action]").forEach((button) => {
-      button.addEventListener("click", async () => {
-        try {
-          await runAction(button.dataset.runAction);
-        } catch (error) {
-          showNotice(error.message, "error");
-        }
-      });
-    });
+
+    bindShellEvents();
+    bindSlideshowEvents();
   }
 
   function renderPreview() {
@@ -357,20 +578,180 @@
     const images = state.preview.images || [];
     const current = images[state.preview.index];
     if (!current) {
-      closePreview();
+      state.preview.open = false;
+      previewModal.hidden = true;
       return;
     }
+
     previewModal.hidden = false;
     document.getElementById("previewBody").innerHTML = `
-      <img src="${escapeHtml(current.url)}" alt="${escapeHtml(current.name)}">
-      <div class="hint">${state.preview.index + 1} / ${images.length} | ${escapeHtml(current.name)}</div>
+      <div class="preview-stage">
+        <img src="${escapeHtml(current.url)}" alt="${escapeHtml(current.name)}">
+      </div>
+      <div class="preview-meta">
+        <strong>${escapeHtml(current.name)}</strong>
+        <span class="muted-text">${state.preview.index + 1} / ${images.length} | ${escapeHtml(current.path)}</span>
+      </div>
     `;
     document.getElementById("previewControls").innerHTML = `
-      ${previewButton("Previous", keyLabel(getConfig(["keys", "preview", "prev"])), state.preview.index > 0, "preview-prev")}
-      ${previewButton("Next", keyLabel(getConfig(["keys", "preview", "next"])), state.preview.index < images.length - 1, "preview-next")}
-      ${previewButton("Close", keyLabel(getConfig(["keys", "preview", "close"])), true, "preview-close")}
+      ${railButtonHtml("Previous", keyLabel(getConfig(["keys", "preview", "prev"])), "preview-prev", state.preview.index > 0, "data-preview-action")}
+      ${railButtonHtml("Next", keyLabel(getConfig(["keys", "preview", "next"])), "preview-next", state.preview.index < images.length - 1, "data-preview-action")}
+      ${railButtonHtml("Close", keyLabel(getConfig(["keys", "preview", "close"])), "preview-close", true, "data-preview-action")}
     `;
+    bindPreviewEvents();
+  }
+
+  function renderSettings() {
+    settingsModal.hidden = !state.settingsOpen;
+    if (!state.settingsOpen || !state.settingsDraft) {
+      return;
+    }
+
+    document.getElementById("settingsBody").innerHTML = `
+      ${settingsSectionHtml("Browser Keys", [
+        settingsFieldHtml("Start Session", ["keys", "browser", "startSession"]),
+        settingsFieldHtml("End Session", ["keys", "browser", "endSession"]),
+        settingsFieldHtml("Up Directory", ["keys", "browser", "upDir"]),
+        settingsFieldHtml("Open Settings", ["keys", "browser", "openSettings"]),
+      ])}
+      ${settingsSectionHtml("Preview Keys", [
+        settingsFieldHtml("Close Preview", ["keys", "preview", "close"]),
+        settingsFieldHtml("Next Preview Image", ["keys", "preview", "next"]),
+        settingsFieldHtml("Previous Preview Image", ["keys", "preview", "prev"]),
+      ])}
+      ${settingsSectionHtml("Slideshow Keys", [
+        settingsFieldHtml("Next Slide", ["keys", "slideshow", "next"]),
+        settingsFieldHtml("Previous Slide", ["keys", "slideshow", "prev"]),
+        settingsFieldHtml("Back To Browser", ["keys", "slideshow", "backToBrowser"]),
+        settingsFieldHtml("End Session", ["keys", "slideshow", "endSession"]),
+      ])}
+      <section class="settings-section">
+        <h3>Actions</h3>
+        <p class="modal-caption">Move actions require a target path. Delete and restore do not accept a target.</p>
+        ${(state.settingsDraft.actions || []).map((action, index) => settingsActionRowHtml(action, index)).join("")}
+      </section>
+    `;
+
+    const captureHint = document.getElementById("captureHint");
+    captureHint.textContent = captureHintText();
+    captureHint.className = `capture-hint ${state.captureTarget ? "capturing" : ""}`;
+
+    bindSettingsEvents();
+  }
+
+  function bindShellEvents() {
+    document.querySelectorAll("[data-browse-path]").forEach((button) => {
+      if (button.dataset.boundBrowse === "true") {
+        return;
+      }
+      button.dataset.boundBrowse = "true";
+      button.addEventListener("click", () => {
+        changeDirectory(button.dataset.browsePath || "").catch((error) => showNotice(error.message, "error"));
+      });
+    });
+    document.querySelectorAll("[data-toolbar-action]").forEach((button) => {
+      if (button.dataset.boundToolbar === "true") {
+        return;
+      }
+      button.dataset.boundToolbar = "true";
+      button.addEventListener("click", async () => {
+        if (state.busy) {
+          return;
+        }
+        try {
+          const action = button.dataset.toolbarAction;
+          if (action === "up-dir" && currentData().canGoUp) {
+            await changeDirectory(currentData().parentPath || "");
+            return;
+          }
+          if (action === "start-work") {
+            await openWorkMode();
+            return;
+          }
+          if (action === "end-session" && currentSession().active) {
+            await endSession();
+            return;
+          }
+          if (action === "open-settings") {
+            await openSettings();
+          }
+        } catch (error) {
+          showNotice(error.message, "error");
+        }
+      });
+    });
+    document.querySelectorAll("[data-dismiss-notice]").forEach((button) => {
+      if (button.dataset.boundNotice === "true") {
+        return;
+      }
+      button.dataset.boundNotice = "true";
+      button.addEventListener("click", clearNotice);
+    });
+  }
+
+  function bindBrowserEvents() {
+    browserView.querySelectorAll("[data-tree-path]").forEach((button) => {
+      if (button.dataset.boundTreePath === "true") {
+        return;
+      }
+      button.dataset.boundTreePath = "true";
+      button.addEventListener("click", () => {
+        changeDirectory(button.dataset.treePath || "").catch((error) => showNotice(error.message, "error"));
+      });
+    });
+    browserView.querySelectorAll("[data-toggle-tree]").forEach((button) => {
+      if (button.dataset.boundTreeToggle === "true") {
+        return;
+      }
+      button.dataset.boundTreeToggle = "true";
+      button.addEventListener("click", (event) => {
+        event.stopPropagation();
+        toggleTree(button.dataset.toggleTree || "").catch((error) => showNotice(error.message, "error"));
+      });
+    });
+    browserView.querySelectorAll("[data-preview-index]").forEach((button) => {
+      if (button.dataset.boundPreviewIndex === "true") {
+        return;
+      }
+      button.dataset.boundPreviewIndex = "true";
+      button.addEventListener("click", () => openPreview(Number(button.dataset.previewIndex)));
+    });
+  }
+
+  function bindSlideshowEvents() {
+    slideshowView.querySelectorAll("[data-slideshow-action]").forEach((button) => {
+      if (button.dataset.boundSlideshowAction === "true") {
+        return;
+      }
+      button.dataset.boundSlideshowAction = "true";
+      button.addEventListener("click", async () => {
+        if (state.busy) {
+          return;
+        }
+        try {
+          await handleSlideshowAction(button.dataset.slideshowAction);
+        } catch (error) {
+          showNotice(error.message, "error");
+        }
+      });
+    });
+    slideshowView.querySelectorAll("[data-run-action]").forEach((button) => {
+      if (button.dataset.boundRunAction === "true") {
+        return;
+      }
+      button.dataset.boundRunAction = "true";
+      button.addEventListener("click", () => {
+        runAction(button.dataset.runAction).catch((error) => showNotice(error.message, "error"));
+      });
+    });
+  }
+
+  function bindPreviewEvents() {
     document.querySelectorAll("[data-preview-action]").forEach((button) => {
+      if (button.dataset.boundPreviewAction === "true") {
+        return;
+      }
+      button.dataset.boundPreviewAction = "true";
       button.addEventListener("click", () => {
         const action = button.dataset.previewAction;
         if (action === "preview-prev") {
@@ -384,77 +765,32 @@
     });
   }
 
-  function renderSettings() {
-    settingsModal.hidden = !state.settingsOpen;
-    if (!state.settingsOpen || !state.settingsDraft) {
-      return;
-    }
-
-    document.getElementById("settingsBody").innerHTML = `
-      ${settingsSection("Browser Keys", [
-        settingsField("Start Session", ["keys", "browser", "startSession"]),
-        settingsField("End Session", ["keys", "browser", "endSession"]),
-        settingsField("Up Directory", ["keys", "browser", "upDir"]),
-        settingsField("Open Settings", ["keys", "browser", "openSettings"]),
-      ])}
-      ${settingsSection("Preview Keys", [
-        settingsField("Close Preview", ["keys", "preview", "close"]),
-        settingsField("Next Preview Image", ["keys", "preview", "next"]),
-        settingsField("Previous Preview Image", ["keys", "preview", "prev"]),
-      ])}
-      ${settingsSection("Slideshow Keys", [
-        settingsField("Next Slide", ["keys", "slideshow", "next"]),
-        settingsField("Previous Slide", ["keys", "slideshow", "prev"]),
-        settingsField("Back To Browser", ["keys", "slideshow", "backToBrowser"]),
-        settingsField("End Session", ["keys", "slideshow", "endSession"]),
-      ])}
-      <section class="settings-section">
-        <h3>Actions</h3>
-        <div class="hint">Move actions require a target path.</div>
-        ${(state.settingsDraft.actions || []).map((action, index) => `
-          <div class="settings-row">
-            <div class="settings-field">
-              <label>Key</label>
-              <div class="toolbar">
-                <input value="${escapeHtml(action.key || "")}" readonly>
-                <button class="secondary-button" data-capture-action="${index}">Capture</button>
-              </div>
-            </div>
-            <div class="settings-field">
-              <label>Action</label>
-              <select data-action-field="action" data-action-index="${index}">
-                ${option("move", action.action === "move")}
-                ${option("delete", action.action === "delete")}
-                ${option("restore", action.action === "restore")}
-              </select>
-            </div>
-            <div class="settings-field">
-              <label>Target</label>
-              <input data-action-field="target" data-action-index="${index}" value="${escapeHtml(action.target || "")}" placeholder="keep or D:/Photos/keep" ${action.action === "move" ? "" : "disabled"}>
-            </div>
-            <div class="settings-row-actions">
-              <button class="danger-button" data-remove-action="${index}">Remove</button>
-            </div>
-          </div>
-        `).join("")}
-      </section>
-    `;
-
-    document.getElementById("captureHint").textContent = state.captureTarget ? "Press one key to capture." : "";
-
+  function bindSettingsEvents() {
     document.querySelectorAll("[data-capture-key]").forEach((button) => {
+      if (button.dataset.boundCaptureKey === "true") {
+        return;
+      }
+      button.dataset.boundCaptureKey = "true";
       button.addEventListener("click", () => {
         state.captureTarget = { type: "path", path: button.dataset.captureKey.split(".") };
         render();
       });
     });
     document.querySelectorAll("[data-capture-action]").forEach((button) => {
+      if (button.dataset.boundCaptureAction === "true") {
+        return;
+      }
+      button.dataset.boundCaptureAction = "true";
       button.addEventListener("click", () => {
         state.captureTarget = { type: "action", index: Number(button.dataset.captureAction) };
         render();
       });
     });
     document.querySelectorAll("[data-action-field]").forEach((input) => {
+      if (input.dataset.boundActionField === "true") {
+        return;
+      }
+      input.dataset.boundActionField = "true";
       input.addEventListener("input", (event) => {
         const index = Number(event.target.dataset.actionIndex);
         const field = event.target.dataset.actionField;
@@ -471,34 +807,13 @@
       });
     });
     document.querySelectorAll("[data-remove-action]").forEach((button) => {
+      if (button.dataset.boundRemoveAction === "true") {
+        return;
+      }
+      button.dataset.boundRemoveAction = "true";
       button.addEventListener("click", () => {
         state.settingsDraft.actions.splice(Number(button.dataset.removeAction), 1);
         render();
-      });
-    });
-  }
-
-  function bindToolbar() {
-    document.querySelectorAll("[data-toolbar-action]").forEach((button) => {
-      button.addEventListener("click", async () => {
-        const action = button.dataset.toolbarAction;
-        try {
-          if (action === "up-dir" && currentData().canGoUp) {
-            await loadBrowser(currentData().parentPath || "");
-          } else if (action === "start-work") {
-            if (state.mode === "slideshow") {
-              await backToBrowser();
-            } else {
-              await openWorkMode();
-            }
-          } else if (action === "end-session" && currentSession().active) {
-            await endSession();
-          } else if (action === "open-settings") {
-            await openSettings();
-          }
-        } catch (error) {
-          showNotice(error.message, "error");
-        }
       });
     });
   }
@@ -516,10 +831,6 @@
     }
     if (action === "slide-back") {
       await backToBrowser();
-      return;
-    }
-    if (action === "end-session") {
-      await endSession();
     }
   }
 
@@ -541,7 +852,7 @@
       return;
     }
 
-    if (state.settingsOpen) {
+    if (state.busy || state.settingsOpen) {
       return;
     }
 
@@ -557,8 +868,11 @@
   }
 
   function handleBrowserKey(key, event) {
-    const keys = state.config.keys.browser;
-    if (key === keys.startSession) {
+    const keys = state.config?.keys?.browser;
+    if (!keys || !state.browser) {
+      return;
+    }
+    if (key === keys.startSession && canStartWorkFromBrowser()) {
       event.preventDefault();
       openWorkMode().catch((error) => showNotice(error.message, "error"));
       return;
@@ -570,7 +884,7 @@
     }
     if (key === keys.upDir && state.browser.canGoUp) {
       event.preventDefault();
-      loadBrowser(state.browser.parentPath || "").catch((error) => showNotice(error.message, "error"));
+      changeDirectory(state.browser.parentPath || "").catch((error) => showNotice(error.message, "error"));
       return;
     }
     if (key === keys.openSettings) {
@@ -580,7 +894,10 @@
   }
 
   function handlePreviewKey(key, event) {
-    const keys = state.config.keys.preview;
+    const keys = state.config?.keys?.preview;
+    if (!keys) {
+      return;
+    }
     if (key === keys.close) {
       event.preventDefault();
       closePreview();
@@ -598,7 +915,10 @@
   }
 
   function handleSlideshowKey(key, event) {
-    const keys = state.config.keys.slideshow;
+    const keys = state.config?.keys?.slideshow;
+    if (!keys || !state.slideshow) {
+      return;
+    }
     if (key === keys.next) {
       event.preventDefault();
       handleSlideshowAction("slide-next");
@@ -626,62 +946,269 @@
     }
   }
 
-  function controlButton(label, key, enabled, action) {
-    return `<button class="control-button secondary-button" data-toolbar-action="${action}" ${enabled ? "" : "disabled"}><strong>${escapeHtml(label)}</strong><span>${escapeHtml(key || "")}</span></button>`;
+  function utilityButtonHtml(label, detail, action, enabled) {
+    return `
+      <button class="utility-button secondary-button" data-toolbar-action="${escapeHtml(action)}" ${enabled ? "" : "disabled"}>
+        <div>
+          <strong>${escapeHtml(label)}</strong>
+          <span>${escapeHtml(detail || "")}</span>
+        </div>
+      </button>
+    `;
   }
 
-  function slideButton(label, action, key, enabled) {
-    return `<button class="secondary-button" data-slideshow-action="${action}" ${enabled ? "" : "disabled"}><strong>${escapeHtml(label)}</strong><span>${escapeHtml(key || "")}</span></button>`;
+  function controlTileHtml(label, detail, action, enabled, toneClass) {
+    return `
+      <button class="control-tile ${toneClass || "secondary-button"}" data-toolbar-action="${escapeHtml(action)}" ${enabled && !state.busy ? "" : "disabled"}>
+        <strong>${escapeHtml(label)}</strong>
+        <span>${escapeHtml(detail || "")}</span>
+      </button>
+    `;
   }
 
-  function previewButton(label, key, enabled, action) {
-    return `<button class="secondary-button" data-preview-action="${action}" ${enabled ? "" : "disabled"}><strong>${escapeHtml(label)}</strong><span>${escapeHtml(key || "")}</span></button>`;
+  function railButtonHtml(label, detail, action, enabled, attrName) {
+    const attribute = attrName || "data-slideshow-action";
+    return `
+      <button class="rail-button secondary-button" ${attribute}="${escapeHtml(action)}" ${enabled && !state.busy ? "" : "disabled"}>
+        <strong>${escapeHtml(label)}</strong>
+        <span>${escapeHtml(detail || "")}</span>
+      </button>
+    `;
   }
 
-  function settingsSection(title, fields) {
-    return `<section class="settings-section"><h3>${escapeHtml(title)}</h3><div class="settings-grid">${fields.join("")}</div></section>`;
+  function actionTileHtml(action, hasCurrentImage) {
+    const classes = ["action-tile", action.action === "delete" ? "action-tile--danger" : "secondary-button"]
+      .filter(Boolean)
+      .join(" ");
+    return `
+      <button class="${classes}" data-run-action="${escapeHtml(action.key)}" ${action.enabled && hasCurrentImage && !state.busy ? "" : "disabled"}>
+        <strong>${escapeHtml(action.label)}</strong>
+        <span>${escapeHtml(keyLabel(action.key))}</span>
+      </button>
+    `;
   }
 
-  function settingsField(label, path) {
+  function slideBarButtonHtml(label, detail, action, enabled, attrName) {
+    const attribute = attrName || "data-slideshow-action";
+    const keyText = compactKeyText(detail);
+    return `
+      <button class="slide-bar-button" ${attribute}="${escapeHtml(action)}" ${enabled && !state.busy ? "" : "disabled"}>
+        <span class="slide-bar-label">${escapeHtml(label)}</span>
+        ${keyText ? `<span class="slide-bar-key">${escapeHtml(keyText)}</span>` : ""}
+      </button>
+    `;
+  }
+
+  function slideBarActionHtml(action, hasCurrentImage) {
+    const classes = ["slide-bar-button", action.action === "delete" ? "slide-bar-button--danger" : ""]
+      .filter(Boolean)
+      .join(" ");
+    const keyText = compactKeyText(keyLabel(action.key));
+    return `
+      <button class="${classes}" data-run-action="${escapeHtml(action.key)}" ${action.enabled && hasCurrentImage && !state.busy ? "" : "disabled"}>
+        <span class="slide-bar-label">${escapeHtml(shortActionLabel(action))}</span>
+        ${keyText ? `<span class="slide-bar-key">${escapeHtml(keyText)}</span>` : ""}
+      </button>
+    `;
+  }
+
+  function shortActionLabel(action) {
+    if (!action) {
+      return "Action";
+    }
+    if (action.action === "delete") {
+      return "Delete";
+    }
+    if (action.action === "restore") {
+      return "Restore";
+    }
+    if (action.action === "move") {
+      const target = String(action.target || "").replaceAll("\\", "/").split("/").filter(Boolean).pop();
+      if (!target) {
+        return "Move";
+      }
+      return target.length > 14 ? "Move" : target;
+    }
+    return action.label || action.action;
+  }
+
+  function compactKeyText(label) {
+    return String(label || "").replace(/^Key:\s*/, "");
+  }
+
+  function imageCardHtml(image, index) {
+    return `
+      <button class="image-card" data-preview-index="${index}">
+        <div class="thumb-stage">
+          <img class="thumb" src="${escapeHtml(image.url)}" alt="${escapeHtml(image.name)}" loading="lazy" decoding="async">
+        </div>
+        <div class="image-meta">
+          <strong>${escapeHtml(image.name)}</strong>
+          <span class="entry-meta">${escapeHtml(image.path)}</span>
+          <span class="muted-text">Preview only</span>
+        </div>
+      </button>
+    `;
+  }
+
+  function metaChipHtml(label, value, tone) {
+    return `
+      <span class="meta-chip ${tone || ""}">
+        <span class="meta-chip-copy">
+          <strong>${escapeHtml(label)}</strong>
+          <span>${escapeHtml(value)}</span>
+        </span>
+      </span>
+    `;
+  }
+
+  function statPillHtml(label, value, tone) {
+    return `
+      <span class="stat-pill ${tone || ""}">
+        <span class="stat-copy">
+          <strong>${escapeHtml(label)}</strong>
+          <span>${escapeHtml(value)}</span>
+        </span>
+      </span>
+    `;
+  }
+
+  function settingsSectionHtml(title, fields) {
+    return `
+      <section class="settings-section">
+        <h3>${escapeHtml(title)}</h3>
+        <div class="settings-grid">${fields.join("")}</div>
+      </section>
+    `;
+  }
+
+  function settingsFieldHtml(label, path) {
     const value = getPath(state.settingsDraft, path) || "";
+    const captureKey = path.join(".");
+    const isCapturing = isCapturePath(path);
     return `
       <div class="settings-field">
         <label>${escapeHtml(label)}</label>
-        <div class="toolbar">
+        <div class="capture-row">
           <input value="${escapeHtml(value)}" readonly>
-          <button class="secondary-button" data-capture-key="${escapeHtml(path.join("."))}">Capture</button>
+          <button class="secondary-button utility-button capture-button ${isCapturing ? "capturing" : ""}" data-capture-key="${escapeHtml(captureKey)}">
+            ${escapeHtml(isCapturing ? "Press Key" : "Capture")}
+          </button>
         </div>
       </div>
     `;
   }
 
-  function option(value, selected) {
+  function settingsActionRowHtml(action, index) {
+    const isCapturing = isCaptureAction(index);
+    return `
+      <div class="settings-row">
+        <div class="settings-field">
+          <label>Key</label>
+          <div class="capture-row">
+            <input value="${escapeHtml(action.key || "")}" readonly>
+            <button class="secondary-button utility-button capture-button ${isCapturing ? "capturing" : ""}" data-capture-action="${index}">
+              ${escapeHtml(isCapturing ? "Press Key" : "Capture")}
+            </button>
+          </div>
+        </div>
+        <div class="settings-field">
+          <label>Action</label>
+          <select data-action-field="action" data-action-index="${index}">
+            ${optionHtml("move", action.action === "move")}
+            ${optionHtml("delete", action.action === "delete")}
+            ${optionHtml("restore", action.action === "restore")}
+          </select>
+        </div>
+        <div class="settings-field">
+          <label>Target</label>
+          <input data-action-field="target" data-action-index="${index}" value="${escapeHtml(action.target || "")}" placeholder="0 or D:/Photos/0" ${action.action === "move" ? "" : "disabled"}>
+        </div>
+        <div class="settings-row-actions">
+          <button class="action-tile action-tile--compact action-tile--danger" data-remove-action="${index}">
+            <strong>Remove</strong>
+            <span>Delete this action row</span>
+          </button>
+        </div>
+      </div>
+    `;
+  }
+
+  function optionHtml(value, selected) {
     return `<option value="${value}" ${selected ? "selected" : ""}>${value}</option>`;
   }
 
-  function toolbarStartLabel() {
-    return state.mode === "slideshow" ? "Back To Browser" : (currentSession().active ? "Enter Current Directory" : "Start Current Directory");
+  function captureHintText() {
+    if (!state.captureTarget) {
+      return "";
+    }
+    if (state.captureTarget.type === "action") {
+      return `Capturing action ${state.captureTarget.index + 1}. Press one key.`;
+    }
+    return `Capturing ${capturePathLabel(state.captureTarget.path)}. Press one key.`;
   }
 
-  function toolbarStartKey() {
-    return state.mode === "slideshow"
-      ? getConfig(["keys", "slideshow", "backToBrowser"])
-      : getConfig(["keys", "browser", "startSession"]);
+  function capturePathLabel(path) {
+    const labelMap = {
+      "keys.browser.startSession": "browser start session",
+      "keys.browser.endSession": "browser end session",
+      "keys.browser.upDir": "browser up directory",
+      "keys.browser.openSettings": "browser open settings",
+      "keys.preview.close": "preview close",
+      "keys.preview.next": "preview next",
+      "keys.preview.prev": "preview previous",
+      "keys.slideshow.next": "slideshow next",
+      "keys.slideshow.prev": "slideshow previous",
+      "keys.slideshow.backToBrowser": "slideshow back to browser",
+      "keys.slideshow.endSession": "slideshow end session",
+    };
+    return labelMap[path.join(".")] || path.join(".");
   }
 
-  function keyLabel(key) {
-    return key ? `Key: ${key}` : "";
+  function isCapturePath(path) {
+    return state.captureTarget && state.captureTarget.type === "path" && state.captureTarget.path.join(".") === path.join(".");
+  }
+
+  function isCaptureAction(index) {
+    return state.captureTarget && state.captureTarget.type === "action" && state.captureTarget.index === index;
   }
 
   function currentData() {
     if (state.mode === "slideshow" && state.slideshow) {
       return state.slideshow;
     }
-    return state.browser || { currentPath: "", breadcrumbs: [{ name: "Root", path: "" }], canGoUp: false, parentPath: "", session: { active: false, rootPath: "" } };
+    if (state.browser) {
+      return state.browser;
+    }
+    return {
+      currentPath: "",
+      currentName: "Root",
+      breadcrumbs: [{ name: "Root", path: "" }],
+      canGoUp: false,
+      parentPath: "",
+      session: { active: false, rootPath: "" },
+    };
   }
 
   function currentSession() {
-    return currentData().session || { active: false, rootPath: "" };
+    return normalizeSession(currentData().session);
+  }
+
+  function currentSlideImage() {
+    if (!state.slideshow || !state.slideshow.images.length) {
+      return null;
+    }
+    return state.slideshow.images[state.slideshow.index] || null;
+  }
+
+  function canStartWorkFromBrowser() {
+    if (!state.browser) {
+      return false;
+    }
+    if (currentSession().active) {
+      return true;
+    }
+    return state.browser.images.length > 0;
   }
 
   function getConfig(path) {
@@ -700,6 +1227,89 @@
     current[path[path.length - 1]] = value;
   }
 
+  function normalizeBrowserData(data) {
+    return {
+      ...data,
+      directories: normalizeDirectories(data.directories),
+      images: normalizeImages(data.images),
+      breadcrumbs: normalizeBreadcrumbs(data.breadcrumbs),
+      session: normalizeSession(data.session),
+    };
+  }
+
+  function normalizeSlideshowData(data) {
+    return {
+      ...data,
+      directories: normalizeDirectories(data.directories),
+      images: normalizeImages(data.images),
+      breadcrumbs: normalizeBreadcrumbs(data.breadcrumbs),
+      session: normalizeSession(data.session),
+      actionButtons: Array.isArray(data.actionButtons) ? data.actionButtons : [],
+    };
+  }
+
+  function normalizeTreeData(data) {
+    return {
+      ...data,
+      directories: normalizeDirectories(data.directories),
+    };
+  }
+
+  function normalizeDirectories(value) {
+    return Array.isArray(value)
+      ? value.map((entry) => ({
+          name: entry.name || "",
+          path: entry.path || "",
+          hasChildren: !!entry.hasChildren,
+        }))
+      : [];
+  }
+
+  function normalizeImages(value) {
+    return Array.isArray(value)
+      ? value.map((entry) => ({
+          name: entry.name || "",
+          path: entry.path || "",
+          url: entry.url || "",
+        }))
+      : [];
+  }
+
+  function normalizeBreadcrumbs(value) {
+    return Array.isArray(value)
+      ? value.map((entry) => ({ name: entry.name || "Root", path: entry.path || "" }))
+      : [{ name: "Root", path: "" }];
+  }
+
+  function normalizeSession(value) {
+    return value && value.active ? { active: true, rootPath: value.rootPath || "" } : { active: false, rootPath: "" };
+  }
+
+  function pathChain(path) {
+    if (!path) {
+      return [""];
+    }
+    const chain = [""];
+    const parts = path.split("/").filter(Boolean);
+    let current = "";
+    parts.forEach((part) => {
+      current = current ? `${current}/${part}` : part;
+      chain.push(current);
+    });
+    return chain;
+  }
+
+  function isPathAncestor(candidate, current) {
+    if (candidate === "") {
+      return true;
+    }
+    return current === candidate || current.startsWith(`${candidate}/`);
+  }
+
+  function pathLabel(path, fallback) {
+    return path && path.length ? path : fallback || "Root";
+  }
+
   function canonicalKey(event) {
     if (!event.key) {
       return "";
@@ -711,10 +1321,58 @@
     if (key === "esc") {
       return "escape";
     }
-    if (["escape", "arrowleft", "arrowright", "backspace", "enter", "tab", "delete"].includes(key)) {
+    if (["escape", "arrowleft", "arrowright", "arrowup", "arrowdown", "backspace", "enter", "tab", "delete"].includes(key)) {
       return key;
     }
     return key.length === 1 ? key : "";
+  }
+
+  function keyLabel(key) {
+    if (!key) {
+      return "";
+    }
+    const map = {
+      space: "Space",
+      escape: "Esc",
+      arrowleft: "Left",
+      arrowright: "Right",
+      arrowup: "Up",
+      arrowdown: "Down",
+      backspace: "Backspace",
+      enter: "Enter",
+      tab: "Tab",
+      delete: "Del",
+    };
+    return `Key: ${map[key] || key.toUpperCase()}`;
+  }
+
+  function clearNotice() {
+    if (noticeTimer) {
+      clearTimeout(noticeTimer);
+      noticeTimer = 0;
+    }
+    state.notice = { type: "info", text: "" };
+    render();
+  }
+
+  function showNotice(text, type) {
+    if (noticeTimer) {
+      clearTimeout(noticeTimer);
+      noticeTimer = 0;
+    }
+    state.notice = { text, type: type || "info" };
+    render();
+    if (!text) {
+      return;
+    }
+    const timeoutMs = state.notice.type === "error" ? 4200 : 2200;
+    noticeTimer = window.setTimeout(() => {
+      if (state.notice.text === text && state.notice.type === (type || "info")) {
+        state.notice = { type: "info", text: "" };
+        noticeTimer = 0;
+        render();
+      }
+    }, timeoutMs);
   }
 
   function clone(value) {
@@ -725,16 +1383,18 @@
     return Math.min(max, Math.max(min, value));
   }
 
-  function showNotice(text, type) {
-    state.notice = { text, type: type || "info" };
-    render();
-  }
-
   function escapeHtml(value) {
     return String(value || "")
       .replaceAll("&", "&amp;")
       .replaceAll("<", "&lt;")
       .replaceAll(">", "&gt;")
-      .replaceAll('"', "&quot;");
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#39;");
   }
 })();
+
+
+
+
+
+

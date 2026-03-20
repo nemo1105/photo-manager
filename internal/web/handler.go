@@ -41,6 +41,7 @@ func NewHandler(photoApp *app.App) http.Handler {
 	mux.Handle("/app.js", h.staticFS)
 	mux.Handle("/styles.css", h.staticFS)
 	mux.HandleFunc("/api/browser", h.handleBrowser)
+	mux.HandleFunc("/api/tree", h.handleTree)
 	mux.HandleFunc("/api/session/start", h.handleSessionStart)
 	mux.HandleFunc("/api/session/end", h.handleSessionEnd)
 	mux.HandleFunc("/api/slideshow", h.handleSlideshow)
@@ -65,6 +66,19 @@ func (h *Handler) handleBrowser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	data, err := h.app.Browser(r.URL.Query().Get("path"))
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, data)
+}
+
+func (h *Handler) handleTree(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		methodNotAllowed(w)
+		return
+	}
+	data, err := h.app.Tree(r.URL.Query().Get("path"))
 	if err != nil {
 		writeError(w, err)
 		return

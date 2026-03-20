@@ -28,16 +28,16 @@ func TestMoveAndRestoreUseSessionRoot(t *testing.T) {
 		t.Fatalf("open session: %v", err)
 	}
 
-	if _, err := app.PerformAction("", "photo.jpg", "k"); err != nil {
+	if _, err := app.PerformAction("", "photo.jpg", "arrowdown"); err != nil {
 		t.Fatalf("move photo: %v", err)
 	}
 
-	movedPath := filepath.Join(root, "keep", "photo.jpg")
+	movedPath := filepath.Join(root, "0", "photo.jpg")
 	if _, err := os.Stat(movedPath); err != nil {
 		t.Fatalf("expected moved file: %v", err)
 	}
 
-	if _, err := app.PerformAction("keep", "keep/photo.jpg", "u"); err != nil {
+	if _, err := app.PerformAction("0", "0/photo.jpg", "arrowup"); err != nil {
 		t.Fatalf("restore photo: %v", err)
 	}
 
@@ -71,10 +71,34 @@ func TestBrowserAutoEndsSessionOutsideRoot(t *testing.T) {
 	}
 }
 
+func TestTreeLookupOutsideSessionDoesNotEndSession(t *testing.T) {
+	root := t.TempDir()
+	mustWriteFile(t, filepath.Join(root, "work", "a.jpg"))
+	mustWriteFile(t, filepath.Join(root, "other", "nested", "b.jpg"))
+
+	cfg := config.Default()
+	app := New(root, filepath.Join(root, "config.yaml"), cfg, &fakeTrash{})
+
+	if _, err := app.OpenSession("work"); err != nil {
+		t.Fatalf("open session: %v", err)
+	}
+
+	data, err := app.Tree("other")
+	if err != nil {
+		t.Fatalf("tree other: %v", err)
+	}
+	if len(data.Directories) != 1 || data.Directories[0].Name != "nested" {
+		t.Fatalf("unexpected tree payload: %+v", data.Directories)
+	}
+	if !app.sessionInfoLocked().Active {
+		t.Fatal("expected tree lookup to keep the session active")
+	}
+}
+
 func TestMoveAutoRenamesOnConflict(t *testing.T) {
 	root := t.TempDir()
 	mustWriteFile(t, filepath.Join(root, "photo.jpg"))
-	mustWriteFile(t, filepath.Join(root, "keep", "photo.jpg"))
+	mustWriteFile(t, filepath.Join(root, "0", "photo.jpg"))
 
 	cfg := config.Default()
 	app := New(root, filepath.Join(root, "config.yaml"), cfg, &fakeTrash{})
@@ -82,11 +106,11 @@ func TestMoveAutoRenamesOnConflict(t *testing.T) {
 	if _, err := app.OpenSession(""); err != nil {
 		t.Fatalf("open session: %v", err)
 	}
-	if _, err := app.PerformAction("", "photo.jpg", "k"); err != nil {
+	if _, err := app.PerformAction("", "photo.jpg", "arrowdown"); err != nil {
 		t.Fatalf("move photo: %v", err)
 	}
 
-	if _, err := os.Stat(filepath.Join(root, "keep", "photo (1).jpg")); err != nil {
+	if _, err := os.Stat(filepath.Join(root, "0", "photo (1).jpg")); err != nil {
 		t.Fatalf("expected renamed target: %v", err)
 	}
 }

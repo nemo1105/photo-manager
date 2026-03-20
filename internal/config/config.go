@@ -61,6 +61,8 @@ var namedKeys = map[string]struct{}{
 	"escape":     {},
 	"arrowleft":  {},
 	"arrowright": {},
+	"arrowup":    {},
+	"arrowdown":  {},
 	"backspace":  {},
 	"enter":      {},
 	"tab":        {},
@@ -90,17 +92,16 @@ func Default() *Config {
 				Prev:  "arrowleft",
 			},
 			Slideshow: SlideshowKeys{
-				Next:          "space",
+				Next:          "arrowright",
 				Prev:          "arrowleft",
 				BackToBrowser: "escape",
-				EndSession:    "q",
+				EndSession:    "space",
 			},
 		},
 		Actions: []ActionBinding{
-			{Key: "d", Action: "delete"},
-			{Key: "k", Action: "move", Target: "keep"},
-			{Key: "r", Action: "move", Target: "review"},
-			{Key: "u", Action: "restore"},
+			{Key: "delete", Action: "delete"},
+			{Key: "arrowdown", Action: "move", Target: "0"},
+			{Key: "arrowup", Action: "restore"},
 		},
 	}
 }

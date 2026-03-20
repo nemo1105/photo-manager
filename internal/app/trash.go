@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os/exec"
 	"runtime"
+	"strings"
 )
 
 type Trasher interface {
@@ -23,8 +24,7 @@ func (systemTrash) Trash(path string) error {
 			"powershell",
 			"-NoProfile",
 			"-Command",
-			"[Reflection.Assembly]::LoadWithPartialName('Microsoft.VisualBasic') | Out-Null; [Microsoft.VisualBasic.FileIO.FileSystem]::DeleteFile($args[0], 'OnlyErrorDialogs', 'SendToRecycleBin')",
-			path,
+			windowsTrashScript(path),
 		)
 		if out, err := cmd.CombinedOutput(); err != nil {
 			return fmt.Errorf("trash on windows: %w: %s", err, string(out))
@@ -39,4 +39,15 @@ func (systemTrash) Trash(path string) error {
 	default:
 		return fmt.Errorf("unsupported trash platform: %s", runtime.GOOS)
 	}
+}
+
+func windowsTrashScript(path string) string {
+	return fmt.Sprintf(
+		"Add-Type -AssemblyName Microsoft.VisualBasic; [Microsoft.VisualBasic.FileIO.FileSystem]::DeleteFile('%s', 'OnlyErrorDialogs', 'SendToRecycleBin')",
+		powershellSingleQuoted(path),
+	)
+}
+
+func powershellSingleQuoted(value string) string {
+	return strings.ReplaceAll(value, "'", "''")
 }

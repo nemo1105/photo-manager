@@ -7,30 +7,30 @@
   <link rel="stylesheet" href="/styles.css">
 </head>
 <body>
+  <a class="skip-link" href="#workspace">Skip to main content</a>
+
   <div id="app" class="app-shell">
-    <header id="statusBar" class="status-bar">
-      <div class="status-copy">
-        <div class="status-title">Photo Manager</div>
-        <div id="statusLine" class="status-line"></div>
-      </div>
-      <div id="toolbar" class="toolbar"></div>
+    <header class="shell-header">
+      <div id="statusBar" class="status-bar"></div>
+      <nav id="breadcrumbs" class="breadcrumbs" aria-label="Breadcrumb"></nav>
+      <div id="notice" class="notice" hidden></div>
     </header>
 
-    <nav id="breadcrumbs" class="breadcrumbs"></nav>
-    <div id="notice" class="notice" hidden></div>
-
-    <main class="main-layout">
-      <section id="browserView" class="view"></section>
-      <section id="slideshowView" class="view" hidden></section>
+    <main id="workspace" class="main-layout">
+      <section id="browserView" class="view" aria-live="polite"></section>
+      <section id="slideshowView" class="view" hidden aria-live="polite"></section>
     </main>
   </div>
 
   <div id="previewModal" class="modal" hidden>
     <div class="modal-backdrop" data-close-preview="true"></div>
-    <div class="modal-card preview-card">
+    <div class="modal-card preview-card" role="dialog" aria-modal="true" aria-labelledby="previewTitle">
       <div class="modal-header">
-        <h2>Preview</h2>
-        <button id="previewCloseButton" class="ghost-button">Close</button>
+        <div>
+          <p class="modal-kicker">Preview</p>
+          <h2 id="previewTitle" class="modal-title">Image Preview</h2>
+        </div>
+        <button id="previewCloseButton" class="ghost-button utility-button">Close</button>
       </div>
       <div id="previewBody" class="preview-body"></div>
       <div id="previewControls" class="modal-footer"></div>
@@ -39,18 +39,23 @@
 
   <div id="settingsModal" class="modal" hidden>
     <div class="modal-backdrop" data-close-settings="true"></div>
-    <div class="modal-card settings-card">
+    <div class="modal-card settings-card" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
       <div class="modal-header">
-        <h2>Settings</h2>
-        <button id="settingsCloseButton" class="ghost-button">Close</button>
+        <div>
+          <p class="modal-kicker">Configuration</p>
+          <h2 id="settingsTitle" class="modal-title">Keys And Actions</h2>
+        </div>
+        <button id="settingsCloseButton" class="ghost-button utility-button">Close</button>
       </div>
       <div id="settingsBody" class="settings-body"></div>
-      <div class="modal-footer">
-        <button id="addMoveActionButton" class="secondary-button">Add Move</button>
-        <button id="addDeleteActionButton" class="secondary-button">Add Delete</button>
-        <button id="addRestoreActionButton" class="secondary-button">Add Restore</button>
+      <div class="modal-footer settings-footer">
+        <div class="footer-actions">
+          <button id="addMoveActionButton" class="secondary-button utility-button">Add Move</button>
+          <button id="addDeleteActionButton" class="secondary-button utility-button">Add Delete</button>
+          <button id="addRestoreActionButton" class="secondary-button utility-button">Add Restore</button>
+        </div>
         <span id="captureHint" class="capture-hint"></span>
-        <button id="saveSettingsButton" class="primary-button">Save Settings</button>
+        <button id="saveSettingsButton" class="primary-button action-tile action-tile--compact">Save Settings</button>
       </div>
     </div>
   </div>

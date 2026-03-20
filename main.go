@@ -3,12 +3,15 @@ package main
 import (
 	"context"
 	"errors"
+	"flag"
 	"fmt"
 	"log"
 	"net"
 	"net/http"
 	"os"
 	"os/signal"
+	"path/filepath"
+	"strings"
 	"syscall"
 	"time"
 
@@ -18,15 +21,18 @@ import (
 )
 
 func main() {
-	if err := run(); err != nil {
+	if err := run(os.Args[1:]); err != nil {
 		log.Fatal(err)
 	}
 }
 
-func run() error {
-	launchRoot, err := os.Getwd()
+func run(args []string) error {
+	launchRoot, err := resolveLaunchRoot(args)
 	if err != nil {
-		return fmt.Errorf("get working directory: %w", err)
+		if errors.Is(err, flag.ErrHelp) {
+			return nil
+		}
+		return err
 	}
 
 	configPath, err := config.DefaultPath()
@@ -90,4 +96,45 @@ func run() error {
 		return fmt.Errorf("shutdown: %w", err)
 	}
 	return nil
+}
+
+func resolveLaunchRoot(args []string) (string, error) {
+	fs := flag.NewFlagSet("photo-manager", flag.ContinueOnError)
+	fs.SetOutput(os.Stderr)
+
+	dir := fs.String("dir", "", "directory to use as the launch root")
+	fs.Usage = func() {
+		fmt.Fprintf(fs.Output(), "Usage: %s [-dir path]\n", fs.Name())
+		fs.PrintDefaults()
+	}
+
+	if err := fs.Parse(args); err != nil {
+		return "", err
+	}
+	if fs.NArg() > 0 {
+		return "", fmt.Errorf("unexpected arguments: %s", strings.Join(fs.Args(), " "))
+	}
+
+	if *dir == "" {
+		wd, err := os.Getwd()
+		if err != nil {
+			return "", fmt.Errorf("get working directory: %w", err)
+		}
+		return wd, nil
+	}
+
+	absDir, err := filepath.Abs(*dir)
+	if err != nil {
+		return "", fmt.Errorf("resolve launch directory: %w", err)
+	}
+
+	info, err := os.Stat(absDir)
+	if err != nil {
+		return "", fmt.Errorf("stat launch directory: %w", err)
+	}
+	if !info.IsDir() {
+		return "", fmt.Errorf("launch directory is not a directory: %s", absDir)
+	}
+
+	return absDir, nil
 }

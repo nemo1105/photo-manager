@@ -1,0 +1,41 @@
+# Current Quality
+
+Last updated: 2026-03-20
+Status: active
+
+## Quality goals
+
+- Keep all file-system operations contained inside the launch root unless the user explicitly configured an absolute move target.
+- Make session-root-based sorting predictable enough that review and restore never depend on the current image's parent folder.
+- Keep image actions available both by keyboard and by visible buttons.
+- Preserve platform-native recycle-bin / Trash behavior for deletes.
+- Keep slideshow mode visually immersive, chrome-light, and free of browser-level scrollbars in common desktop window sizes.
+
+## Known issues
+
+- P1 UX: the browser tree still needs another density pass on narrower desktop widths.
+- P1 product gap: the UI does not support Chinese/English switching yet.
+- P1 bug: the same image can still be acted on twice from stale UI state, which produces an avoidable error on the second request.
+- P1 bug: settings key capture does not expose a strong enough waiting state in the UI.
+
+## Test coverage
+
+- Existing coverage:
+  - Config normalization and key-conflict validation.
+  - Default shortcut template for slideshow and action keys.
+  - Session-root-based `move` and `restore` behavior.
+  - Auto-ending sessions when browsing outside the session subtree.
+  - Auto-renaming on target conflicts.
+  - Windows PowerShell path quoting for recycle-bin deletion.
+- Missing coverage:
+  - Browser-side UI flows in `internal/web/static/app.js`.
+  - Layout verification that slideshow mode stays scrollbar-free at runtime.
+  - End-to-end verification of delete-to-recycle-bin behavior.
+  - Repeated-action protection for stale slideshow state.
+  - Settings capture-state UX and config-edit browser flows.
+
+## Debt and follow-ups
+
+- The frontend currently lives in one large `app.js` file with no automated UI tests.
+- There is no documented localization strategy yet.
+- `todo.md` still exists as a scratch pad, so future changes should continue moving durable truth into `docs/` instead of expanding that file.
