@@ -1,6 +1,10 @@
 package config
 
-import "testing"
+import (
+	"os"
+	"path/filepath"
+	"testing"
+)
 
 func TestValidateAndNormalizeRejectsSlideshowActionConflict(t *testing.T) {
 	cfg := Default()
@@ -46,6 +50,9 @@ func TestDefaultUsesUpdatedSlideshowAndActionKeys(t *testing.T) {
 	if cfg.Keys.Slideshow.Next != "arrowright" {
 		t.Fatalf("expected slideshow next default to be arrowright, got %q", cfg.Keys.Slideshow.Next)
 	}
+	if cfg.Keys.Slideshow.Prev != "arrowleft" {
+		t.Fatalf("expected slideshow prev default to be arrowleft, got %q", cfg.Keys.Slideshow.Prev)
+	}
 	if cfg.Keys.Slideshow.EndSession != "space" {
 		t.Fatalf("expected slideshow end-session default to be space, got %q", cfg.Keys.Slideshow.EndSession)
 	}
@@ -60,5 +67,59 @@ func TestDefaultUsesUpdatedSlideshowAndActionKeys(t *testing.T) {
 	}
 	if cfg.Actions[2].Key != "arrowup" || cfg.Actions[2].Action != "restore" {
 		t.Fatalf("unexpected default restore action: %+v", cfg.Actions[2])
+	}
+}
+
+func TestValidateAndNormalizeAllowsEscapeAsActionKey(t *testing.T) {
+	cfg := Default()
+	cfg.Actions[0].Key = "escape"
+
+	if err := cfg.ValidateAndNormalize(); err != nil {
+		t.Fatalf("expected escape action key to be allowed, got %v", err)
+	}
+}
+
+func TestLoadIgnoresLegacySlideshowBackToBrowserField(t *testing.T) {
+	root := t.TempDir()
+	path := filepath.Join(root, "config.yaml")
+	data := []byte(`
+keys:
+  browser:
+    start_session: space
+    end_session: q
+    up_dir: backspace
+    open_settings: s
+  preview:
+    close: escape
+    next: arrowright
+    prev: arrowleft
+  slideshow:
+    next: arrowright
+    prev: arrowleft
+    back_to_browser: escape
+    end_session: space
+actions:
+  - key: delete
+    action: delete
+  - key: arrowdown
+    action: move
+    target: 0
+  - key: arrowup
+    action: restore
+`)
+	if err := os.WriteFile(path, data, 0o644); err != nil {
+		t.Fatalf("write config: %v", err)
+	}
+
+	cfg, err := Load(path)
+	if err != nil {
+		t.Fatalf("load config: %v", err)
+	}
+
+	if cfg.Keys.Slideshow.EndSession != "space" {
+		t.Fatalf("expected slideshow end-session to load, got %q", cfg.Keys.Slideshow.EndSession)
+	}
+	if cfg.Actions[0].Key != "delete" {
+		t.Fatalf("expected actions to load, got %+v", cfg.Actions)
 	}
 }

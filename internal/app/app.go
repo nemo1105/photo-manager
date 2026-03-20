@@ -58,17 +58,18 @@ type ActionButton struct {
 }
 
 type BrowserData struct {
-	LaunchRoot  string         `json:"launchRoot"`
-	CurrentPath string         `json:"currentPath"`
-	CurrentName string         `json:"currentName"`
-	ParentPath  string         `json:"parentPath"`
-	CanGoUp     bool           `json:"canGoUp"`
-	Breadcrumbs []Breadcrumb   `json:"breadcrumbs"`
-	Directories []DirEntry     `json:"directories"`
-	Images      []ImageEntry   `json:"images"`
-	Session     SessionInfo    `json:"session"`
-	Config      *config.Config `json:"config"`
-	Notice      string         `json:"notice,omitempty"`
+	LaunchRoot               string         `json:"launchRoot"`
+	CurrentPath              string         `json:"currentPath"`
+	CurrentName              string         `json:"currentName"`
+	ParentPath               string         `json:"parentPath"`
+	CanGoUp                  bool           `json:"canGoUp"`
+	Breadcrumbs              []Breadcrumb   `json:"breadcrumbs"`
+	Directories              []DirEntry     `json:"directories"`
+	Images                   []ImageEntry   `json:"images"`
+	Session                  SessionInfo    `json:"session"`
+	Config                   *config.Config `json:"config"`
+	CurrentDirStartsAsReview bool           `json:"currentDirStartsAsReview"`
+	Notice                   string         `json:"notice,omitempty"`
 }
 
 type TreeData struct {
@@ -143,18 +144,20 @@ func (a *App) Browser(relPath string) (*BrowserData, error) {
 	}
 
 	parent := parentRel(relPath)
+	_, startsAsReview := a.sessionStartRootLocked(absPath)
 	return &BrowserData{
-		LaunchRoot:  a.launchRoot,
-		CurrentPath: relPath,
-		CurrentName: displayName(absPath),
-		ParentPath:  parent,
-		CanGoUp:     relPath != "",
-		Breadcrumbs: buildBreadcrumbs(relPath),
-		Directories: dirs,
-		Images:      images,
-		Session:     a.sessionInfoLocked(),
-		Config:      a.cfg.Clone(),
-		Notice:      notice,
+		LaunchRoot:               a.launchRoot,
+		CurrentPath:              relPath,
+		CurrentName:              displayName(absPath),
+		ParentPath:               parent,
+		CanGoUp:                  relPath != "",
+		Breadcrumbs:              buildBreadcrumbs(relPath),
+		Directories:              dirs,
+		Images:                   images,
+		Session:                  a.sessionInfoLocked(),
+		Config:                   a.cfg.Clone(),
+		CurrentDirStartsAsReview: startsAsReview,
+		Notice:                   notice,
 	}, nil
 }
 
@@ -203,7 +206,8 @@ func (a *App) OpenSession(relPath string) (*OpenSessionResult, error) {
 		return nil, errors.New("current directory has no images")
 	}
 
-	a.session = &Session{RootAbs: absPath}
+	sessionRootAbs, _ := a.sessionStartRootLocked(absPath)
+	a.session = &Session{RootAbs: sessionRootAbs}
 	return &OpenSessionResult{
 		Session:       a.sessionInfoLocked(),
 		SlideshowPath: relPath,
@@ -405,6 +409,28 @@ func (a *App) maybeAutoEndSessionLocked(currentAbs string) string {
 	}
 	a.session = nil
 	return "left the active work directory range, session ended automatically"
+}
+
+func (a *App) sessionStartRootLocked(currentAbs string) (string, bool) {
+	parentAbs := filepath.Dir(currentAbs)
+	if samePath(parentAbs, currentAbs) || !isWithinDir(parentAbs, a.launchRoot) {
+		return currentAbs, false
+	}
+
+	for _, binding := range a.cfg.Actions {
+		if binding.Action != "move" || filepath.IsAbs(strings.TrimSpace(binding.Target)) {
+			continue
+		}
+		targetAbs, err := resolveTargetDir(binding.Target, parentAbs)
+		if err != nil {
+			continue
+		}
+		if samePath(targetAbs, currentAbs) {
+			return parentAbs, true
+		}
+	}
+
+	return currentAbs, false
 }
 
 func (a *App) dirMatchesMoveTargetLocked(currentAbs string) bool {

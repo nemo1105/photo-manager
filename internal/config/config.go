@@ -36,10 +36,9 @@ type PreviewKeys struct {
 }
 
 type SlideshowKeys struct {
-	Next          string `yaml:"next" json:"next"`
-	Prev          string `yaml:"prev" json:"prev"`
-	BackToBrowser string `yaml:"back_to_browser" json:"backToBrowser"`
-	EndSession    string `yaml:"end_session" json:"endSession"`
+	Next       string `yaml:"next" json:"next"`
+	Prev       string `yaml:"prev" json:"prev"`
+	EndSession string `yaml:"end_session" json:"endSession"`
 }
 
 type ActionBinding struct {
@@ -92,10 +91,9 @@ func Default() *Config {
 				Prev:  "arrowleft",
 			},
 			Slideshow: SlideshowKeys{
-				Next:          "arrowright",
-				Prev:          "arrowleft",
-				BackToBrowser: "escape",
-				EndSession:    "space",
+				Next:       "arrowright",
+				Prev:       "arrowleft",
+				EndSession: "space",
 			},
 		},
 		Actions: []ActionBinding{
@@ -197,10 +195,9 @@ func (c *Config) ValidateAndNormalize() error {
 		{
 			name: "slideshow",
 			keys: map[string]*string{
-				"next":            &c.Keys.Slideshow.Next,
-				"prev":            &c.Keys.Slideshow.Prev,
-				"back_to_browser": &c.Keys.Slideshow.BackToBrowser,
-				"end_session":     &c.Keys.Slideshow.EndSession,
+				"next":        &c.Keys.Slideshow.Next,
+				"prev":        &c.Keys.Slideshow.Prev,
+				"end_session": &c.Keys.Slideshow.EndSession,
 			},
 		},
 	}
@@ -252,7 +249,6 @@ func (c *Config) ValidateAndNormalize() error {
 	for key := range actionKeys {
 		if key == c.Keys.Slideshow.Next ||
 			key == c.Keys.Slideshow.Prev ||
-			key == c.Keys.Slideshow.BackToBrowser ||
 			key == c.Keys.Slideshow.EndSession {
 			return fmt.Errorf("action key %q conflicts with slideshow keys", key)
 		}

@@ -1,6 +1,6 @@
 # UI And Sorting Follow-Ups Plan
 
-Last updated: 2026-03-20
+Last updated: 2026-03-21
 Status: active
 Plan class: Standard
 
@@ -14,6 +14,7 @@ Track the next round of UX and reliability work after the initial browse/preview
   Current execution focus on 2026-03-20: compact the shared shell, move work-session controls into the right-hand image workbench, and keep navigation inside a dedicated explorer rail.
   Current correction focus on 2026-03-20: replace the slideshow shell with a true immersive viewer that hides the top chrome and reduces controls to a thin bottom dock.
   Current correction focus on 2026-03-20: remove slideshow overflow/white-edge regressions and reset the default shortcut template to `Space`, `Left`, `Right`, `Del`, `Down`, and `Up`.
+  Current execution focus on 2026-03-21: remove the slideshow browser-return path, keep `Space` as the single exit, and frame target-folder entry as reviewing already moved photos while restoring to the parent work root.
 - [x] Replace the folder card list with a narrower tree-like folder view that still makes hierarchy obvious.
   Current execution focus on 2026-03-20: implement a lazily expanded explorer tree, backed by a tree-only API path so expanding the tree does not accidentally end an active session.
   Current execution focus on 2026-03-20: restyle the browser into a dark, compact resource explorer with a minimal tree, mini breadcrumb, toast notices, and an info-only metadata affordance.
@@ -41,6 +42,7 @@ Track the next round of UX and reliability work after the initial browse/preview
 
 - Run `go test ./...` and `go build ./...`.
 - Manually verify browse, preview, start-session, move, delete, restore, and auto-end-session behavior in the browser.
+- Manually verify target folders show the review-oriented prompt before session start and the review state inside slideshow.
 - Confirm any UI work still keeps action buttons usable without keyboard shortcuts.
 
 ## Next update trigger

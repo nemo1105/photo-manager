@@ -1263,6 +1263,20 @@ body.browser-mode .browser-tool-group--end {
   margin-left: auto;
 }
 
+body.browser-mode .browser-review-hint {
+  min-height: 32px;
+  padding: 0 10px;
+  border-radius: 12px;
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid rgba(56, 189, 248, 0.2);
+  background: rgba(8, 47, 73, 0.24);
+  color: rgba(196, 232, 255, 0.92);
+  font-size: 0.72rem;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
 body.browser-mode .browser-tool-button,
 body.browser-mode .browser-icon-button {
   border: 1px solid rgba(125, 211, 252, 0.12);
@@ -1836,6 +1850,10 @@ body.browser-mode input::placeholder {
   body.browser-mode .browser-tool-button {
     flex: 1 1 0;
     justify-content: space-between;
+  }
+
+  body.browser-mode .browser-review-hint {
+    white-space: normal;
   }
 
   body.browser-mode .browser-card-grid {

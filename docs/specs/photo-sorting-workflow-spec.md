@@ -1,6 +1,6 @@
 # Photo Sorting Workflow Spec
 
-Last updated: 2026-03-20
+Last updated: 2026-03-21
 
 ## Problem
 
@@ -26,6 +26,7 @@ Users need to start from an arbitrary directory, browse to a folder that contain
 - All configured keys are single keys; modifier combinations are not part of the current contract.
 - Relative `move.target` values are resolved from the active session root only.
 - Work-session state must not be created implicitly by image preview.
+- Starting a session from a configured relative move-target folder should treat that folder as a review view for already moved photos, while using its parent as `sessionRoot`.
 - Deletion must go to the platform recycle bin / Trash, not permanent removal.
 - Slideshow mode is an immersive full-viewport viewer and must not introduce browser-level scrollbars during normal desktop use.
 - Browser and tree directory lists should sort naturally by numeric segments instead of pure lexicographic order.
@@ -35,6 +36,7 @@ Users need to start from an arbitrary directory, browse to a folder that contain
 - [x] Starting the CLI in any folder opens a browser UI rooted at that folder.
 - [x] Clicking an image opens preview only and does not start a work session.
 - [x] Starting a work session is only possible from the browser view through the fixed button or its configured key.
+- [x] When the current folder is a configured relative move target, the browser frames it as reviewing already moved photos and starting there uses the parent folder as the work root.
 - [x] While a session is active, the page shows a persistent session indicator and enables action buttons in the slideshow.
 - [x] `move` creates missing target folders and auto-renames on conflicts.
 - [x] `delete` sends the image to the platform recycle bin / Trash.
@@ -57,7 +59,6 @@ Users need to start from an arbitrary directory, browse to a folder that contain
   - `arrowleft` and `arrowright` browse preview images.
 - Slideshow:
   - `arrowleft` and `arrowright` browse images.
-  - `escape` returns to browser mode without ending the session.
   - `space` ends the active session and exits slideshow.
 - Default actions:
   - `delete` deletes to the recycle bin / Trash.

@@ -48,6 +48,107 @@ func TestMoveAndRestoreUseSessionRoot(t *testing.T) {
 	}
 }
 
+func TestOpenSessionFromTargetUsesParentAsSessionRoot(t *testing.T) {
+	root := t.TempDir()
+	mustWriteFile(t, filepath.Join(root, "work", "0", "review.jpg"))
+
+	cfg := config.Default()
+	app := New(root, filepath.Join(root, "config.yaml"), cfg, &fakeTrash{})
+
+	result, err := app.OpenSession("work/0")
+	if err != nil {
+		t.Fatalf("open session from target: %v", err)
+	}
+
+	if !result.Session.Active {
+		t.Fatal("expected session to be active")
+	}
+	if result.Session.RootPath != "work" {
+		t.Fatalf("expected session root to fall back to parent, got %q", result.Session.RootPath)
+	}
+	if result.SlideshowPath != "work/0" {
+		t.Fatalf("expected slideshow to stay in current directory, got %q", result.SlideshowPath)
+	}
+
+	if _, err := app.PerformAction("work/0", "work/0/review.jpg", "arrowup"); err != nil {
+		t.Fatalf("restore photo from target: %v", err)
+	}
+
+	if _, err := os.Stat(filepath.Join(root, "work", "review.jpg")); err != nil {
+		t.Fatalf("expected restored file in parent work root: %v", err)
+	}
+}
+
+func TestBrowserMarksReviewStartFolders(t *testing.T) {
+	root := t.TempDir()
+	mustWriteFile(t, filepath.Join(root, "work", "0", "review.jpg"))
+	mustWriteFile(t, filepath.Join(root, "work", "fresh", "photo.jpg"))
+
+	cfg := config.Default()
+	app := New(root, filepath.Join(root, "config.yaml"), cfg, &fakeTrash{})
+
+	reviewData, err := app.Browser("work/0")
+	if err != nil {
+		t.Fatalf("browse review folder: %v", err)
+	}
+	if !reviewData.CurrentDirStartsAsReview {
+		t.Fatal("expected target directory to be marked as a review start folder")
+	}
+
+	freshData, err := app.Browser("work/fresh")
+	if err != nil {
+		t.Fatalf("browse fresh folder: %v", err)
+	}
+	if freshData.CurrentDirStartsAsReview {
+		t.Fatal("expected non-target directory not to be marked as a review start folder")
+	}
+}
+
+func TestOpenSessionKeepsCurrentDirectoryWhenNotTarget(t *testing.T) {
+	root := t.TempDir()
+	mustWriteFile(t, filepath.Join(root, "work", "fresh", "photo.jpg"))
+
+	cfg := config.Default()
+	app := New(root, filepath.Join(root, "config.yaml"), cfg, &fakeTrash{})
+
+	result, err := app.OpenSession("work/fresh")
+	if err != nil {
+		t.Fatalf("open session from non-target directory: %v", err)
+	}
+	if result.Session.RootPath != "work/fresh" {
+		t.Fatalf("expected session root to stay on current directory, got %q", result.Session.RootPath)
+	}
+}
+
+func TestOpenSessionDoesNotFallbackOutsideLaunchRoot(t *testing.T) {
+	root := t.TempDir()
+	mustWriteFile(t, filepath.Join(root, "photo.jpg"))
+
+	cfg := config.Default()
+	cfg.Actions = []config.ActionBinding{
+		{Key: "delete", Action: "delete"},
+		{Key: "arrowdown", Action: "move", Target: root},
+		{Key: "arrowup", Action: "restore"},
+	}
+	app := New(root, filepath.Join(root, "config.yaml"), cfg, &fakeTrash{})
+
+	result, err := app.OpenSession("")
+	if err != nil {
+		t.Fatalf("open session from launch root: %v", err)
+	}
+	if result.Session.RootPath != "" {
+		t.Fatalf("expected launch root session to stay put, got %q", result.Session.RootPath)
+	}
+
+	data, err := app.Browser("")
+	if err != nil {
+		t.Fatalf("browse launch root: %v", err)
+	}
+	if data.CurrentDirStartsAsReview {
+		t.Fatal("expected launch root not to be marked as a review start folder")
+	}
+}
+
 func TestBrowserAutoEndsSessionOutsideRoot(t *testing.T) {
 	root := t.TempDir()
 	mustWriteFile(t, filepath.Join(root, "work", "a.jpg"))

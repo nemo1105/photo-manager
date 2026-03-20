@@ -1,12 +1,13 @@
 # Current Quality
 
-Last updated: 2026-03-20
+Last updated: 2026-03-21
 Status: active
 
 ## Quality goals
 
 - Keep all file-system operations contained inside the launch root unless the user explicitly configured an absolute move target.
 - Make session-root-based sorting predictable enough that review and restore never depend on the current image's parent folder.
+- Make review-folder entry explicit from the user's point of view, so moved-photo checks do not expose session-root internals.
 - Keep image actions available both by keyboard and by visible buttons.
 - Preserve platform-native recycle-bin / Trash behavior for deletes.
 - Keep slideshow mode visually immersive, chrome-light, and free of browser-level scrollbars in common desktop window sizes.
@@ -27,8 +28,10 @@ Status: active
   - Config normalization and key-conflict validation.
   - Default shortcut template for slideshow and action keys.
   - Session-root-based `move` and `restore` behavior.
+  - Session-start fallback from target folders to the parent work root.
   - Auto-ending sessions when browsing outside the session subtree.
   - Auto-renaming on target conflicts.
+  - Legacy config loading after removing the slideshow back-to-browser binding.
   - Windows PowerShell path quoting for recycle-bin deletion.
 - Missing coverage:
   - Browser-side UI flows in `internal/web/static/app.js`.

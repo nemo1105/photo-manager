@@ -195,15 +195,14 @@
     return withBusy("Opening work session", async () => {
       const result = await apiPost("/api/session/start", { path: state.browser.currentPath });
       if (result.session && result.session.active && !state.browser.session.active) {
-        showNotice("work session started", "info");
+        showNotice(
+          state.browser.currentDirStartsAsReview
+            ? "checking photos already moved here"
+            : "work session started",
+          "info",
+        );
       }
       await loadSlideshow(result.slideshowPath || state.browser.currentPath, 0);
-    });
-  }
-
-  async function backToBrowser() {
-    return withBusy("Returning to browser", async () => {
-      await loadBrowser(state.slideshow ? state.slideshow.currentPath : "");
     });
   }
 
@@ -426,14 +425,20 @@
     }
 
     const session = currentSession();
-    const startLabel = session.active ? "Open Here" : "Sort Here";
+    const showReviewHint = !session.active && state.browser.currentDirStartsAsReview;
+    const startLabel = session.active ? "Open Here" : (showReviewHint ? "Review Here" : "Sort Here");
 
     browserView.innerHTML = `
       <div class="browser-layout">
         <aside class="explorer-pane browser-sidebar">
           <div class="browser-toolbar">
-            ${browserToolButtonHtml(startLabel, getConfig(["keys", "browser", "startSession"]), "start-work", canStartWorkFromBrowser(), session.active ? "session" : "primary")}
-            ${browserInfoButtonHtml()}
+            <div class="browser-tool-group">
+              ${browserToolButtonHtml(startLabel, getConfig(["keys", "browser", "startSession"]), "start-work", canStartWorkFromBrowser(), session.active ? "session" : "primary")}
+              ${showReviewHint ? browserReviewHintHtml("Checking photos already moved here.") : ""}
+            </div>
+            <div class="browser-tool-group browser-tool-group--end">
+              ${browserInfoButtonHtml()}
+            </div>
           </div>
           <div class="tree-shell browser-tree-shell">
             ${renderTree()}
@@ -554,7 +559,7 @@
               <div class="slide-meta-row">
                 <span class="slide-counter">${escapeHtml(counterText)}</span>
                 <span class="slide-state-pill">Sorting</span>
-                ${state.slideshow.currentDirIsTarget ? `<span class="slide-state-pill">Target</span>` : ""}
+                ${state.slideshow.currentDirIsTarget ? `<span class="slide-state-pill">Reviewing moved photos</span>` : ""}
               </div>
             </div>
             <div class="slide-toolbar">
@@ -563,7 +568,6 @@
                 ${slideBarButtonHtml("Next", keyLabel(getConfig(["keys", "slideshow", "next"])), "slide-next", !!current)}
               </div>
               <div class="slide-button-group">
-                ${slideBarButtonHtml("Browser", keyLabel(getConfig(["keys", "slideshow", "backToBrowser"])), "slide-back", true)}
                 ${slideBarButtonHtml("End", keyLabel(getConfig(["keys", "slideshow", "endSession"])), "end-session", true, "data-toolbar-action")}
               </div>
               <div class="slide-button-group slide-button-group--actions">
@@ -630,7 +634,6 @@
       ${settingsSectionHtml("Slideshow Keys", [
         settingsFieldHtml("Next Slide", ["keys", "slideshow", "next"]),
         settingsFieldHtml("Previous Slide", ["keys", "slideshow", "prev"]),
-        settingsFieldHtml("Back To Browser", ["keys", "slideshow", "backToBrowser"]),
         settingsFieldHtml("End Session", ["keys", "slideshow", "endSession"]),
       ])}
       <section class="settings-section">
@@ -663,14 +666,14 @@
         <ol class="browser-help-list">
           <li>Browse folders in the tree on the left.</li>
           <li>Click any image to open preview only.</li>
-          <li>Use Sort Here to start sorting the current folder.</li>
+          <li>Use Sort Here, or Review Here in moved-photo folders, to start from the current folder.</li>
           <li>In slideshow, use Left and Right to move through images.</li>
         </ol>
       </section>
       <section class="settings-section help-section">
         <h3>Shortcuts</h3>
         <div class="browser-info-hotkeys">
-          ${browserInfoKeyHtml("Sort", getConfig(["keys", "browser", "startSession"]))}
+          ${browserInfoKeyHtml("Start / Review", getConfig(["keys", "browser", "startSession"]))}
           ${browserInfoKeyHtml("Up", getConfig(["keys", "browser", "upDir"]))}
           ${browserInfoKeyHtml("End", getConfig(["keys", "browser", "endSession"]))}
           ${browserInfoKeyHtml("Preview", "", `${compactKeyText(keyLabel(getConfig(["keys", "preview", "prev"])))} / ${compactKeyText(keyLabel(getConfig(["keys", "preview", "next"])))}`)}
@@ -902,9 +905,6 @@
       render();
       return;
     }
-    if (action === "slide-back") {
-      await backToBrowser();
-    }
   }
 
   function onKeyDown(event) {
@@ -1008,11 +1008,6 @@
     if (key === keys.prev) {
       event.preventDefault();
       handleSlideshowAction("slide-prev");
-      return;
-    }
-    if (key === keys.backToBrowser) {
-      event.preventDefault();
-      backToBrowser().catch((error) => showNotice(error.message, "error"));
       return;
     }
     if (key === keys.endSession) {
@@ -1159,6 +1154,10 @@
     `;
   }
 
+  function browserReviewHintHtml(text) {
+    return `<span class="browser-review-hint" role="status">${escapeHtml(text)}</span>`;
+  }
+
   function browserInfoIconHtml() {
     return `
       <svg class="browser-icon-svg" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
@@ -1297,7 +1296,6 @@
       "keys.preview.prev": "preview previous",
       "keys.slideshow.next": "slideshow next",
       "keys.slideshow.prev": "slideshow previous",
-      "keys.slideshow.backToBrowser": "slideshow back to browser",
       "keys.slideshow.endSession": "slideshow end session",
     };
     return labelMap[path.join(".")] || path.join(".");
@@ -1372,6 +1370,7 @@
       images: normalizeImages(data.images),
       breadcrumbs: normalizeBreadcrumbs(data.breadcrumbs),
       session: normalizeSession(data.session),
+      currentDirStartsAsReview: !!data.currentDirStartsAsReview,
     };
   }
 
