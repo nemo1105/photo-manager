@@ -1,0 +1,474 @@
+body.browser-mode {
+  min-height: 100dvh;
+  height: 100dvh;
+  overflow: hidden;
+  color: #e6eefc;
+  background:
+    radial-gradient(circle at top left, rgba(34, 211, 238, 0.13), transparent 24%),
+    radial-gradient(circle at right, rgba(59, 130, 246, 0.12), transparent 20%),
+    linear-gradient(180deg, #060913 0%, #09111d 42%, #050814 100%);
+}
+
+body.browser-mode.session-active {
+  box-shadow:
+    inset 0 0 0 1px rgba(56, 189, 248, 0.28),
+    inset 0 0 56px rgba(8, 47, 73, 0.38);
+}
+
+body.browser-mode .shell-header {
+  display: none;
+}
+
+body.browser-mode .app-shell {
+  width: 100%;
+  max-width: none;
+  height: 100dvh;
+  padding: 12px;
+  gap: 0;
+  overflow: hidden;
+}
+
+body.browser-mode .main-layout,
+body.browser-mode .view,
+body.browser-mode #browserView {
+  min-height: 0;
+  height: 100%;
+}
+
+body.browser-mode .main-layout {
+  height: calc(100dvh - 24px);
+}
+
+body.browser-mode .browser-layout {
+  height: 100%;
+  display: grid;
+  grid-template-columns: minmax(280px, 320px) minmax(0, 1fr);
+  gap: 8px;
+  align-items: stretch;
+}
+
+body.browser-mode .browser-sidebar,
+body.browser-mode .browser-workbench {
+  align-self: stretch;
+  min-height: 0;
+  padding: 10px;
+  border-radius: 24px;
+  border: 1px solid rgba(103, 232, 249, 0.12);
+  background:
+    linear-gradient(180deg, rgba(11, 18, 32, 0.94) 0%, rgba(8, 14, 26, 0.9) 100%);
+  box-shadow: 0 24px 80px rgba(1, 7, 18, 0.42);
+  backdrop-filter: blur(22px);
+}
+
+body.browser-mode .browser-sidebar {
+  position: static;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 10px;
+  overflow: visible;
+}
+
+body.browser-mode .browser-workbench {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 6px;
+  overflow: hidden;
+}
+
+body.browser-mode .browser-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 8px;
+  flex-wrap: nowrap;
+}
+
+body.browser-mode .browser-tool-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+body.browser-mode .browser-tool-group--end {
+  margin-left: auto;
+}
+
+body.browser-mode .language-switcher {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px;
+  border: 1px solid rgba(125, 211, 252, 0.12);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+body.browser-mode .language-chip {
+  min-width: 48px;
+  height: 26px;
+  border: 0;
+  border-radius: 999px;
+  padding: 0 10px;
+  background: transparent;
+  color: rgba(230, 238, 252, 0.72);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+body.browser-mode .language-chip:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.06);
+  color: #e6eefc;
+}
+
+body.browser-mode .language-chip.is-active {
+  background: rgba(34, 211, 238, 0.18);
+  color: #dff8ff;
+}
+
+body.browser-mode .browser-tool-button,
+body.browser-mode .browser-icon-button {
+  border: 1px solid rgba(125, 211, 252, 0.12);
+  background: rgba(255, 255, 255, 0.03);
+  color: #e6eefc;
+  box-shadow: none;
+}
+
+body.browser-mode .browser-tool-button {
+  min-height: 32px;
+  padding: 0 10px;
+  border-radius: 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+body.browser-mode .browser-tool-button:hover:not(:disabled),
+body.browser-mode .browser-icon-button:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(103, 232, 249, 0.26);
+  box-shadow: none;
+}
+
+body.browser-mode .browser-tool-button--primary {
+  background: linear-gradient(135deg, rgba(34, 211, 238, 0.88) 0%, rgba(59, 130, 246, 0.9) 100%);
+  border-color: rgba(56, 189, 248, 0.36);
+  color: #03121d;
+}
+
+body.browser-mode .browser-tool-button--primary:hover:not(:disabled) {
+  background: linear-gradient(135deg, rgba(103, 232, 249, 0.96) 0%, rgba(96, 165, 250, 0.96) 100%);
+  border-color: rgba(125, 211, 252, 0.52);
+  box-shadow: 0 12px 26px rgba(8, 47, 73, 0.3);
+}
+
+body.browser-mode .browser-tool-button--session {
+  border-color: rgba(34, 211, 238, 0.28);
+  background: rgba(34, 211, 238, 0.08);
+}
+
+body.browser-mode .browser-tool-label {
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+body.browser-mode .browser-tool-key,
+body.browser-mode .browser-info-key span {
+  min-width: 20px;
+  height: 16px;
+  padding: 0 5px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(230, 238, 252, 0.78);
+  font-size: 0.62rem;
+  line-height: 1;
+}
+
+body.browser-mode .browser-tool-button--primary .browser-tool-key {
+  background: rgba(3, 18, 29, 0.12);
+  color: rgba(3, 18, 29, 0.86);
+}
+
+body.browser-mode .browser-icon-button {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+}
+
+body.browser-mode .browser-icon-button.is-active {
+  border-color: rgba(103, 232, 249, 0.28);
+  background: rgba(34, 211, 238, 0.08);
+}
+
+body.browser-mode .browser-info {
+  position: static;
+}
+
+body.browser-mode .browser-icon-svg {
+  width: 16px;
+  height: 16px;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+body.browser-mode .browser-info-section {
+  display: grid;
+  gap: 4px;
+}
+
+body.browser-mode .browser-info-section strong,
+body.browser-mode .browser-info-key strong {
+  font-size: 0.72rem;
+  color: #8edcff;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+body.browser-mode .browser-info-section span,
+body.browser-mode .browser-help-stats .stat-pill span {
+  color: rgba(230, 238, 252, 0.86);
+  font-size: 0.8rem;
+  word-break: break-word;
+}
+
+body.browser-mode .browser-help-list {
+  margin: 0;
+  padding-left: 18px;
+  display: grid;
+  gap: 4px;
+  color: rgba(230, 238, 252, 0.86);
+  font-size: 0.79rem;
+  line-height: 1.5;
+}
+
+body.browser-mode .browser-info-key {
+  min-height: 30px;
+  padding: 5px 8px;
+  border-radius: 12px;
+  border: 1px solid rgba(125, 211, 252, 0.12);
+  background: rgba(255, 255, 255, 0.03);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  min-width: 0;
+  white-space: nowrap;
+}
+
+body.browser-mode .browser-info-key strong {
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.05;
+}
+
+body.browser-mode .browser-info-key span {
+  flex: 0 0 auto;
+}
+
+body.browser-mode .help-card {
+  width: min(820px, calc(100vw - 32px));
+  max-height: calc(100vh - 48px);
+  margin: 0;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  align-content: start;
+  overflow: hidden;
+}
+
+body.browser-mode .help-body {
+  display: grid;
+  gap: 14px;
+  min-height: 0;
+  overflow: auto;
+  align-content: start;
+  align-items: start;
+}
+
+body.browser-mode .help-section {
+  display: grid;
+  gap: 12px;
+}
+
+body.browser-mode .help-header-button {
+  min-height: 32px;
+  padding: 7px 10px;
+}
+
+body.browser-mode .help-header-button strong {
+  font-size: 0.78rem;
+}
+
+body.browser-mode .help-header-button span {
+  margin-top: 2px;
+  font-size: 0.68rem;
+}
+
+body.browser-mode .browser-shortcut-groups {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+}
+
+body.browser-mode .browser-shortcut-column {
+  display: grid;
+  gap: 4px;
+  align-content: start;
+}
+
+body.browser-mode .browser-shortcut-group {
+  min-width: 0;
+  padding: 12px;
+  border-radius: 14px;
+  border: 1px solid rgba(125, 211, 252, 0.1);
+  background: rgba(255, 255, 255, 0.02);
+  display: grid;
+  gap: 10px;
+  align-content: start;
+  align-self: start;
+}
+
+body.browser-mode .browser-shortcut-group h4 {
+  margin: 0;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #8edcff;
+}
+
+body.browser-mode .browser-shortcut-list {
+  display: grid;
+  gap: 8px;
+  align-content: start;
+}
+
+body.browser-mode .help-section--stats {
+  gap: 10px;
+}
+
+body.browser-mode .browser-help-meta-grid {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+body.browser-mode .browser-help-stats {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+}
+
+body.browser-mode .browser-help-stats .stat-pill {
+  min-width: 0;
+  border-color: rgba(125, 211, 252, 0.1);
+  background: rgba(255, 255, 255, 0.03);
+  color: #e6eefc;
+  justify-content: flex-start;
+}
+
+body.browser-mode .browser-help-stats .stat-pill strong {
+  color: #8edcff;
+}
+
+body.browser-mode .browser-tree-shell {
+  height: 100%;
+  min-height: 0;
+  max-height: none;
+  display: block;
+  padding: 6px 5px;
+  gap: 2px;
+  border-radius: 16px;
+  border: 1px solid rgba(103, 232, 249, 0.1);
+  background: rgba(255, 255, 255, 0.02);
+  overflow: auto;
+  scrollbar-gutter: stable;
+}
+
+body.browser-mode .tree-row {
+  grid-template-columns: 16px minmax(0, 1fr);
+  gap: 3px;
+  padding-left: calc(var(--depth) * 4px);
+}
+
+body.browser-mode .tree-branch,
+body.browser-mode .tree-children,
+body.browser-mode .tree-node {
+  align-content: start;
+  align-items: start;
+  grid-auto-rows: max-content;
+}
+
+body.browser-mode .tree-row--root {
+  grid-template-columns: 5px minmax(0, 1fr);
+  gap: 0;
+}
+
+body.browser-mode .tree-toggle,
+body.browser-mode .tree-spacer {
+  width: 16px;
+  height: 16px;
+}
+
+body.browser-mode .tree-row--root .tree-spacer {
+  width: 5px;
+}
+
+body.browser-mode .tree-toggle {
+  border: 0;
+  background: transparent;
+  padding: 0;
+}
+
+body.browser-mode .tree-chevron {
+  width: 7px;
+  height: 7px;
+  border-right: 1.5px solid rgba(180, 198, 224, 0.72);
+  border-bottom: 1.5px solid rgba(180, 198, 224, 0.72);
+}
+
+body.browser-mode .tree-link {
+  min-height: 28px;
+  padding: 4px 7px;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: #e6eefc;
+  box-shadow: none;
+}
+
+body.browser-mode .tree-link:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(103, 232, 249, 0.1);
+}
+
+body.browser-mode .tree-link.current {
+  border-color: rgba(34, 211, 238, 0.26);
+  background: rgba(34, 211, 238, 0.1);
+}
+
+body.browser-mode .tree-link.ancestor {
+  border-color: rgba(125, 211, 252, 0.12);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+body.browser-mode .tree-link strong {
+  font-size: 0.82rem;

@@ -1,0 +1,260 @@
+:root {
+  color-scheme: light;
+  --bg-0: #ecf2f9;
+  --bg-1: #f8fafc;
+  --bg-2: #d8e5f2;
+  --surface: rgba(255, 255, 255, 0.92);
+  --surface-soft: rgba(244, 248, 252, 0.9);
+  --surface-strong: #ffffff;
+  --text: #09111d;
+  --muted: #526172;
+  --line: #d7e1ea;
+  --line-strong: #b4c9db;
+  --accent: #0369a1;
+  --accent-strong: #075985;
+  --accent-soft: rgba(3, 105, 161, 0.12);
+  --accent-softer: rgba(3, 105, 161, 0.08);
+  --danger: #b42318;
+  --danger-soft: #fdecea;
+  --success: #0f766e;
+  --shadow: 0 20px 48px rgba(15, 23, 42, 0.08);
+  --shadow-soft: 0 12px 28px rgba(15, 23, 42, 0.06);
+  --radius-xl: 30px;
+  --radius-lg: 22px;
+  --radius-md: 16px;
+  --radius-sm: 12px;
+  --content-width: 1560px;
+  font-family: "Aptos", "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  color: var(--text);
+  background:
+    radial-gradient(circle at top left, rgba(3, 105, 161, 0.14), transparent 24%),
+    radial-gradient(circle at top right, rgba(14, 165, 233, 0.1), transparent 20%),
+    linear-gradient(180deg, var(--bg-0) 0%, var(--bg-1) 42%, #f3f7fb 100%);
+}
+
+body.session-active {
+  box-shadow: inset 0 0 0 12px rgba(3, 105, 161, 0.72);
+}
+
+body.app-busy {
+  cursor: progress;
+}
+
+body.app-busy button,
+body.app-busy input,
+body.app-busy select {
+  cursor: progress;
+}
+
+.skip-link {
+  position: absolute;
+  left: 16px;
+  top: -48px;
+  z-index: 100;
+  padding: 10px 14px;
+  border-radius: 999px;
+  background: var(--text);
+  color: #fff;
+  text-decoration: none;
+}
+
+.skip-link:focus {
+  top: 12px;
+}
+
+.app-shell {
+  width: min(var(--content-width), 100%);
+  margin: 0 auto;
+  padding: 18px;
+  display: grid;
+  gap: 12px;
+}
+
+.shell-header {
+  position: sticky;
+  top: 12px;
+  z-index: 30;
+  display: grid;
+  gap: 10px;
+}
+
+.status-bar,
+.breadcrumbs,
+.notice,
+.explorer-pane,
+.workbench-pane,
+.slide-stage,
+.slide-rail,
+.modal-card {
+  background: var(--surface);
+  backdrop-filter: blur(18px);
+  border: 1px solid rgba(255, 255, 255, 0.68);
+  box-shadow: var(--shadow);
+}
+
+.status-bar {
+  border-radius: 24px;
+  padding: 14px 18px;
+}
+
+.shell-strip {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 16px;
+  align-items: start;
+}
+
+.brand-stack {
+  min-width: 0;
+}
+
+.brand-kicker,
+.section-kicker,
+.modal-kicker,
+.rail-kicker,
+.pane-kicker {
+  margin: 0;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--accent-strong);
+}
+
+.brand-title-row {
+  margin-top: 4px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.shell-title,
+.section-title,
+.modal-title {
+  margin: 0;
+  font-family: "Bahnschrift", "Aptos", "Segoe UI", "PingFang SC", sans-serif;
+  letter-spacing: 0.01em;
+  color: var(--text);
+}
+
+.shell-title {
+  font-size: clamp(1.2rem, 1rem + 0.6vw, 1.65rem);
+}
+
+.status-pill,
+.meta-chip,
+.stat-pill,
+.target-badge,
+.tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding: 8px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--line-strong);
+  background: var(--surface-strong);
+  color: var(--text);
+  font-size: 0.88rem;
+  line-height: 1.2;
+}
+
+.status-pill.session,
+.meta-chip.session,
+.stat-pill.session,
+.target-badge,
+.tag.session {
+  background: rgba(3, 105, 161, 0.15);
+  border-color: rgba(3, 105, 161, 0.24);
+}
+
+.meta-chip.busy {
+  background: rgba(15, 118, 110, 0.12);
+  border-color: rgba(15, 118, 110, 0.22);
+}
+
+.meta-chip-copy,
+.stat-copy {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.meta-chip strong,
+.stat-pill strong {
+  font-size: 0.74rem;
+  color: var(--muted);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.meta-chip span,
+.stat-pill span,
+.status-pill span,
+.hint,
+.entry-meta,
+.muted-text {
+  color: var(--muted);
+}
+
+.status-pill strong {
+  font-size: 0.78rem;
+}
+
+.shell-meta {
+  margin-top: 12px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.shell-tools {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.breadcrumbs {
+  border-radius: 18px;
+  padding: 8px 10px;
+  display: flex;
+  gap: 8px;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+
+.crumb {
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.88);
+  padding: 9px 12px;
+  white-space: nowrap;
+  color: var(--muted);
+}
+
+.crumb.current {
+  background: var(--accent-soft);
+  border-color: rgba(3, 105, 161, 0.22);
+  color: var(--text);
+}
+
+.notice {
+  position: fixed;
