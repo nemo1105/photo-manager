@@ -37,6 +37,7 @@ Track the next round of UX and reliability work after the initial browse/preview
   Current correction focus on 2026-03-21: keep the browser start-work button brighter on hover, and hide the bottom-right toast shell entirely until a notice is active so idle chrome does not leave a stray border.
   Current correction focus on 2026-03-21: keep the browse-root row pinned open, remove its chevron affordance, and render it with the same folder-row treatment as normal directories.
   Current correction focus on 2026-03-21: pull the browse-root row slightly left so its folder chip aligns with the left edge of child-folder chevrons.
+  Current execution focus on 2026-03-21: restyle the settings modal to match the same modal-card, section-card, and compact utility-button language already used by help and the main browser shell.
 - [x] Add zh-CN / en localization with default language chosen from the browser locale.
   Current execution focus on 2026-03-21: detect locale from browser language on first load, let the browser toolbar switch between `zh-CN` and `en`, persist manual choice in browser storage, and localize backend notices / errors through the same request locale.
   Current execution focus on 2026-03-21: replace implementation-heavy user copy with task language centered on `整理 / Sort`, `复查 / Review`, `文件夹浏览 / Folder browsing`, and `整理界面 / Sorting view`.

@@ -208,10 +208,17 @@ export function createViewHelpers({
     `;
   }
 
-  function settingsSectionHtml(title, fields) {
+  function settingsSectionHtml(title, fields, options = {}) {
+    const { kicker = t("settings.keyBindings"), caption = "" } = options;
     return `
       <section class="settings-section">
-        <h3>${escapeHtml(title)}</h3>
+        <div class="settings-section-head">
+          <div>
+            <p class="section-kicker">${escapeHtml(kicker)}</p>
+            <h3>${escapeHtml(title)}</h3>
+          </div>
+          ${caption ? `<p class="modal-caption settings-section-caption">${escapeHtml(caption)}</p>` : ""}
+        </div>
         <div class="settings-grid">${fields.join("")}</div>
       </section>
     `;
@@ -225,7 +232,7 @@ export function createViewHelpers({
       <div class="settings-field">
         <label>${escapeHtml(label)}</label>
         <div class="capture-row">
-          <input value="${escapeHtml(value)}" readonly>
+          <input class="${isCapturing ? "capturing" : ""}" value="${escapeHtml(value)}" readonly>
           <button class="secondary-button utility-button capture-button ${isCapturing ? "capturing" : ""}" data-capture-key="${escapeHtml(captureKey)}">
             ${escapeHtml(isCapturing ? t("settings.pressKey") : t("settings.capture"))}
           </button>
@@ -237,11 +244,11 @@ export function createViewHelpers({
   function settingsActionRowHtml(action, index) {
     const isCapturing = isCaptureAction(index);
     return `
-      <div class="settings-row">
+      <div class="settings-row ${isCapturing ? "capturing" : ""}">
         <div class="settings-field">
           <label>${escapeHtml(t("settings.key"))}</label>
           <div class="capture-row">
-            <input value="${escapeHtml(action.key || "")}" readonly>
+            <input class="${isCapturing ? "capturing" : ""}" value="${escapeHtml(action.key || "")}" readonly>
             <button class="secondary-button utility-button capture-button ${isCapturing ? "capturing" : ""}" data-capture-action="${index}">
               ${escapeHtml(isCapturing ? t("settings.pressKey") : t("settings.capture"))}
             </button>
@@ -294,3 +301,4 @@ export function createViewHelpers({
     utilityButtonHtml,
   };
 }
+

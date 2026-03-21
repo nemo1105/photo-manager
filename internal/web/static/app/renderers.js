@@ -346,19 +346,25 @@ export function createRenderers(deps) {
         settingsFieldHtml(t("settings.treeDown"), ["keys", "browser", "treeDown"]),
         settingsFieldHtml(t("settings.expandDirectory"), ["keys", "browser", "expandDir"]),
         settingsFieldHtml(t("settings.collapseDirectory"), ["keys", "browser", "collapseDir"]),
-      ])}
+      ], { caption: t("settings.browserKeysHint") })}
       ${settingsSectionHtml(t("settings.previewKeys"), [
         settingsFieldHtml(t("settings.closePreview"), ["keys", "preview", "close"]),
         settingsFieldHtml(t("settings.nextPreviewImage"), ["keys", "preview", "next"]),
         settingsFieldHtml(t("settings.previousPreviewImage"), ["keys", "preview", "prev"]),
-      ])}
+      ], { caption: t("settings.previewKeysHint") })}
       ${settingsSectionHtml(t("settings.slideshowKeys"), [
         settingsFieldHtml(t("settings.nextSlide"), ["keys", "slideshow", "next"]),
         settingsFieldHtml(t("settings.previousSlide"), ["keys", "slideshow", "prev"]),
         settingsFieldHtml(t("settings.endSession"), ["keys", "slideshow", "endSession"]),
-      ])}
+      ], { caption: t("settings.slideshowKeysHint") })}
       <section class="settings-section">
-        <h3>${escapeHtml(t("settings.actions"))}</h3>
+        <div class="settings-section-head">
+          <div>
+            <p class="section-kicker">${escapeHtml(t("settings.actionLibrary"))}</p>
+            <h3>${escapeHtml(t("settings.actions"))}</h3>
+          </div>
+          <p class="modal-caption settings-section-caption">${escapeHtml(t("settings.actionsHint"))}</p>
+        </div>
         <p class="modal-caption">${escapeHtml(t("settings.actionHelp"))}</p>
         ${(state.settingsDraft.actions || []).map((action, index) => settingsActionRowHtml(action, index)).join("")}
       </section>
@@ -458,3 +464,4 @@ export function createRenderers(deps) {
     renderNotice,
   };
 }
+
