@@ -274,6 +274,10 @@ body.app-busy select {
   animation: toast-enter 220ms cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
+.notice[hidden] {
+  display: none;
+}
+
 .notice.info {
   background: rgba(7, 12, 22, 0.9);
 }
@@ -1320,6 +1324,12 @@ body.browser-mode .browser-tool-button--primary {
   color: #03121d;
 }
 
+body.browser-mode .browser-tool-button--primary:hover:not(:disabled) {
+  background: linear-gradient(135deg, rgba(103, 232, 249, 0.96) 0%, rgba(96, 165, 250, 0.96) 100%);
+  border-color: rgba(125, 211, 252, 0.52);
+  box-shadow: 0 12px 26px rgba(8, 47, 73, 0.3);
+}
+
 body.browser-mode .browser-tool-button--session {
   border-color: rgba(34, 211, 238, 0.28);
   background: rgba(34, 211, 238, 0.08);
@@ -1540,14 +1550,18 @@ body.browser-mode .tree-node {
 }
 
 body.browser-mode .tree-row--root {
-  grid-template-columns: minmax(0, 1fr);
-  padding-left: 0;
+  grid-template-columns: 5px minmax(0, 1fr);
+  gap: 0;
 }
 
 body.browser-mode .tree-toggle,
 body.browser-mode .tree-spacer {
   width: 16px;
   height: 16px;
+}
+
+body.browser-mode .tree-row--root .tree-spacer {
+  width: 5px;
 }
 
 body.browser-mode .tree-toggle {

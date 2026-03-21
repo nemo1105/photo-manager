@@ -87,7 +87,7 @@
       "help.images": "Photos here",
       "help.recursiveImages": "Photos in subfolders",
       "help.loadingRecursiveImages": "Counting...",
-      "help.step1": "Browse folders in the tree on the left. Click the current folder again to collapse or reopen it.",
+      "help.step1": "Browse folders in the tree on the left. Click the current child folder again to collapse or reopen it. The browse root stays open.",
       "help.step2": "Outside Preview and the Sorting View, use Up Arrow and Down Arrow to switch folders, Right Arrow to expand, and Left Arrow to collapse or go to the parent folder.",
       "help.step3": "Click any photo to open Preview only. Sorting does not start until you choose this folder.",
       "help.step4": "Use Sort This Folder to start here. If this folder already contains sorted photos, use Review This Folder instead.",
@@ -153,7 +153,7 @@
       "shell.currentDirectory": "当前文件夹",
       "shell.workRoot": "整理起点",
       "browser.loading": "正在打开文件夹...",
-      "browser.sortHere": "整理这个文件夹",
+      "browser.sortHere": "开始整理",
       "browser.reviewHere": "复查这个文件夹",
       "browser.currentDirectoryAria": "当前文件夹",
       "browser.noImages": "这个文件夹里没有可整理的图片。",
@@ -218,10 +218,10 @@
       "help.images": "当前文件夹里的图片",
       "help.recursiveImages": "所有子文件夹中的图片",
       "help.loadingRecursiveImages": "统计中...",
-      "help.step1": "在左侧文件夹树里浏览文件夹。再次点击当前文件夹可以折叠或重新展开。",
+      "help.step1": "在左侧文件夹树里浏览文件夹。再次点击当前子文件夹可以折叠或重新展开，浏览起点会始终保持展开。",
       "help.step2": "不在预览和整理界面时，可用上方向键和下方向键切换文件夹，右方向键展开，左方向键折叠或返回父级。",
       "help.step3": "点击图片只会打开预览，不会直接开始整理。",
-      "help.step4": "点“整理这个文件夹”从这里开始；如果这个文件夹里已经有整理过的图片，就点“复查这个文件夹”。",
+      "help.step4": "点“开始整理”从这里开始；如果这个文件夹里已经有整理过的图片，就点“复查这个文件夹”。",
       "help.step5": "在整理界面中，使用左方向键和右方向键切换图片，默认用空格退出整理。",
       "help.startReview": "整理 / 复查这个文件夹",
       "help.treeMove": "上一个 / 下一个文件夹",
@@ -720,7 +720,10 @@
 
   async function handleTreePathClick(path, hasChildren) {
     const key = path || "";
-    if (hasChildren && state.browser && state.browser.currentPath === key) {
+    if (!key && state.browser && state.browser.currentPath === "") {
+      return;
+    }
+    if (key && hasChildren && state.browser && state.browser.currentPath === key) {
       await toggleTree(key);
       return;
     }
@@ -803,6 +806,9 @@
       return;
     }
     const key = path || "";
+    if (!key) {
+      return;
+    }
     if (state.tree.expanded[key]) {
       delete state.tree.expanded[key];
       render();
@@ -832,11 +838,8 @@
       path: "",
       parentPath: "",
       hasChildren: !!rootNode.directories.length || !!state.tree.loading[""],
-      expanded: !!state.tree.expanded[""],
+      expanded: true,
     }];
-    if (!rows[0].expanded) {
-      return rows;
-    }
     rows.push(...visibleTreeBranchRows(""));
     return rows;
   }
@@ -906,6 +909,9 @@
     const currentPath = selectedTreePath(rows);
     const currentRow = rows.find((row) => row.path === currentPath);
     if (!currentRow) {
+      return;
+    }
+    if (!currentRow.path) {
       return;
     }
     if (currentRow.expanded) {
@@ -1106,28 +1112,18 @@
     const rootNode = rootTreeNode();
     const selectedPath = currentTreeSelectionPath();
     const rootClass = selectedPath === "" ? "current" : (isPathAncestor("", selectedPath) ? "ancestor" : "");
-    const rootExpanded = !!state.tree.expanded[""];
     const rootHasChildren = !!rootNode.directories.length || !!state.tree.loading[""];
-    const rootToggleMarkup = rootHasChildren
-      ? `
-          <button class="tree-toggle" data-toggle-tree="" aria-expanded="${rootExpanded}">
-            <span class="tree-chevron"></span>
-            <span class="visually-hidden">${escapeHtml(t("browser.toggleFolder", { name: rootNode.name || t("common.root") }))}</span>
-          </button>
-        `
-      : `<span class="tree-spacer" aria-hidden="true"></span>`;
-    const rootChildrenMarkup = rootExpanded ? renderTreeBranch("", 1) : "";
     return `
       <div class="tree-branch">
         <div class="tree-node">
           <div class="tree-row tree-row--root" style="--depth:0">
-            ${rootToggleMarkup}
+            <span class="tree-spacer" aria-hidden="true"></span>
             <button class="tree-link ${rootClass}" data-tree-path="" data-tree-has-children="${rootHasChildren}">
               <strong>${escapeHtml(rootNode.name || t("common.root"))}</strong>
             </button>
           </div>
         </div>
-        ${rootChildrenMarkup}
+        ${renderTreeBranch("", 1)}
       </div>
     `;
   }
@@ -2264,8 +2260,6 @@
       .replaceAll("'", "&#39;");
   }
 })();
-
-
 
 
 
