@@ -131,7 +131,7 @@ textarea:focus-visible {
 }
 
 .secondary-button:hover:not(:disabled),
-.utility-button:hover:not(:disabled),
+.utility-button:not(.primary-button):hover:not(:disabled),
 .ghost-button:hover:not(:disabled),
 .tree-link:hover:not(:disabled),
 .image-card:hover:not(:disabled),

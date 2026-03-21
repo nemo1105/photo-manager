@@ -1,6 +1,6 @@
 # UI And Sorting Follow-Ups Plan
 
-Last updated: 2026-03-21
+Last updated: 2026-03-22
 Status: active
 Plan class: Standard
 
@@ -39,6 +39,14 @@ Track the next round of UX and reliability work after the initial browse/preview
   Current correction focus on 2026-03-21: pull the browse-root row slightly left so its folder chip aligns with the left edge of child-folder chevrons.
   Current execution focus on 2026-03-21: restyle the settings modal to match the same modal-card, section-card, and compact utility-button language already used by help and the main browser shell.
   Current execution focus on 2026-03-21: split the oversized frontend stylesheet into imported CSS modules so each static style file stays under 500 lines without changing load order.
+  Current correction focus on 2026-03-22: make the help-modal `Close` header button use the same compact utility-button treatment as the adjacent `Settings` button.
+  Current correction focus on 2026-03-22: shrink settings-modal inputs, action rows, and footer buttons so they match the compact control sizing used by the surrounding browser chrome.
+  Current correction focus on 2026-03-22: redesign settings bindings as compact keyboard-edit rows with keycap-like values, smaller destructive actions, and footer buttons that match the browser utility controls.
+  Current correction focus on 2026-03-22: keep action-library rows ordered like the key bindings, with the action definition on the left and the assigned key grouped on the right.
+  Current correction focus on 2026-03-22: tighten action-library selects and remove buttons, and hide the target field entirely for `delete` and `restore` actions because only `move` needs a destination.
+  Current correction focus on 2026-03-22: replace the brittle custom select background with a wrapped arrow affordance, right-align the key-binding controls consistently, shorten the move target field, and place the inline remove action immediately before the key binding.
+  Current correction focus on 2026-03-22: collapse action-library rows into a true single-line layout with delete/restore listed before move, show move as `action + to + target`, and match the right-aligned key-binding treatment used by the other shortcut rows.
+  Current correction focus on 2026-03-22: unify visible scrollbar styling across the app with shared thumb/track tokens while keeping intentionally hidden crumb and toolbar scrollers hidden.
 - [x] Add zh-CN / en localization with default language chosen from the browser locale.
   Current execution focus on 2026-03-21: detect locale from browser language on first load, let the browser toolbar switch between `zh-CN` and `en`, persist manual choice in browser storage, and localize backend notices / errors through the same request locale.
   Current execution focus on 2026-03-21: replace implementation-heavy user copy with task language centered on `整理 / Sort`, `复查 / Review`, `文件夹浏览 / Folder browsing`, and `整理界面 / Sorting view`.

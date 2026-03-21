@@ -263,14 +263,11 @@ import { createViewHelpers } from "./app/view-helpers.js";
     document.getElementById("settingsKicker").textContent = t("settings.configuration");
     document.getElementById("settingsTitle").textContent = t("settings.keysAndActions");
     document.getElementById("settingsCloseButton").textContent = t("common.close");
-    document.getElementById("addMoveActionButton").textContent = t("settings.addMove");
-    document.getElementById("addDeleteActionButton").textContent = t("settings.addDelete");
-    document.getElementById("addRestoreActionButton").textContent = t("settings.addRestore");
     document.getElementById("saveSettingsButton").textContent = t("settings.save");
     document.getElementById("helpKicker").textContent = t("common.help");
     document.getElementById("helpTitle").textContent = t("help.sortingGuide");
     document.getElementById("helpSettingsButton").setAttribute("aria-label", t("help.openSettings"));
-    document.getElementById("helpCloseButton").textContent = t("common.close");
+    document.getElementById("helpCloseButton").setAttribute("aria-label", t("common.close"));
   }
 
   async function apiGet(path) {
@@ -784,6 +781,7 @@ import { createViewHelpers } from "./app/view-helpers.js";
       state.browserHelpOpen = false;
       state.config = await apiGet("/api/config");
       state.settingsDraft = clone(state.config);
+      state.settingsDraft.actions = sortSettingsActions(state.settingsDraft.actions || []);
       state.settingsOpen = true;
       state.captureTarget = null;
       render();
@@ -796,6 +794,18 @@ import { createViewHelpers } from "./app/view-helpers.js";
     render();
   }
 
+  function sortSettingsActions(actions) {
+    const priority = { delete: 0, restore: 1, move: 2 };
+    return (actions || []).sort((left, right) => {
+      const leftPriority = priority[left.action] ?? 99;
+      const rightPriority = priority[right.action] ?? 99;
+      if (leftPriority !== rightPriority) {
+        return leftPriority - rightPriority;
+      }
+      return 0;
+    });
+  }
+
   function addAction(type) {
     if (!state.settingsDraft) {
       return;
@@ -806,6 +816,7 @@ import { createViewHelpers } from "./app/view-helpers.js";
       action: type,
       target: "",
     });
+    sortSettingsActions(state.settingsDraft.actions);
     render();
   }
 
@@ -814,6 +825,7 @@ import { createViewHelpers } from "./app/view-helpers.js";
       return null;
     }
     return withBusy(t("busy.savingSettings"), async () => {
+      state.settingsDraft.actions = sortSettingsActions(state.settingsDraft.actions || []);
       const saved = await apiPost("/api/config", state.settingsDraft);
       state.config = saved;
       state.settingsOpen = false;

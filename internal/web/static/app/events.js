@@ -42,9 +42,6 @@ export function createEventHandlers(deps) {
     document.getElementById("saveSettingsButton").addEventListener("click", () => {
       saveSettings().catch((error) => showNotice(error.message, "error"));
     });
-    document.getElementById("addMoveActionButton").addEventListener("click", () => addAction("move"));
-    document.getElementById("addDeleteActionButton").addEventListener("click", () => addAction("delete"));
-    document.getElementById("addRestoreActionButton").addEventListener("click", () => addAction("restore"));
     previewModal.addEventListener("click", (event) => {
       if (event.target.dataset.closePreview === "true") {
         closePreview();
@@ -197,13 +194,27 @@ export function createEventHandlers(deps) {
   }
 
   function bindSettingsEvents() {
+    document.querySelectorAll("[data-add-action]").forEach((button) => {
+      if (button.dataset.boundAddAction === "true") {
+        return;
+      }
+      button.dataset.boundAddAction = "true";
+      button.addEventListener("click", () => {
+        addAction("move");
+      });
+    });
     document.querySelectorAll("[data-capture-key]").forEach((button) => {
       if (button.dataset.boundCaptureKey === "true") {
         return;
       }
       button.dataset.boundCaptureKey = "true";
       button.addEventListener("click", () => {
-        state.captureTarget = { type: "path", path: button.dataset.captureKey.split(".") };
+        const path = button.dataset.captureKey.split(".");
+        const isSameTarget = state.captureTarget
+          && state.captureTarget.type === "path"
+          && Array.isArray(state.captureTarget.path)
+          && state.captureTarget.path.join(".") === path.join(".");
+        state.captureTarget = isSameTarget ? null : { type: "path", path };
         render();
       });
     });
@@ -213,7 +224,11 @@ export function createEventHandlers(deps) {
       }
       button.dataset.boundCaptureAction = "true";
       button.addEventListener("click", () => {
-        state.captureTarget = { type: "action", index: Number(button.dataset.captureAction) };
+        const index = Number(button.dataset.captureAction);
+        const isSameTarget = state.captureTarget
+          && state.captureTarget.type === "action"
+          && state.captureTarget.index === index;
+        state.captureTarget = isSameTarget ? null : { type: "action", index };
         render();
       });
     });
@@ -231,8 +246,10 @@ export function createEventHandlers(deps) {
         const index = Number(event.target.dataset.actionIndex);
         const field = event.target.dataset.actionField;
         state.settingsDraft.actions[index][field] = event.target.value;
-        if (field === "action" && event.target.value !== "move") {
-          state.settingsDraft.actions[index].target = "";
+        if (field === "action") {
+          if (event.target.value !== "move") {
+            state.settingsDraft.actions[index].target = "";
+          }
           render();
         }
       });

@@ -357,15 +357,21 @@ export function createRenderers(deps) {
         settingsFieldHtml(t("settings.previousSlide"), ["keys", "slideshow", "prev"]),
         settingsFieldHtml(t("settings.endSession"), ["keys", "slideshow", "endSession"]),
       ], { caption: t("settings.slideshowKeysHint") })}
-      <section class="settings-section">
+      <section class="settings-section settings-section--actions">
         <div class="settings-section-head">
-          <div>
+          <div class="settings-section-title-row">
             <p class="section-kicker">${escapeHtml(t("settings.actionLibrary"))}</p>
-            <h3>${escapeHtml(t("settings.actions"))}</h3>
+            <div class="settings-section-title-inline">
+              <h3>${escapeHtml(t("settings.actions"))}</h3>
+              <button class="secondary-button utility-button settings-section-button" type="button" data-add-action>
+                ${escapeHtml(t("settings.addAction"))}
+              </button>
+            </div>
           </div>
-          <p class="modal-caption settings-section-caption">${escapeHtml(t("settings.actionsHint"))}</p>
+          <div class="settings-section-head-actions">
+            <p class="modal-caption settings-section-caption">${escapeHtml(t("settings.actionsHint"))}</p>
+          </div>
         </div>
-        <p class="modal-caption">${escapeHtml(t("settings.actionHelp"))}</p>
         ${(state.settingsDraft.actions || []).map((action, index) => settingsActionRowHtml(action, index)).join("")}
       </section>
     `;
@@ -400,6 +406,11 @@ export function createRenderers(deps) {
     document.getElementById("helpSettingsButton").innerHTML = `
       <div>
         <strong>${escapeHtml(t("common.settings"))}</strong>
+      </div>
+    `;
+    document.getElementById("helpCloseButton").innerHTML = `
+      <div>
+        <strong>${escapeHtml(t("common.close"))}</strong>
       </div>
     `;
 
