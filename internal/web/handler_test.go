@@ -229,6 +229,23 @@ func TestHandleBrowserStatsRejectsEscapingPaths(t *testing.T) {
 	}
 }
 
+func TestHandleStaticModuleAsset(t *testing.T) {
+	root := t.TempDir()
+	cfg := config.Default()
+	handler := NewHandler(app.New(root, filepath.Join(root, "config.yaml"), cfg, stubTrash{}))
+
+	req := httptest.NewRequest(http.MethodGet, "/app/helpers.js", nil)
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", rec.Code)
+	}
+	if !bytes.Contains(rec.Body.Bytes(), []byte("export function normalizeLocale")) {
+		t.Fatalf("unexpected module body: %s", rec.Body.String())
+	}
+}
+
 func mustWriteHandlerFile(t *testing.T, path string) {
 	t.Helper()
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {

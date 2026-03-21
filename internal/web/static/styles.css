@@ -1423,24 +1423,49 @@ body.browser-mode .browser-help-list {
 }
 
 body.browser-mode .browser-info-key {
-  padding: 7px 8px;
+  min-height: 30px;
+  padding: 5px 8px;
   border-radius: 12px;
   border: 1px solid rgba(125, 211, 252, 0.12);
   background: rgba(255, 255, 255, 0.03);
-  display: inline-flex;
+  display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 8px;
+  width: 100%;
+  min-width: 0;
+  white-space: nowrap;
+}
+
+body.browser-mode .browser-info-key strong {
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.05;
+}
+
+body.browser-mode .browser-info-key span {
+  flex: 0 0 auto;
 }
 
 body.browser-mode .help-card {
   width: min(820px, calc(100vw - 32px));
   max-height: calc(100vh - 48px);
   margin: 0;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  align-content: start;
+  overflow: hidden;
 }
 
 body.browser-mode .help-body {
   display: grid;
   gap: 14px;
+  min-height: 0;
+  overflow: auto;
+  align-content: start;
+  align-items: start;
 }
 
 body.browser-mode .help-section {
@@ -1488,9 +1513,9 @@ body.browser-mode .browser-shortcut-group h4 {
 }
 
 body.browser-mode .browser-shortcut-list {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
   gap: 8px;
+  align-content: start;
 }
 
 body.browser-mode .help-section--stats {

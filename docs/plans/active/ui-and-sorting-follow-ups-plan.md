@@ -30,12 +30,16 @@ Track the next round of UX and reliability work after the initial browse/preview
   Current execution focus on 2026-03-21: remove the redundant browser `up_dir` path so parent navigation lives only in collapse / parent behavior instead of a second overlapping shortcut.
   Current execution focus on 2026-03-21: drop the stale browser `parentPath` / `canGoUp` response fields and the dead frontend `up-dir` branch so the API contract matches the remaining navigation model.
   Current execution focus on 2026-03-21: remove the browser-side settings shortcut, keep settings entry explicit through the help header button, switch help shortcuts to a stable two-column layout, and shrink preview/sorting-view buttons to the same compact height as the surrounding chrome.
+  Current correction focus on 2026-03-21: keep every help-modal shortcut row to a single line so longer preview labels do not grow taller than neighboring shortcut rows.
+  Current correction focus on 2026-03-21: keep the help modal content scrolled to and laid out from the top, instead of visually anchoring the shortcut grid from the bottom edge.
   Current correction focus on 2026-03-21: keep the browser start-work button brighter on hover, and hide the bottom-right toast shell entirely until a notice is active so idle chrome does not leave a stray border.
   Current correction focus on 2026-03-21: keep the browse-root row pinned open, remove its chevron affordance, and render it with the same folder-row treatment as normal directories.
   Current correction focus on 2026-03-21: pull the browse-root row slightly left so its folder chip aligns with the left edge of child-folder chevrons.
 - [x] Add zh-CN / en localization with default language chosen from the browser locale.
   Current execution focus on 2026-03-21: detect locale from browser language on first load, let the browser toolbar switch between `zh-CN` and `en`, persist manual choice in browser storage, and localize backend notices / errors through the same request locale.
   Current execution focus on 2026-03-21: replace implementation-heavy user copy with task language centered on `整理 / Sort`, `复查 / Review`, `文件夹浏览 / Folder browsing`, and `整理界面 / Sorting view`.
+- [ ] Split the browser UI entrypoint into smaller modules without changing any workflow behavior.
+  Current execution focus on 2026-03-21: move pure frontend helpers and view-fragment builders out of `internal/web/static/app.js`, keep behavior in the entrypoint unchanged, and serve the new module files through the embedded static handler.
 - [ ] Prevent repeated operations on the same stale image state from surfacing as user-visible errors.
 - [ ] Make the settings key-capture mode visually obvious while waiting for the next key press.
 

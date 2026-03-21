@@ -43,6 +43,7 @@ func NewHandler(photoApp *app.App) http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", h.handleIndex)
 	mux.Handle("/app.js", h.staticFS)
+	mux.Handle("/app/", h.staticFS)
 	mux.Handle("/styles.css", h.staticFS)
 	mux.HandleFunc("/api/browser", h.handleBrowser)
 	mux.HandleFunc("/api/browser/stats", h.handleBrowserStats)
