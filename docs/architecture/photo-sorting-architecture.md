@@ -11,9 +11,10 @@ This application is a single-binary Go tool that starts from an explicit launch 
 - `launchRoot` is fixed at process start and comes from the CLI `-dir` argument when provided, otherwise from the current working directory used to launch the CLI.
 - All browser and image paths are expressed as launch-root-relative paths and are sanitized so they cannot escape `launchRoot`.
 - Browsing folders and previewing images never starts a work session. Only `POST /api/session/start` does.
+- Browser mode and active slideshow/work-session state are mutually exclusive. Any successful `GET /api/browser` clears the current session before returning browser data.
 - A work session owns one `sessionRoot`. Relative action targets are resolved from `sessionRoot` for the entire session.
 - Starting from a relative move-target folder reuses that folder as the slideshow directory but sets `sessionRoot` to its parent, so review folders still restore back to the work root.
-- Leaving `sessionRoot` or any of its descendants during browser navigation automatically ends the session.
+- Leaving `sessionRoot` or any of its descendants during slideshow loading or action requests automatically ends the session.
 - `restore` is only valid when the current directory matches one of the configured `move` targets resolved against `sessionRoot`.
 - When slideshow is opened inside a move-target directory, the action list omits any `move` binding whose destination is that same directory.
 - Directory listing is shallow: only direct child folders and direct child images of the current directory are returned.
@@ -33,13 +34,13 @@ This application is a single-binary Go tool that starts from an explicit launch 
   - A local HTTP server is bound to `127.0.0.1:random-port` and the default browser is opened.
 - Config shape:
   - `keys.browser`, `keys.preview`, and `keys.slideshow` define single-key bindings per mode.
-  - `keys.browser` exposes session start/end, tree up/down movement, tree expand/collapse, browser up-directory, and settings keys.
+  - `keys.browser` exposes session start, tree up/down movement, tree expand/collapse, and settings keys.
   - `keys.slideshow` currently exposes `next`, `prev`, and `end_session`; slideshow no longer has a separate browser-return binding.
   - `actions[]` defines `move`, `delete`, and `restore` buttons/shortcuts.
   - `move.target` accepts relative or absolute paths.
-  - The default template maps `space` to session enter/exit, `arrowup` / `arrowdown` / `arrowright` / `arrowleft` to browser-tree navigation, `arrowleft` and `arrowright` to slide navigation, `delete` to delete, `arrowdown` to move into `0`, and `arrowup` to restore.
+  - The default template maps `space` to browser session start and slideshow session end, `arrowup` / `arrowdown` / `arrowright` / `arrowleft` to browser-tree navigation, `arrowleft` and `arrowright` to slide navigation, `delete` to delete, `arrowdown` to move into `0`, and `arrowup` to restore.
 - HTTP API:
-  - `GET /api/browser`: current directory listing, localized breadcrumbs, session status, config, and whether starting here should be framed as reviewing moved photos.
+  - `GET /api/browser`: current directory listing, localized breadcrumbs, config, and whether starting here should be framed as reviewing moved photos. Calling it also clears any active session so browser mode never renders with an active session. The payload intentionally omits legacy parent-navigation fields such as `parentPath` and `canGoUp`.
   - `GET /api/browser/stats`: current directory path plus direct visible folder count, direct visible image count, and recursive visible image count for help-modal summary stats.
   - `POST /api/session/start`: creates or reuses a session for the current directory.
   - `POST /api/session/end`: clears the active session.
@@ -61,13 +62,18 @@ This application is a single-binary Go tool that starts from an explicit launch 
 
 - The product currently separates browse, preview, and slideshow modes instead of mixing them.
 - Session creation is explicit to protect the sorting logic from accidental clicks while browsing.
+- Refreshing or directly loading browser mode during an active session intentionally ends that session instead of attempting to reconstruct slideshow state in browser mode.
 - Browser-mode tree navigation follows the currently visible tree rows, so collapsing an already collapsed directory steps selection back to its parent instead of hiding the active location.
 - Keyboard-driven browser navigation keeps a transient tree focus separate from the last loaded browser directory, preserves the existing expansion state, and debounces browser reloads by `100 ms` to reduce image-list churn during rapid scans.
+- Parent navigation intentionally lives inside `collapse_dir`; the product no longer exposes a separate browser `up_dir` shortcut because it duplicated the same navigation outcome.
+- The browser payload also drops the old `parentPath` / `canGoUp` fields so the transport contract does not preserve an obsolete parent-navigation model.
 - Recursive help stats are fetched lazily through `/api/browser/stats` when the help modal opens, so normal browser navigation stays shallow and avoids subtree walks on every directory change.
 - Relative target directories intentionally use `sessionRoot` so any configured review folder, including the default `0`, still restores back to the original work root.
 - Review-folder entry is explained in the UI as checking already moved photos, rather than exposing the session-root fallback directly.
 - The default action template now favors a single hot folder, `0`, so a fresh install exposes one high-risk move target instead of several competing move destinations.
 - The current implementation prefers a small dependency set over a larger frontend framework.
+- `keys.browser.end_session` is intentionally removed from the product contract; old YAML that still contains it is ignored on load and dropped on the next save.
+- `keys.browser.up_dir` is intentionally removed from the product contract; old YAML that still contains it is ignored on load and dropped on the next save.
 - Localization stays dependency-light: frontend strings live in the static app bundle, backend request parsing and user-visible server messages live in `internal/localize/`, the help modal reuses that locale for stats and shortcut copy, and the config file schema remains unchanged.
 - The manual language switch lives in the browser toolbar immediately to the left of the help icon, while slideshow and preview reuse the current locale instead of introducing separate locale controls.
 

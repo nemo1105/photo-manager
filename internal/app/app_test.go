@@ -201,7 +201,7 @@ func TestSlideshowHidesCurrentReviewTargetAction(t *testing.T) {
 	}
 }
 
-func TestBrowserAutoEndsSessionOutsideRoot(t *testing.T) {
+func TestBrowserEntryAlwaysEndsSessionWithoutNotice(t *testing.T) {
 	root := t.TempDir()
 	mustWriteFile(t, filepath.Join(root, "work", "a.jpg"))
 	mustWriteFile(t, filepath.Join(root, "other", "b.jpg"))
@@ -213,16 +213,16 @@ func TestBrowserAutoEndsSessionOutsideRoot(t *testing.T) {
 		t.Fatalf("open session: %v", err)
 	}
 
-	data, err := app.Browser("other", localize.EN)
+	data, err := app.Browser("work", localize.EN)
 	if err != nil {
-		t.Fatalf("browse other: %v", err)
+		t.Fatalf("browse work: %v", err)
 	}
 
 	if data.Session.Active {
-		t.Fatal("expected session to be ended automatically")
+		t.Fatal("expected browser entry to end the active session")
 	}
-	if data.Notice == "" {
-		t.Fatal("expected auto-end notice")
+	if data.Notice != "" {
+		t.Fatalf("expected browser entry to end session silently, got %q", data.Notice)
 	}
 }
 
@@ -438,9 +438,9 @@ func TestLocalizedBreadcrumbsActionLabelsAndNotices(t *testing.T) {
 		t.Fatalf("expected localized move notice, got %q", result.Notice)
 	}
 
-	autoEndData, err := app.Browser("other", localize.ZHCN)
+	autoEndData, err := app.Slideshow("other", localize.ZHCN)
 	if err != nil {
-		t.Fatalf("browse other: %v", err)
+		t.Fatalf("load slideshow outside session root: %v", err)
 	}
 	if autoEndData.Notice != "已离开当前工作目录范围，会话已自动结束。" {
 		t.Fatalf("expected localized auto-end notice, got %q", autoEndData.Notice)

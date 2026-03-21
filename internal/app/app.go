@@ -62,8 +62,6 @@ type BrowserData struct {
 	LaunchRoot               string         `json:"launchRoot"`
 	CurrentPath              string         `json:"currentPath"`
 	CurrentName              string         `json:"currentName"`
-	ParentPath               string         `json:"parentPath"`
-	CanGoUp                  bool           `json:"canGoUp"`
 	Breadcrumbs              []Breadcrumb   `json:"breadcrumbs"`
 	Directories              []DirEntry     `json:"directories"`
 	Images                   []ImageEntry   `json:"images"`
@@ -160,28 +158,24 @@ func (a *App) Browser(relPath string, locale localize.Locale) (*BrowserData, err
 		return nil, err
 	}
 
-	notice := a.maybeAutoEndSessionLocked(locale, absPath)
+	a.session = nil
 
 	dirs, images, err := listDirectory(absPath, a.launchRoot)
 	if err != nil {
 		return nil, err
 	}
 
-	parent := parentRel(relPath)
 	_, startsAsReview := a.sessionStartRootLocked(absPath)
 	return &BrowserData{
 		LaunchRoot:               a.launchRoot,
 		CurrentPath:              relPath,
 		CurrentName:              displayName(absPath),
-		ParentPath:               parent,
-		CanGoUp:                  relPath != "",
 		Breadcrumbs:              buildBreadcrumbs(locale, relPath),
 		Directories:              dirs,
 		Images:                   images,
 		Session:                  a.sessionInfoLocked(),
 		Config:                   a.cfg.Clone(),
 		CurrentDirStartsAsReview: startsAsReview,
-		Notice:                   notice,
 	}, nil
 }
 
@@ -553,17 +547,6 @@ func buildBreadcrumbs(locale localize.Locale, relPath string) []Breadcrumb {
 		breadcrumbs = append(breadcrumbs, Breadcrumb{Name: part, Path: current})
 	}
 	return breadcrumbs
-}
-
-func parentRel(relPath string) string {
-	if relPath == "" {
-		return ""
-	}
-	parent := filepath.ToSlash(filepath.Dir(filepath.FromSlash(relPath)))
-	if parent == "." {
-		return ""
-	}
-	return parent
 }
 
 func displayName(absPath string) string {

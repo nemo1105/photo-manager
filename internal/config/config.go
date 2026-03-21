@@ -26,12 +26,10 @@ type KeyConfig struct {
 
 type BrowserKeys struct {
 	StartSession string `yaml:"start_session" json:"startSession"`
-	EndSession   string `yaml:"end_session" json:"endSession"`
 	TreeUp       string `yaml:"tree_up" json:"treeUp"`
 	TreeDown     string `yaml:"tree_down" json:"treeDown"`
 	ExpandDir    string `yaml:"expand_dir" json:"expandDir"`
 	CollapseDir  string `yaml:"collapse_dir" json:"collapseDir"`
-	UpDir        string `yaml:"up_dir" json:"upDir"`
 	OpenSettings string `yaml:"open_settings" json:"openSettings"`
 }
 
@@ -188,12 +186,10 @@ func Default() *Config {
 		Keys: KeyConfig{
 			Browser: BrowserKeys{
 				StartSession: "space",
-				EndSession:   "q",
 				TreeUp:       "arrowup",
 				TreeDown:     "arrowdown",
 				ExpandDir:    "arrowright",
 				CollapseDir:  "arrowleft",
-				UpDir:        "backspace",
 				OpenSettings: "s",
 			},
 			Preview: PreviewKeys{
@@ -290,12 +286,10 @@ func (c *Config) ValidateAndNormalize() error {
 			name: "browser",
 			keys: map[string]*string{
 				"start_session": &c.Keys.Browser.StartSession,
-				"end_session":   &c.Keys.Browser.EndSession,
 				"tree_up":       &c.Keys.Browser.TreeUp,
 				"tree_down":     &c.Keys.Browser.TreeDown,
 				"expand_dir":    &c.Keys.Browser.ExpandDir,
 				"collapse_dir":  &c.Keys.Browser.CollapseDir,
-				"up_dir":        &c.Keys.Browser.UpDir,
 				"open_settings": &c.Keys.Browser.OpenSettings,
 			},
 		},
@@ -431,8 +425,6 @@ func validationFieldLabel(locale localize.Locale, path string) string {
 	switch path {
 	case "browser.start_session":
 		return localizedLabel(locale, "Browser start session key", "浏览模式开始会话快捷键")
-	case "browser.end_session":
-		return localizedLabel(locale, "Browser end session key", "浏览模式结束会话快捷键")
 	case "browser.tree_up":
 		return localizedLabel(locale, "Browser tree up key", "浏览模式目录树向上快捷键")
 	case "browser.tree_down":
@@ -441,8 +433,6 @@ func validationFieldLabel(locale localize.Locale, path string) string {
 		return localizedLabel(locale, "Browser expand directory key", "浏览模式展开目录快捷键")
 	case "browser.collapse_dir":
 		return localizedLabel(locale, "Browser collapse directory key", "浏览模式折叠目录快捷键")
-	case "browser.up_dir":
-		return localizedLabel(locale, "Browser parent directory key", "浏览模式返回上级目录快捷键")
 	case "browser.open_settings":
 		return localizedLabel(locale, "Browser open settings key", "浏览模式打开设置快捷键")
 	case "preview.close":

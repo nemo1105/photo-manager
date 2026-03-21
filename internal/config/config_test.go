@@ -3,6 +3,7 @@ package config
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -91,7 +92,7 @@ func TestValidateAndNormalizeAllowsEscapeAsActionKey(t *testing.T) {
 	}
 }
 
-func TestLoadIgnoresLegacySlideshowBackToBrowserField(t *testing.T) {
+func TestLoadIgnoresLegacyBrowserEndSessionBrowserUpDirAndSlideshowBackToBrowserFields(t *testing.T) {
 	root := t.TempDir()
 	path := filepath.Join(root, "config.yaml")
 	data := []byte(`
@@ -140,5 +141,23 @@ actions:
 	}
 	if cfg.Actions[0].Key != "delete" {
 		t.Fatalf("expected actions to load, got %+v", cfg.Actions)
+	}
+
+	if err := Save(path, cfg); err != nil {
+		t.Fatalf("save config: %v", err)
+	}
+
+	saved, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("read saved config: %v", err)
+	}
+	if strings.Contains(string(saved), "end_session: q") {
+		t.Fatalf("expected legacy browser end-session field to be dropped, got:\n%s", string(saved))
+	}
+	if strings.Contains(string(saved), "back_to_browser:") {
+		t.Fatalf("expected legacy slideshow back-to-browser field to be dropped, got:\n%s", string(saved))
+	}
+	if strings.Contains(string(saved), "up_dir:") {
+		t.Fatalf("expected legacy browser up-dir field to be dropped, got:\n%s", string(saved))
 	}
 }

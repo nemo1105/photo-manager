@@ -24,7 +24,6 @@
       "browser.loading": "Loading browser...",
       "browser.sortHere": "Sort Here",
       "browser.reviewHere": "Review Here",
-      "browser.openHere": "Open Here",
       "browser.currentDirectoryAria": "Current directory",
       "browser.noImages": "No images in this folder.",
       "browser.loadingFolders": "Loading folders...",
@@ -52,7 +51,6 @@
       "settings.treeDown": "Tree Down",
       "settings.expandDirectory": "Expand Directory",
       "settings.collapseDirectory": "Collapse Directory",
-      "settings.upDirectory": "Up Directory",
       "settings.openSettings": "Open Settings",
       "settings.closePreview": "Close Preview",
       "settings.nextPreviewImage": "Next Preview Image",
@@ -98,11 +96,9 @@
       "help.step4": "Use Sort Here, or Review Here in moved-photo folders, to start from the current folder.",
       "help.step5": "In slideshow, use Left Arrow and Right Arrow to move through images, and Space exits by default.",
       "help.startReview": "Start / Review",
-      "help.browserEndSession": "End Session In Browser",
       "help.treeMove": "Move In Tree",
       "help.expand": "Expand Current Folder",
       "help.collapse": "Collapse / Parent",
-      "help.up": "Go Up A Folder",
       "help.end": "Exit / End Session",
       "help.preview": "Browse Preview Images",
       "help.closePreview": "Close Preview",
@@ -111,12 +107,10 @@
       "capture.action": "Capturing action {index}. Press one key.",
       "capture.field": "Capturing {label}. Press one key.",
       "capture.browser.startSession": "browser start session",
-      "capture.browser.endSession": "browser end session",
       "capture.browser.treeUp": "browser tree up",
       "capture.browser.treeDown": "browser tree down",
       "capture.browser.expandDir": "browser expand directory",
       "capture.browser.collapseDir": "browser collapse directory",
-      "capture.browser.upDir": "browser up directory",
       "capture.browser.openSettings": "browser open settings",
       "capture.preview.close": "preview close",
       "capture.preview.next": "preview next",
@@ -165,7 +159,6 @@
       "browser.loading": "正在加载浏览器...",
       "browser.sortHere": "在此整理",
       "browser.reviewHere": "在此复查",
-      "browser.openHere": "在此打开",
       "browser.currentDirectoryAria": "当前目录",
       "browser.noImages": "此文件夹中没有图片。",
       "browser.loadingFolders": "正在加载文件夹...",
@@ -193,7 +186,6 @@
       "settings.treeDown": "目录树向下",
       "settings.expandDirectory": "展开目录",
       "settings.collapseDirectory": "折叠目录",
-      "settings.upDirectory": "返回上级目录",
       "settings.openSettings": "打开设置",
       "settings.closePreview": "关闭预览",
       "settings.nextPreviewImage": "预览下一张",
@@ -239,11 +231,9 @@
       "help.step4": "使用“在此整理”，或在已移动照片文件夹里使用“在此复查”，从当前文件夹开始。",
       "help.step5": "在幻灯片中，使用左方向键和右方向键切换图片，默认用空格退出。",
       "help.startReview": "开始 / 复查",
-      "help.browserEndSession": "浏览模式结束会话",
       "help.treeMove": "目录树移动",
       "help.expand": "展开当前文件夹",
       "help.collapse": "折叠 / 返回父级",
-      "help.up": "返回上级文件夹",
       "help.end": "退出 / 结束会话",
       "help.preview": "预览切图",
       "help.closePreview": "关闭预览",
@@ -252,12 +242,10 @@
       "capture.action": "正在捕获动作 {index}，请按一个按键。",
       "capture.field": "正在捕获 {label}，请按一个按键。",
       "capture.browser.startSession": "浏览模式开始会话",
-      "capture.browser.endSession": "浏览模式结束会话",
       "capture.browser.treeUp": "浏览模式目录树向上",
       "capture.browser.treeDown": "浏览模式目录树向下",
       "capture.browser.expandDir": "浏览模式展开目录",
       "capture.browser.collapseDir": "浏览模式折叠目录",
-      "capture.browser.upDir": "浏览模式返回上级目录",
       "capture.browser.openSettings": "浏览模式打开设置",
       "capture.preview.close": "预览关闭",
       "capture.preview.next": "预览下一张",
@@ -1083,16 +1071,15 @@
       return;
     }
 
-    const session = currentSession();
-    const isReviewStart = !session.active && state.browser.currentDirStartsAsReview;
-    const startLabel = session.active ? t("browser.openHere") : (isReviewStart ? t("browser.reviewHere") : t("browser.sortHere"));
+    const isReviewStart = state.browser.currentDirStartsAsReview;
+    const startLabel = isReviewStart ? t("browser.reviewHere") : t("browser.sortHere");
 
     browserView.innerHTML = `
       <div class="browser-layout">
         <aside class="explorer-pane browser-sidebar">
           <div class="browser-toolbar">
             <div class="browser-tool-group">
-              ${browserToolButtonHtml(startLabel, getConfig(["keys", "browser", "startSession"]), "start-work", canStartWorkFromBrowser(), session.active ? "session" : "primary")}
+              ${browserToolButtonHtml(startLabel, getConfig(["keys", "browser", "startSession"]), "start-work", canStartWorkFromBrowser(), "primary")}
             </div>
             <div class="browser-tool-group browser-tool-group--end">
               ${languageSwitcherHtml()}
@@ -1293,12 +1280,10 @@
     document.getElementById("settingsBody").innerHTML = `
       ${settingsSectionHtml(t("settings.browserKeys"), [
         settingsFieldHtml(t("settings.startSession"), ["keys", "browser", "startSession"]),
-        settingsFieldHtml(t("settings.endSession"), ["keys", "browser", "endSession"]),
         settingsFieldHtml(t("settings.treeUp"), ["keys", "browser", "treeUp"]),
         settingsFieldHtml(t("settings.treeDown"), ["keys", "browser", "treeDown"]),
         settingsFieldHtml(t("settings.expandDirectory"), ["keys", "browser", "expandDir"]),
         settingsFieldHtml(t("settings.collapseDirectory"), ["keys", "browser", "collapseDir"]),
-        settingsFieldHtml(t("settings.upDirectory"), ["keys", "browser", "upDir"]),
         settingsFieldHtml(t("settings.openSettings"), ["keys", "browser", "openSettings"]),
       ])}
       ${settingsSectionHtml(t("settings.previewKeys"), [
@@ -1369,11 +1354,9 @@
         <div class="browser-shortcut-groups">
           ${shortcutGroupHtml(t("help.browserShortcuts"), [
             browserInfoKeyHtml(t("help.startReview"), getConfig(["keys", "browser", "startSession"])),
-            browserInfoKeyHtml(t("help.browserEndSession"), getConfig(["keys", "browser", "endSession"])),
             browserInfoKeyHtml(t("help.treeMove"), "", treeMoveKeys),
             browserInfoKeyHtml(t("help.expand"), getConfig(["keys", "browser", "expandDir"])),
             browserInfoKeyHtml(t("help.collapse"), getConfig(["keys", "browser", "collapseDir"])),
-            browserInfoKeyHtml(t("help.up"), getConfig(["keys", "browser", "upDir"])),
             browserInfoKeyHtml(t("help.openSettings"), getConfig(["keys", "browser", "openSettings"])),
           ])}
           ${shortcutGroupHtml(t("help.previewShortcuts"), [
@@ -1429,10 +1412,6 @@
         }
         try {
           const action = button.dataset.toolbarAction;
-          if (action === "up-dir" && currentData().canGoUp) {
-            await changeDirectory(currentData().parentPath || "");
-            return;
-          }
           if (action === "start-work") {
             await openWorkMode();
             return;
@@ -1665,11 +1644,6 @@
         .catch((error) => showNotice(error.message, "error"));
       return;
     }
-    if (key === keys.endSession && currentSession().active) {
-      event.preventDefault();
-      endSession().catch((error) => showNotice(error.message, "error"));
-      return;
-    }
     if (key === keys.treeUp) {
       event.preventDefault();
       moveTreeSelection(-1).catch((error) => showNotice(error.message, "error"));
@@ -1688,19 +1662,6 @@
     if (key === keys.collapseDir) {
       event.preventDefault();
       collapseCurrentTreeDirectory().catch((error) => showNotice(error.message, "error"));
-      return;
-    }
-    if (key === keys.upDir) {
-      const selectedPath = currentTreeSelectionPath();
-      if (!selectedPath) {
-        return;
-      }
-      event.preventDefault();
-      if (state.tree.focusPath && state.tree.focusPath !== state.browser.currentPath) {
-        scheduleKeyboardDirectoryLoad(parentTreePath(selectedPath));
-        return;
-      }
-      changeDirectory(parentTreePath(selectedPath)).catch((error) => showNotice(error.message, "error"));
       return;
     }
     if (key === keys.openSettings) {
@@ -2066,12 +2027,10 @@
   function capturePathLabel(path) {
     const labelMap = {
       "keys.browser.startSession": t("capture.browser.startSession"),
-      "keys.browser.endSession": t("capture.browser.endSession"),
       "keys.browser.treeUp": t("capture.browser.treeUp"),
       "keys.browser.treeDown": t("capture.browser.treeDown"),
       "keys.browser.expandDir": t("capture.browser.expandDir"),
       "keys.browser.collapseDir": t("capture.browser.collapseDir"),
-      "keys.browser.upDir": t("capture.browser.upDir"),
       "keys.browser.openSettings": t("capture.browser.openSettings"),
       "keys.preview.close": t("capture.preview.close"),
       "keys.preview.next": t("capture.preview.next"),
@@ -2102,8 +2061,6 @@
       currentPath: "",
       currentName: t("common.root"),
       breadcrumbs: [{ name: t("common.root"), path: "" }],
-      canGoUp: false,
-      parentPath: "",
       session: { active: false, rootPath: "" },
     };
   }
@@ -2122,9 +2079,6 @@
   function canStartWorkFromBrowser() {
     if (!state.browser) {
       return false;
-    }
-    if (currentSession().active) {
-      return true;
     }
     return state.browser.images.length > 0;
   }

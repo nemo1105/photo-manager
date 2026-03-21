@@ -78,6 +78,69 @@ func TestHandleSessionStartUsesAcceptLanguageFallback(t *testing.T) {
 	}
 }
 
+func TestHandleBrowserEndsActiveSession(t *testing.T) {
+	root := t.TempDir()
+	mustWriteHandlerFile(t, filepath.Join(root, "work", "a.jpg"))
+
+	cfg := config.Default()
+	photoApp := app.New(root, filepath.Join(root, "config.yaml"), cfg, stubTrash{})
+	if _, err := photoApp.OpenSession("work"); err != nil {
+		t.Fatalf("open session: %v", err)
+	}
+	handler := NewHandler(photoApp)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/browser?path=work", nil)
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", rec.Code)
+	}
+
+	var payload struct {
+		Session struct {
+			Active bool `json:"active"`
+		} `json:"session"`
+		Notice string `json:"notice"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &payload); err != nil {
+		t.Fatalf("decode payload: %v", err)
+	}
+	if payload.Session.Active {
+		t.Fatal("expected browser load to clear the active session")
+	}
+	if payload.Notice != "" {
+		t.Fatalf("expected browser load to end session silently, got %q", payload.Notice)
+	}
+}
+
+func TestHandleBrowserOmitsLegacyParentNavigationFields(t *testing.T) {
+	root := t.TempDir()
+	mustWriteHandlerFile(t, filepath.Join(root, "work", "a.jpg"))
+
+	cfg := config.Default()
+	handler := NewHandler(app.New(root, filepath.Join(root, "config.yaml"), cfg, stubTrash{}))
+
+	req := httptest.NewRequest(http.MethodGet, "/api/browser?path=work", nil)
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", rec.Code)
+	}
+
+	var payload map[string]json.RawMessage
+	if err := json.Unmarshal(rec.Body.Bytes(), &payload); err != nil {
+		t.Fatalf("decode payload: %v", err)
+	}
+	if _, exists := payload["parentPath"]; exists {
+		t.Fatalf("expected browser payload to omit legacy parentPath field, got %s", rec.Body.String())
+	}
+	if _, exists := payload["canGoUp"]; exists {
+		t.Fatalf("expected browser payload to omit legacy canGoUp field, got %s", rec.Body.String())
+	}
+}
+
 func TestHandleBrowserStatsReturnsRecursiveCountsWithoutEndingSession(t *testing.T) {
 	root := t.TempDir()
 	mustWriteHandlerFile(t, filepath.Join(root, "work", "a.jpg"))
