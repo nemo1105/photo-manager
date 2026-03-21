@@ -6,6 +6,16 @@ Last updated: 2026-03-21
 
 This application is a single-binary Go tool that starts from an explicit launch root, serves an embedded web UI, and lets the user browse folders, start an explicit work session, and classify images with keyboard shortcuts or buttons.
 
+## User Copy Policy
+
+- Internal implementation may keep `session`, `browser`, and `slideshow` terminology.
+- User-facing UI/help/toast/error copy must use sorting-task language instead:
+  - `整理 / Sort`
+  - `复查 / Review`
+  - `文件夹浏览 / Folder browsing`
+  - `整理界面 / Sorting view`
+- User-facing copy must avoid exposing `session`, `workspace`, `browser`, `slideshow`, and `capture` as product concepts.
+
 ## Invariants
 
 - `launchRoot` is fixed at process start and comes from the CLI `-dir` argument when provided, otherwise from the current working directory used to launch the CLI.
@@ -75,5 +85,6 @@ This application is a single-binary Go tool that starts from an explicit launch 
 - `keys.browser.end_session` is intentionally removed from the product contract; old YAML that still contains it is ignored on load and dropped on the next save.
 - `keys.browser.up_dir` is intentionally removed from the product contract; old YAML that still contains it is ignored on load and dropped on the next save.
 - Localization stays dependency-light: frontend strings live in the static app bundle, backend request parsing and user-visible server messages live in `internal/localize/`, the help modal reuses that locale for stats and shortcut copy, and the config file schema remains unchanged.
+- User-facing language is task-first rather than implementation-first: the UI talks about sorting, reviewing, folders, preview, and sorting view, while internal API and code symbols may still use `session`.
 - The manual language switch lives in the browser toolbar immediately to the left of the help icon, while slideshow and preview reuse the current locale instead of introducing separate locale controls.
 

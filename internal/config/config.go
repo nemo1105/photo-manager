@@ -113,9 +113,9 @@ func (e *ValidationError) UserMessage(locale localize.Locale) string {
 		return fmt.Sprintf("%s duplicates another action key.", label)
 	case validationActionConflictSlideshow:
 		if locale == localize.ZHCN {
-			return fmt.Sprintf("%s与幻灯片导航快捷键冲突。", label)
+			return fmt.Sprintf("%s与整理界面切图快捷键冲突。", label)
 		}
-		return fmt.Sprintf("%s conflicts with slideshow navigation keys.", label)
+		return fmt.Sprintf("%s conflicts with sorting-view navigation keys.", label)
 	}
 
 	switch {
@@ -424,29 +424,29 @@ func actionValidationPath(index int, field string) string {
 func validationFieldLabel(locale localize.Locale, path string) string {
 	switch path {
 	case "browser.start_session":
-		return localizedLabel(locale, "Browser start session key", "浏览模式开始会话快捷键")
+		return localizedLabel(locale, "Folder browsing start sorting key", "文件夹浏览开始整理快捷键")
 	case "browser.tree_up":
-		return localizedLabel(locale, "Browser tree up key", "浏览模式目录树向上快捷键")
+		return localizedLabel(locale, "Folder browsing previous folder key", "文件夹浏览上一个文件夹快捷键")
 	case "browser.tree_down":
-		return localizedLabel(locale, "Browser tree down key", "浏览模式目录树向下快捷键")
+		return localizedLabel(locale, "Folder browsing next folder key", "文件夹浏览下一个文件夹快捷键")
 	case "browser.expand_dir":
-		return localizedLabel(locale, "Browser expand directory key", "浏览模式展开目录快捷键")
+		return localizedLabel(locale, "Folder browsing expand folder key", "文件夹浏览展开文件夹快捷键")
 	case "browser.collapse_dir":
-		return localizedLabel(locale, "Browser collapse directory key", "浏览模式折叠目录快捷键")
+		return localizedLabel(locale, "Folder browsing collapse or parent key", "文件夹浏览折叠/返回父级快捷键")
 	case "browser.open_settings":
-		return localizedLabel(locale, "Browser open settings key", "浏览模式打开设置快捷键")
+		return localizedLabel(locale, "Folder browsing open settings key", "文件夹浏览打开设置快捷键")
 	case "preview.close":
 		return localizedLabel(locale, "Preview close key", "预览关闭快捷键")
 	case "preview.next":
-		return localizedLabel(locale, "Preview next image key", "预览下一张快捷键")
+		return localizedLabel(locale, "Preview next photo key", "预览下一张图片快捷键")
 	case "preview.prev":
-		return localizedLabel(locale, "Preview previous image key", "预览上一张快捷键")
+		return localizedLabel(locale, "Preview previous photo key", "预览上一张图片快捷键")
 	case "slideshow.next":
-		return localizedLabel(locale, "Slideshow next image key", "幻灯片下一张快捷键")
+		return localizedLabel(locale, "Sorting view next photo key", "整理界面下一张图片快捷键")
 	case "slideshow.prev":
-		return localizedLabel(locale, "Slideshow previous image key", "幻灯片上一张快捷键")
+		return localizedLabel(locale, "Sorting view previous photo key", "整理界面上一张图片快捷键")
 	case "slideshow.end_session":
-		return localizedLabel(locale, "Slideshow end session key", "幻灯片结束会话快捷键")
+		return localizedLabel(locale, "Sorting view exit key", "整理界面退出整理快捷键")
 	}
 
 	if strings.HasPrefix(path, "actions[") {

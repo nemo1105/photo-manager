@@ -83,7 +83,7 @@ func FromRequest(r *http.Request) Locale {
 }
 
 func RootName(locale Locale) string {
-	return choose(locale, "Root", "根目录")
+	return choose(locale, "Browse Root", "浏览起点")
 }
 
 func InvalidRequest(locale Locale) string {
@@ -91,7 +91,7 @@ func InvalidRequest(locale Locale) string {
 }
 
 func NotFound(locale Locale) string {
-	return choose(locale, "Path not found.", "找不到路径。")
+	return choose(locale, "Could not find that folder or photo.", "找不到这个文件夹或图片。")
 }
 
 func UnexpectedError(locale Locale) string {
@@ -99,11 +99,11 @@ func UnexpectedError(locale Locale) string {
 }
 
 func ReviewStartNotice(locale Locale) string {
-	return choose(locale, "Checking photos already moved here.", "正在检查已经移动到这里的照片。")
+	return choose(locale, "This folder already contains sorted photos. Review them here.", "这个文件夹里已经有整理过的图片，可以直接在这里复查。")
 }
 
 func SessionAutoEndedNotice(locale Locale) string {
-	return choose(locale, "Left the active work directory range. Session ended automatically.", "已离开当前工作目录范围，会话已自动结束。")
+	return choose(locale, "You left the current sorting range. Sorting ended automatically.", "已离开当前整理范围，整理已自动结束。")
 }
 
 func MoveNotice(locale Locale, name string) string {

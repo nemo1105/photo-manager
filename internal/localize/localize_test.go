@@ -32,3 +32,15 @@ func TestFromRequestDefaultsToEnglish(t *testing.T) {
 		t.Fatalf("expected en, got %q", got)
 	}
 }
+
+func TestTaskLanguageHelpers(t *testing.T) {
+	if got := RootName(ZHCN); got != "浏览起点" {
+		t.Fatalf("unexpected zh root name: %q", got)
+	}
+	if got := ReviewStartNotice(EN); got != "This folder already contains sorted photos. Review them here." {
+		t.Fatalf("unexpected review notice: %q", got)
+	}
+	if got := SessionAutoEndedNotice(ZHCN); got != "已离开当前整理范围，整理已自动结束。" {
+		t.Fatalf("unexpected zh auto-end notice: %q", got)
+	}
+}

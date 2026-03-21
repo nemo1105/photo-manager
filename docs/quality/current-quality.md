@@ -24,6 +24,7 @@ Status: active
 - Keep rapid keyboard directory scans responsive by avoiding unintended auto-expansion and by debouncing browser reloads before image-heavy panes redraw.
 - Keep help-modal summary stats compact while still exposing direct and recursive image counts without mutating session state.
 - Keep browser-visible copy consistent within the selected locale so static UI, server notices, and validation errors do not mix English and Chinese in the same flow.
+- Keep user-facing language centered on sorting and reviewing photos, not on internal implementation concepts like session, workspace, browser, slideshow, or capture.
 
 ## Known issues
 
@@ -47,6 +48,7 @@ Status: active
   - Legacy config loading after removing the slideshow back-to-browser binding.
   - Request-locale parsing for `X-Photo-Manager-Locale` and `Accept-Language`.
   - Localized breadcrumbs, action labels, notices, and validation-error responses in `zh-CN`.
+  - Task-first user terminology across UI dictionaries, backend notices, and settings validation labels.
   - Windows PowerShell path quoting for recycle-bin deletion.
 - Missing coverage:
   - Browser-side UI flows in `internal/web/static/app.js`.

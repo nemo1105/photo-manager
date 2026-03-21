@@ -107,19 +107,19 @@ type OpenSessionResult struct {
 }
 
 var (
-	errCurrentDirNoImages     = localize.NewStaticError("current directory has no images", "当前文件夹没有图片")
-	errNoActiveSession        = localize.NewStaticError("no active session", "当前没有活动会话")
-	errImageOutsideCurrentDir = localize.NewStaticError("image is not inside current directory", "图片不在当前目录中")
-	errActionKeyNotConfigured = localize.NewStaticError("action key not configured", "该按键没有配置动作")
-	errSourceDestinationSame  = localize.NewStaticError("source and destination are the same", "源路径与目标路径相同")
-	errRestoreOnlyInTarget    = localize.NewStaticError("restore is only available in configured target directories", "恢复只允许在已配置的目标目录中使用")
-	errUnsupportedAction      = localize.NewStaticError("unsupported action", "不支持该动作")
-	errPathNotDirectory       = localize.NewStaticError("path is not a directory", "该路径不是目录")
-	errPathIsDirectory        = localize.NewStaticError("path is a directory", "该路径是目录")
-	errUnsupportedImage       = localize.NewStaticError("unsupported image", "不支持该图片格式")
-	errAbsolutePathNotAllowed = localize.NewStaticError("absolute path is not allowed", "不允许使用绝对路径")
-	errPathEscapesLaunchRoot  = localize.NewStaticError("path escapes launch root", "路径超出了启动根目录")
-	errTargetEmpty            = localize.NewStaticError("target is empty", "目标路径不能为空")
+	errCurrentDirNoImages     = localize.NewStaticError("No photos to sort in this folder", "这个文件夹里没有可整理的图片")
+	errNoActiveSession        = localize.NewStaticError("Start sorting first", "请先开始整理")
+	errImageOutsideCurrentDir = localize.NewStaticError("This photo is not in the current folder", "这张图片不在当前文件夹里")
+	errActionKeyNotConfigured = localize.NewStaticError("No sorting action is set for this key", "这个按键没有设置整理动作")
+	errSourceDestinationSame  = localize.NewStaticError("This photo is already in that folder", "这张图片已经在那个文件夹里")
+	errRestoreOnlyInTarget    = localize.NewStaticError("Restore is only available in folders with sorted photos", "只有在已整理图片的文件夹里才能恢复")
+	errUnsupportedAction      = localize.NewStaticError("This action is not supported", "不支持这个整理动作")
+	errPathNotDirectory       = localize.NewStaticError("This is not a folder", "这不是文件夹")
+	errPathIsDirectory        = localize.NewStaticError("This is a folder, not a photo", "这是文件夹，不是图片")
+	errUnsupportedImage       = localize.NewStaticError("This image format is not supported", "不支持这种图片格式")
+	errAbsolutePathNotAllowed = localize.NewStaticError("Absolute paths are not allowed here", "这里不能使用绝对路径")
+	errPathEscapesLaunchRoot  = localize.NewStaticError("This path is outside the browse range", "这个路径超出了浏览范围")
+	errTargetEmpty            = localize.NewStaticError("Target folder cannot be empty", "目标文件夹不能为空")
 )
 
 func New(launchRoot, configPath string, cfg *config.Config, trash Trasher) *App {

@@ -8,7 +8,7 @@ Last updated: 2026-03-20
 - [docs/architecture/](architecture/): stable design truth for session, sorting, and path-handling rules.
 - [docs/architecture/photo-sorting-architecture.md](architecture/photo-sorting-architecture.md): current implementation details for browse, preview, slideshow, and action execution.
 - [docs/specs/](specs/): problem statements, scope, constraints, and acceptance criteria.
-- [docs/specs/photo-sorting-workflow-spec.md](specs/photo-sorting-workflow-spec.md): canonical product behavior for work sessions and image actions.
+- [docs/specs/photo-sorting-workflow-spec.md](specs/photo-sorting-workflow-spec.md): canonical product behavior for sorting flow, review flow, and image actions.
 - [docs/plans/active/](plans/active/): live execution state for current follow-up work.
 - [docs/plans/completed/](plans/completed/): completed execution history after verification.
 - [docs/runbooks/](runbooks/): repeatable local development and verification procedures.

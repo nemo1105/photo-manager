@@ -31,6 +31,7 @@ Track the next round of UX and reliability work after the initial browse/preview
   Current execution focus on 2026-03-21: drop the stale browser `parentPath` / `canGoUp` response fields and the dead frontend `up-dir` branch so the API contract matches the remaining navigation model.
 - [x] Add zh-CN / en localization with default language chosen from the browser locale.
   Current execution focus on 2026-03-21: detect locale from browser language on first load, let the browser toolbar switch between `zh-CN` and `en`, persist manual choice in browser storage, and localize backend notices / errors through the same request locale.
+  Current execution focus on 2026-03-21: replace implementation-heavy user copy with task language centered on `整理 / Sort`, `复查 / Review`, `文件夹浏览 / Folder browsing`, and `整理界面 / Sorting view`.
 - [ ] Prevent repeated operations on the same stale image state from surfacing as user-visible errors.
 - [ ] Make the settings key-capture mode visually obvious while waiting for the next key press.
 
@@ -39,6 +40,7 @@ Track the next round of UX and reliability work after the initial browse/preview
 - Layout work touches the main browser and slideshow shell, so regressions can easily break the session indicator or button discoverability.
 - Fixing repeated actions may require both frontend debouncing and backend state validation.
 - Localization will increase UI text surface area and can make button layouts unstable if not tested on smaller screens.
+- Reworking terminology touches nearly every visible label and notice, so inconsistent fallback strings can easily leak old `session/workspace/slideshow` wording back into the product.
 - The dedicated help stats lookup walks the current subtree recursively, so large folders still need manual runtime verification for latency inside the modal.
 - Removing `browser.end_session` changes both config shape and browser/session semantics, so refresh and old-config save paths need explicit regression coverage.
 - Removing `browser.up_dir` changes the config shape again, so old YAML cleanup and browser shortcut/help coverage need to stay aligned.
@@ -50,6 +52,7 @@ Track the next round of UX and reliability work after the initial browse/preview
 - The P0 layout refresh keeps the existing sorting semantics unchanged; the redesign is a shell, explorer, and interaction refactor rather than a workflow rewrite.
 - The visual direction for the P0 refresh is a compact explorer/workbench shell with high-contrast neutral surfaces, a single blue accent, and persistent but non-intrusive session highlighting.
 - Localization now defaults to the browser locale, supports only `zh-CN` and `en`, persists manual override in browser storage, and exposes the switch in the browser toolbar immediately to the left of the help icon.
+- User-facing language now follows a task-first glossary: `整理 / Sort`, `复查 / Review`, `文件夹浏览 / Folder browsing`, and `整理界面 / Sorting view`; internal implementation terms like `session` remain code-level only.
 - Browser mode and active work sessions are now mutually exclusive. Loading browser mode, including refresh, silently ends any active session instead of preserving a browser-side active-session state.
 - `keys.browser.end_session` is removed from the product contract. `Space` starts work from browser mode, `Space` ends work from slideshow mode, and old YAML with `browser.end_session` is ignored and dropped on the next save.
 - Help-modal shortcut guidance is now grouped into browser, preview, slideshow, and action sections; it explicitly names arrow keys, documents only browser start plus slideshow end semantics, and uses a dedicated stats request so recursive image totals do not slow normal browser navigation.
@@ -60,6 +63,7 @@ Track the next round of UX and reliability work after the initial browse/preview
 
 - Run `go test ./...` and `go build ./...`.
 - Verify `zh-CN` and `en` both localize browser chrome, help, settings, preview, slideshow copy, and backend toast / error responses.
+- Verify user-facing UI/help/toast/error copy no longer exposes `会话 / session`, `工作区 / workspace`, `浏览器 / browser`, `幻灯片 / slideshow`, or `捕获 / capture` as product concepts.
 - Verify the help modal header places `Settings` immediately left of `Close`, removes session status, and shows direct folder count, direct image count, and recursive image count for the current subtree.
 - Verify refreshing or directly reopening browser mode during an active slideshow ends the session silently and does not surface browser-side active-session controls.
 - Verify browser help and settings no longer show a separate "go up a folder" shortcut, and left-arrow collapse / parent remains the only parent-navigation path.

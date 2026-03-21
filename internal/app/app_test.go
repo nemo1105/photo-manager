@@ -404,7 +404,7 @@ func TestLocalizedBreadcrumbsActionLabelsAndNotices(t *testing.T) {
 	if err != nil {
 		t.Fatalf("browse work: %v", err)
 	}
-	if len(browserData.Breadcrumbs) == 0 || browserData.Breadcrumbs[0].Name != "根目录" {
+	if len(browserData.Breadcrumbs) == 0 || browserData.Breadcrumbs[0].Name != "浏览起点" {
 		t.Fatalf("expected zh root breadcrumb, got %+v", browserData.Breadcrumbs)
 	}
 
@@ -442,7 +442,7 @@ func TestLocalizedBreadcrumbsActionLabelsAndNotices(t *testing.T) {
 	if err != nil {
 		t.Fatalf("load slideshow outside session root: %v", err)
 	}
-	if autoEndData.Notice != "已离开当前工作目录范围，会话已自动结束。" {
+	if autoEndData.Notice != "已离开当前整理范围，整理已自动结束。" {
 		t.Fatalf("expected localized auto-end notice, got %q", autoEndData.Notice)
 	}
 }

@@ -48,7 +48,7 @@ func TestHandleConfigReturnsLocalizedValidationError(t *testing.T) {
 	if err := json.Unmarshal(rec.Body.Bytes(), &payload); err != nil {
 		t.Fatalf("decode payload: %v", err)
 	}
-	if payload["error"] != "浏览模式开始会话快捷键不能为空。" {
+	if payload["error"] != "文件夹浏览开始整理快捷键不能为空。" {
 		t.Fatalf("unexpected localized error: %q", payload["error"])
 	}
 }
@@ -73,8 +73,35 @@ func TestHandleSessionStartUsesAcceptLanguageFallback(t *testing.T) {
 	if err := json.Unmarshal(rec.Body.Bytes(), &payload); err != nil {
 		t.Fatalf("decode payload: %v", err)
 	}
-	if payload["error"] != "当前文件夹没有图片" {
+	if payload["error"] != "这个文件夹里没有可整理的图片" {
 		t.Fatalf("unexpected fallback locale error: %q", payload["error"])
+	}
+}
+
+func TestHandleActionWithoutSortingUsesUserLanguage(t *testing.T) {
+	root := t.TempDir()
+	mustWriteHandlerFile(t, filepath.Join(root, "work", "a.jpg"))
+
+	cfg := config.Default()
+	handler := NewHandler(app.New(root, filepath.Join(root, "config.yaml"), cfg, stubTrash{}))
+
+	req := httptest.NewRequest(http.MethodPost, "/api/action", bytes.NewBufferString(`{"currentPath":"work","imagePath":"work/a.jpg","actionKey":"delete"}`))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-Photo-Manager-Locale", "zh-CN")
+
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400, got %d", rec.Code)
+	}
+
+	var payload map[string]string
+	if err := json.Unmarshal(rec.Body.Bytes(), &payload); err != nil {
+		t.Fatalf("decode payload: %v", err)
+	}
+	if payload["error"] != "请先开始整理" {
+		t.Fatalf("unexpected localized action error: %q", payload["error"])
 	}
 }
 
