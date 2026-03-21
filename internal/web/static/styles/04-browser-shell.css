@@ -228,6 +228,7 @@ body.browser-mode .browser-icon-svg {
 body.browser-mode .browser-info-section {
   display: grid;
   gap: 4px;
+  min-width: 0;
 }
 
 body.browser-mode .browser-info-section strong,
@@ -366,15 +367,46 @@ body.browser-mode .help-section--stats {
 }
 
 body.browser-mode .browser-help-meta-grid {
-  display: grid;
+  display: flex;
+  align-items: flex-start;
+  flex-wrap: nowrap;
   gap: 10px;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  min-width: 0;
+}
+
+body.browser-mode .browser-info-section--launch-root {
+  flex: 1 1 auto;
+}
+
+body.browser-mode .browser-info-section--current-folder {
+  flex: 0 1 260px;
+  min-width: 180px;
+}
+
+body.browser-mode .browser-info-section--launch-root span,
+body.browser-mode .browser-info-section--current-folder span {
+  display: block;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 body.browser-mode .browser-help-stats {
   display: grid;
   gap: 8px;
   grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+}
+
+@media (max-width: 720px) {
+  body.browser-mode .browser-help-meta-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  body.browser-mode .browser-info-section--current-folder {
+    min-width: 0;
+  }
 }
 
 body.browser-mode .browser-help-stats .stat-pill {

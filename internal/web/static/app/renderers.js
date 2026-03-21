@@ -451,11 +451,11 @@ export function createRenderers(deps) {
       </section>
       <section class="settings-section help-section help-section--stats">
         <div class="browser-help-meta-grid">
-          <div class="browser-info-section">
+          <div class="browser-info-section browser-info-section--launch-root">
             <strong>${escapeHtml(t("help.launchRoot"))}</strong>
             <span>${escapeHtml(state.launchRoot || t("common.unknown"))}</span>
           </div>
-          <div class="browser-info-section">
+          <div class="browser-info-section browser-info-section--current-folder">
             <strong>${escapeHtml(t("help.currentFolder"))}</strong>
             <span>${escapeHtml(currentPath)}</span>
           </div>

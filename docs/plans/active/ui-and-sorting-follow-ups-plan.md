@@ -48,6 +48,7 @@ Track the next round of UX and reliability work after the initial browse/preview
   Current correction focus on 2026-03-22: collapse action-library rows into a true single-line layout with delete/restore listed before move, show move as `action + to + target`, and match the right-aligned key-binding treatment used by the other shortcut rows.
   Current correction focus on 2026-03-22: format settings key chips with locale-aware display labels so zh-CN shows Chinese key names while English uses normalized hyphenated tokens like `arrow-up`.
   Current correction focus on 2026-03-22: widen the settings key chip by roughly two Latin characters so labels like `arrow-down` stay on one line.
+  Current correction focus on 2026-03-22: rebalance the help-footer metadata so `浏览范围 / Browse range` gets a wider adaptive column, while `当前文件夹 / Current folder` truncates earlier instead of taking equal width.
   Current correction focus on 2026-03-22: unify visible scrollbar styling across the app with shared thumb/track tokens while keeping intentionally hidden crumb and toolbar scrollers hidden.
 - [x] Add zh-CN / en localization with default language chosen from the browser locale.
   Current execution focus on 2026-03-21: detect locale from browser language on first load, let the browser toolbar switch between `zh-CN` and `en`, persist manual choice in browser storage, and localize backend notices / errors through the same request locale.
