@@ -51,7 +51,6 @@
       "settings.treeDown": "Next Folder",
       "settings.expandDirectory": "Expand Folder",
       "settings.collapseDirectory": "Collapse / Parent Folder",
-      "settings.openSettings": "Open Settings",
       "settings.closePreview": "Close Preview",
       "settings.nextPreviewImage": "Next Preview Image",
       "settings.previousPreviewImage": "Previous Preview Image",
@@ -109,7 +108,6 @@
       "capture.browser.treeDown": "next folder",
       "capture.browser.expandDir": "expand folder",
       "capture.browser.collapseDir": "collapse or go to parent folder",
-      "capture.browser.openSettings": "open settings",
       "capture.preview.close": "close preview",
       "capture.preview.next": "next photo in preview",
       "capture.preview.prev": "previous photo in preview",
@@ -184,7 +182,6 @@
       "settings.treeDown": "下一个文件夹",
       "settings.expandDirectory": "展开文件夹",
       "settings.collapseDirectory": "折叠 / 返回父级",
-      "settings.openSettings": "打开设置",
       "settings.closePreview": "关闭预览",
       "settings.nextPreviewImage": "预览下一张",
       "settings.previousPreviewImage": "预览上一张",
@@ -242,7 +239,6 @@
       "capture.browser.treeDown": "下一个文件夹",
       "capture.browser.expandDir": "展开文件夹",
       "capture.browser.collapseDir": "折叠或返回父级",
-      "capture.browser.openSettings": "打开设置",
       "capture.preview.close": "关闭预览",
       "capture.preview.next": "预览里下一张",
       "capture.preview.prev": "预览里上一张",
@@ -1010,7 +1006,7 @@
           </div>
         </div>
         <div class="shell-tools">
-          ${utilityButtonHtml(t("common.settings"), keyLabel(getConfig(["keys", "browser", "openSettings"])), "open-settings", true)}
+          ${utilityButtonHtml(t("common.settings"), "", "open-settings", true)}
         </div>
       </div>
       <div class="shell-meta">
@@ -1280,7 +1276,6 @@
         settingsFieldHtml(t("settings.treeDown"), ["keys", "browser", "treeDown"]),
         settingsFieldHtml(t("settings.expandDirectory"), ["keys", "browser", "expandDir"]),
         settingsFieldHtml(t("settings.collapseDirectory"), ["keys", "browser", "collapseDir"]),
-        settingsFieldHtml(t("settings.openSettings"), ["keys", "browser", "openSettings"]),
       ])}
       ${settingsSectionHtml(t("settings.previewKeys"), [
         settingsFieldHtml(t("settings.closePreview"), ["keys", "preview", "close"]),
@@ -1313,7 +1308,6 @@
     }
 
     const currentPath = currentData().currentPath || t("common.root");
-    const helpSettingsKey = compactKeyText(keyLabel(getConfig(["keys", "browser", "openSettings"])));
     const treeMoveKeys = [
       compactKeyText(keyLabel(getConfig(["keys", "browser", "treeUp"]))),
       compactKeyText(keyLabel(getConfig(["keys", "browser", "treeDown"]))),
@@ -1330,7 +1324,6 @@
     document.getElementById("helpSettingsButton").innerHTML = `
       <div>
         <strong>${escapeHtml(t("common.settings"))}</strong>
-        <span>${escapeHtml(helpSettingsKey)}</span>
       </div>
     `;
 
@@ -1353,7 +1346,6 @@
             browserInfoKeyHtml(t("help.treeMove"), "", treeMoveKeys),
             browserInfoKeyHtml(t("help.expand"), getConfig(["keys", "browser", "expandDir"])),
             browserInfoKeyHtml(t("help.collapse"), getConfig(["keys", "browser", "collapseDir"])),
-            browserInfoKeyHtml(t("help.openSettings"), getConfig(["keys", "browser", "openSettings"])),
           ])}
           ${shortcutGroupHtml(t("help.previewShortcuts"), [
             browserInfoKeyHtml(t("help.closePreview"), getConfig(["keys", "preview", "close"])),
@@ -1660,10 +1652,6 @@
       collapseCurrentTreeDirectory().catch((error) => showNotice(error.message, "error"));
       return;
     }
-    if (key === keys.openSettings) {
-      event.preventDefault();
-      openSettings().catch((error) => showNotice(error.message, "error"));
-    }
   }
 
   function handlePreviewKey(key, event) {
@@ -1719,7 +1707,7 @@
       <button class="utility-button secondary-button" data-toolbar-action="${escapeHtml(action)}" ${enabled ? "" : "disabled"}>
         <div>
           <strong>${escapeHtml(label)}</strong>
-          <span>${escapeHtml(detail || "")}</span>
+          ${detail ? `<span>${escapeHtml(detail)}</span>` : ""}
         </div>
       </button>
     `;
@@ -2027,7 +2015,6 @@
       "keys.browser.treeDown": t("capture.browser.treeDown"),
       "keys.browser.expandDir": t("capture.browser.expandDir"),
       "keys.browser.collapseDir": t("capture.browser.collapseDir"),
-      "keys.browser.openSettings": t("capture.browser.openSettings"),
       "keys.preview.close": t("capture.preview.close"),
       "keys.preview.next": t("capture.preview.next"),
       "keys.preview.prev": t("capture.preview.prev"),

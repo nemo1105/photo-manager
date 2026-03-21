@@ -18,7 +18,7 @@ Last updated: 2026-03-21
 5. Start sorting using the main button or its configured folder-browsing key.
 6. Browse into a configured target folder such as `0`, confirm a bottom-right review toast appears, start there, and verify `restore` returns files to the parent sorting-start folder.
 7. Exercise `move`, `delete`, and `restore` using both the buttons and the configured keys.
-8. Open Settings, change a key or action, save, and confirm the new binding works immediately.
+8. Open Help, use the header `Settings` button, change a key or action, save, and confirm the new binding works immediately.
 9. Navigate outside the active sorting range and confirm sorting ends automatically with a notice.
 
 ## Rollback

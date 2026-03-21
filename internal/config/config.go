@@ -30,7 +30,6 @@ type BrowserKeys struct {
 	TreeDown     string `yaml:"tree_down" json:"treeDown"`
 	ExpandDir    string `yaml:"expand_dir" json:"expandDir"`
 	CollapseDir  string `yaml:"collapse_dir" json:"collapseDir"`
-	OpenSettings string `yaml:"open_settings" json:"openSettings"`
 }
 
 type PreviewKeys struct {
@@ -190,7 +189,6 @@ func Default() *Config {
 				TreeDown:     "arrowdown",
 				ExpandDir:    "arrowright",
 				CollapseDir:  "arrowleft",
-				OpenSettings: "s",
 			},
 			Preview: PreviewKeys{
 				Close: "escape",
@@ -290,7 +288,6 @@ func (c *Config) ValidateAndNormalize() error {
 				"tree_down":     &c.Keys.Browser.TreeDown,
 				"expand_dir":    &c.Keys.Browser.ExpandDir,
 				"collapse_dir":  &c.Keys.Browser.CollapseDir,
-				"open_settings": &c.Keys.Browser.OpenSettings,
 			},
 		},
 		{
@@ -433,8 +430,6 @@ func validationFieldLabel(locale localize.Locale, path string) string {
 		return localizedLabel(locale, "Folder browsing expand folder key", "文件夹浏览展开文件夹快捷键")
 	case "browser.collapse_dir":
 		return localizedLabel(locale, "Folder browsing collapse or parent key", "文件夹浏览折叠/返回父级快捷键")
-	case "browser.open_settings":
-		return localizedLabel(locale, "Folder browsing open settings key", "文件夹浏览打开设置快捷键")
 	case "preview.close":
 		return localizedLabel(locale, "Preview close key", "预览关闭快捷键")
 	case "preview.next":

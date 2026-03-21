@@ -92,7 +92,7 @@ func TestValidateAndNormalizeAllowsEscapeAsActionKey(t *testing.T) {
 	}
 }
 
-func TestLoadIgnoresLegacyBrowserEndSessionBrowserUpDirAndSlideshowBackToBrowserFields(t *testing.T) {
+func TestLoadIgnoresLegacyBrowserEndSessionBrowserUpDirBrowserOpenSettingsAndSlideshowBackToBrowserFields(t *testing.T) {
 	root := t.TempDir()
 	path := filepath.Join(root, "config.yaml")
 	data := []byte(`
@@ -159,5 +159,8 @@ actions:
 	}
 	if strings.Contains(string(saved), "up_dir:") {
 		t.Fatalf("expected legacy browser up-dir field to be dropped, got:\n%s", string(saved))
+	}
+	if strings.Contains(string(saved), "open_settings:") {
+		t.Fatalf("expected legacy browser open-settings field to be dropped, got:\n%s", string(saved))
 	}
 }

@@ -44,7 +44,7 @@ This application is a single-binary Go tool that starts from an explicit launch 
   - A local HTTP server is bound to `127.0.0.1:random-port` and the default browser is opened.
 - Config shape:
   - `keys.browser`, `keys.preview`, and `keys.slideshow` define single-key bindings per mode.
-  - `keys.browser` exposes session start, tree up/down movement, tree expand/collapse, and settings keys.
+  - `keys.browser` exposes session start plus tree up/down and tree expand/collapse keys.
   - `keys.slideshow` currently exposes `next`, `prev`, and `end_session`; slideshow no longer has a separate browser-return binding.
   - `actions[]` defines `move`, `delete`, and `restore` buttons/shortcuts.
   - `move.target` accepts relative or absolute paths.
@@ -84,7 +84,8 @@ This application is a single-binary Go tool that starts from an explicit launch 
 - The current implementation prefers a small dependency set over a larger frontend framework.
 - `keys.browser.end_session` is intentionally removed from the product contract; old YAML that still contains it is ignored on load and dropped on the next save.
 - `keys.browser.up_dir` is intentionally removed from the product contract; old YAML that still contains it is ignored on load and dropped on the next save.
-- Localization stays dependency-light: frontend strings live in the static app bundle, backend request parsing and user-visible server messages live in `internal/localize/`, the help modal reuses that locale for stats and shortcut copy, and the config file schema remains unchanged.
+- `keys.browser.open_settings` is intentionally removed from the product contract so folder-browsing keys stay focused on navigation plus sorting start; settings now opens only from the help modal header button, and old YAML that still contains `browser.open_settings` is ignored on load and dropped on the next save.
+- Localization stays dependency-light: frontend strings live in the static app bundle, backend request parsing and user-visible server messages live in `internal/localize/`, and the help modal reuses that locale for stats and shortcut copy.
 - User-facing language is task-first rather than implementation-first: the UI talks about sorting, reviewing, folders, preview, and sorting view, while internal API and code symbols may still use `session`.
 - The manual language switch lives in the browser toolbar immediately to the left of the help icon, while slideshow and preview reuse the current locale instead of introducing separate locale controls.
 

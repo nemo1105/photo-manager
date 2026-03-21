@@ -15,8 +15,10 @@ Status: active
 - Keep slideshow mode visually immersive, chrome-light, and free of browser-level scrollbars in common desktop window sizes.
 - Keep browser mode compact enough that the tree and image list own the viewport instead of a persistent header shell.
 - Keep browser-mode chrome reduced to a single primary sort action plus a help affordance, with low-frequency details moved behind the help panel.
+- Keep settings access explicit through the help panel button instead of a dedicated folder-browsing shortcut.
 - Keep browser mode and active slideshow sessions mutually exclusive so refresh or direct browser entry cannot strand the UI in a half-active session state.
 - Keep help-modal guidance unambiguous by naming arrow keys explicitly, separating shortcuts by mode, and treating `Space` as browser start plus slideshow exit rather than documenting a browser-side end-session key.
+- Keep help-modal shortcuts readable in a stable two-column layout on desktop widths while falling back cleanly on smaller screens.
 - Keep browser parent navigation singular and predictable by using only collapse / parent behavior instead of a redundant second "go up" shortcut.
 - Keep the browser transport contract aligned with that model, so `/api/browser` does not keep shipping stale parent-navigation fields that the UI no longer uses.
 - Keep browser directory ordering human-readable, especially for numbered folders and dated folder names.
@@ -43,7 +45,7 @@ Status: active
   - Ending sessions when browser mode is loaded, and auto-ending sessions when slideshow/action requests leave the session subtree.
   - Side-effect-free browser help stats counts, including recursive image totals that ignore hidden entries and unsupported files.
   - Auto-renaming on target conflicts.
-  - Silent loading and save-time cleanup of legacy `browser.end_session`, `browser.up_dir`, and `slideshow.back_to_browser` config fields.
+  - Silent loading and save-time cleanup of legacy `browser.end_session`, `browser.up_dir`, `browser.open_settings`, and `slideshow.back_to_browser` config fields.
   - Browser handler responses omitting legacy `parentPath` and `canGoUp` fields after the parent-navigation simplification.
   - Legacy config loading after removing the slideshow back-to-browser binding.
   - Request-locale parsing for `X-Photo-Manager-Locale` and `Accept-Language`.
@@ -54,12 +56,12 @@ Status: active
   - Browser-side UI flows in `internal/web/static/app.js`.
   - Layout verification that browser mode keeps the tree and image list inside the viewport without a large header shell.
   - Layout verification that slideshow mode stays scrollbar-free at runtime.
-  - Manual verification that the regrouped help modal keeps header actions, shortcut cards, and compact stats readable on smaller browser widths.
+  - Manual verification that the regrouped help modal keeps its two-column shortcut layout, header actions, and compact stats readable across browser widths.
   - Manual verification that refreshing during slideshow ends the session and reopens browser mode without browser-side active-session controls.
   - End-to-end verification of delete-to-recycle-bin behavior.
   - Browser-storage persistence and no-reload locale switching in the live UI.
   - Repeated-action protection for stale slideshow state.
-  - Settings capture-state UX and config-edit browser flows.
+  - Settings capture-state UX, explicit settings-entry flow, and config-edit browser flows.
 
 ## Debt and follow-ups
 

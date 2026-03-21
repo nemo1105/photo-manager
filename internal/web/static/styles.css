@@ -919,14 +919,14 @@ textarea:focus-visible {
   min-width: 0;
   flex: 0 0 auto;
   height: 32px;
-  padding: 0 9px;
-  border-radius: 9px;
+  padding: 0 10px;
+  border-radius: 10px;
   border: 1px solid rgba(180, 201, 219, 0.72);
   background: rgba(255, 255, 255, 0.9);
   color: var(--text);
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: 7px;
   box-shadow: none;
   white-space: nowrap;
 }
@@ -1455,7 +1455,7 @@ body.browser-mode .help-header-button span {
 body.browser-mode .browser-shortcut-groups {
   display: grid;
   gap: 10px;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 body.browser-mode .browser-shortcut-group {
@@ -1885,6 +1885,10 @@ body.browser-mode input::placeholder {
 }
 
 @media (max-width: 720px) {
+  body.browser-mode .browser-shortcut-groups {
+    grid-template-columns: 1fr;
+  }
+
   body.browser-mode .browser-sidebar,
   body.browser-mode .browser-workbench {
     padding: 10px;
@@ -2097,7 +2101,7 @@ body.slideshow-mode .slide-button-group--actions {
 body.slideshow-mode .slide-bar-button {
   min-width: 0;
   flex: 0 0 auto;
-  height: 34px;
+  height: 32px;
   padding: 0 10px;
   border-radius: 10px;
   border: 1px solid rgba(255, 255, 255, 0.12);
@@ -2126,13 +2130,13 @@ body.slideshow-mode .slide-bar-button:hover:not(:disabled) {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 28px;
-  height: 20px;
-  padding: 0 6px;
+  min-width: 20px;
+  height: 16px;
+  padding: 0 5px;
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.08);
   color: rgba(226, 232, 240, 0.78);
-  font-size: 0.68rem;
+  font-size: 0.62rem;
   line-height: 1;
 }
 

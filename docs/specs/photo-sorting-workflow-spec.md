@@ -33,7 +33,7 @@ Users need to start from an arbitrary directory, browse to a folder that contain
 - Browser and tree directory lists should sort naturally by numeric segments instead of pure lexicographic order.
 - Browser UI localization supports only `zh-CN` and `en`; any browser locale starting with `zh` maps to `zh-CN`, and other browser locales fall back to `en`.
 - Manual language switching is browser-local only, takes precedence over browser-language detection, and must not require a config-file change.
-- The help modal should group shortcuts by mode, name arrow keys explicitly as arrow keys, show `Space` as the default slideshow exit, and summarize the current subtree without showing session state.
+- The help modal should group shortcuts by mode, name arrow keys explicitly as arrow keys, show `Space` as the default slideshow exit, summarize the current subtree without showing session state, and use a two-column shortcut grid at common desktop widths.
 
 ## User-Facing Terminology
 
@@ -68,8 +68,11 @@ Users need to start from an arbitrary directory, browse to a folder that contain
 - [x] Browser chrome, help, settings, preview, slideshow labels, and backend-generated notices / errors stay in the same selected language.
 - [x] Refreshing or directly loading browser mode while sorting is active ends sorting instead of reopening browser mode with an active-sorting state.
 - [x] The help modal groups browser, preview, slideshow, and action shortcuts separately; it documents arrow keys as `Left/Right/Up/Down Arrow` and shows `Space` as the default slideshow exit without documenting any browser-side session-ending shortcut.
+- [x] Settings stays available from the help modal header button, while folder browsing no longer reserves a dedicated settings shortcut.
 - [x] Browser parent navigation is exposed only through `collapse_dir`; the product does not keep a second `up_dir` shortcut, UI affordance, or browser response field for the same step.
 - [x] The help modal footer stays compact, omits session status, and shows direct child folder count, direct child image count, and recursive visible image count for the current subtree.
+- [x] At common desktop widths, the help modal shows shortcuts in two columns with folder browsing plus preview on the first row and sorting view plus sorting actions on the second row.
+- [x] Preview and sorting-view footer buttons use the same compact chrome height as the other small controls.
 - [x] User-facing copy consistently speaks in terms of sorting/reviewing photos and folder browsing, without exposing internal `session/workspace/browser/slideshow/capture` language.
 
 ## Default shortcut template
@@ -80,7 +83,7 @@ Users need to start from an arbitrary directory, browse to a folder that contain
   - `arrowright` (`Right Arrow`) expands the current directory in the tree.
   - `arrowleft` (`Left Arrow`) collapses the current directory in the tree, or returns to its parent when already collapsed.
   - Keyboard-driven directory switches do not auto-expand the newly selected folder and wait about `100 ms` before reloading the browser pane.
-  - `s` opens settings.
+  - Settings opens from the help modal header button instead of a dedicated keyboard shortcut.
   - Loading browser mode ends any active sorting state; folder browsing does not expose a separate exit-sorting key.
 - Preview:
   - `escape` closes preview.
