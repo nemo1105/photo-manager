@@ -1,0 +1,165 @@
+package localize
+
+import (
+	"fmt"
+	"net/http"
+	"strings"
+)
+
+type Locale string
+
+const (
+	EN   Locale = "en"
+	ZHCN Locale = "zh-CN"
+)
+
+type UserMessager interface {
+	error
+	UserMessage(Locale) string
+}
+
+type StaticError struct {
+	en string
+	zh string
+}
+
+func NewStaticError(en, zh string) *StaticError {
+	return &StaticError{
+		en: en,
+		zh: zh,
+	}
+}
+
+func (e *StaticError) Error() string {
+	if e == nil {
+		return ""
+	}
+	return e.en
+}
+
+func (e *StaticError) UserMessage(locale Locale) string {
+	if e == nil {
+		return ""
+	}
+	return choose(locale, e.en, e.zh)
+}
+
+func Normalize(raw string) Locale {
+	locale, ok := ParseOne(raw)
+	if !ok {
+		return EN
+	}
+	return locale
+}
+
+func ParseOne(raw string) (Locale, bool) {
+	token := normalizeToken(raw)
+	if token == "" {
+		return "", false
+	}
+	switch {
+	case strings.HasPrefix(token, "zh"):
+		return ZHCN, true
+	case strings.HasPrefix(token, "en"):
+		return EN, true
+	default:
+		return "", false
+	}
+}
+
+func FromRequest(r *http.Request) Locale {
+	if r == nil {
+		return EN
+	}
+	if locale, ok := ParseOne(r.Header.Get("X-Photo-Manager-Locale")); ok {
+		return locale
+	}
+	for _, part := range strings.Split(r.Header.Get("Accept-Language"), ",") {
+		if locale, ok := ParseOne(part); ok {
+			return locale
+		}
+	}
+	return EN
+}
+
+func RootName(locale Locale) string {
+	return choose(locale, "Root", "根目录")
+}
+
+func InvalidRequest(locale Locale) string {
+	return choose(locale, "Invalid request.", "请求无效。")
+}
+
+func NotFound(locale Locale) string {
+	return choose(locale, "Path not found.", "找不到路径。")
+}
+
+func UnexpectedError(locale Locale) string {
+	return choose(locale, "Something went wrong. Please try again.", "发生了未知错误，请重试。")
+}
+
+func ReviewStartNotice(locale Locale) string {
+	return choose(locale, "Checking photos already moved here.", "正在检查已经移动到这里的照片。")
+}
+
+func SessionAutoEndedNotice(locale Locale) string {
+	return choose(locale, "Left the active work directory range. Session ended automatically.", "已离开当前工作目录范围，会话已自动结束。")
+}
+
+func MoveNotice(locale Locale, name string) string {
+	return choose(locale, fmt.Sprintf("Moved %s.", name), fmt.Sprintf("已移动 %s。", name))
+}
+
+func DeleteNotice(locale Locale, name string) string {
+	return choose(locale, fmt.Sprintf("Deleted %s to recycle bin.", name), fmt.Sprintf("已将 %s 移到回收站。", name))
+}
+
+func RestoreNotice(locale Locale, name string) string {
+	return choose(locale, fmt.Sprintf("Restored %s.", name), fmt.Sprintf("已恢复 %s。", name))
+}
+
+func ActionLabel(locale Locale, action, target string) string {
+	switch action {
+	case "move":
+		if locale == ZHCN {
+			return fmt.Sprintf("移动到 %s", target)
+		}
+		return "Move to " + target
+	case "delete":
+		return ActionName(locale, action)
+	case "restore":
+		return ActionName(locale, action)
+	default:
+		return action
+	}
+}
+
+func ActionName(locale Locale, action string) string {
+	switch action {
+	case "move":
+		return choose(locale, "Move", "移动")
+	case "delete":
+		return choose(locale, "Delete", "删除")
+	case "restore":
+		return choose(locale, "Restore", "恢复")
+	default:
+		return action
+	}
+}
+
+func choose(locale Locale, en, zh string) string {
+	if locale == ZHCN {
+		return zh
+	}
+	return en
+}
+
+func normalizeToken(raw string) string {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return ""
+	}
+	raw = strings.SplitN(raw, ";", 2)[0]
+	raw = strings.ReplaceAll(raw, "_", "-")
+	return strings.ToLower(strings.TrimSpace(raw))
+}

@@ -30,6 +30,9 @@ Users need to start from an arbitrary directory, browse to a folder that contain
 - Deletion must go to the platform recycle bin / Trash, not permanent removal.
 - Slideshow mode is an immersive full-viewport viewer and must not introduce browser-level scrollbars during normal desktop use.
 - Browser and tree directory lists should sort naturally by numeric segments instead of pure lexicographic order.
+- Browser UI localization supports only `zh-CN` and `en`; any browser locale starting with `zh` maps to `zh-CN`, and other browser locales fall back to `en`.
+- Manual language switching is browser-local only, takes precedence over browser-language detection, and must not require a config-file change.
+- The help modal should group shortcuts by mode, name arrow keys explicitly as arrow keys, show `Space` as the default slideshow exit, and summarize the current subtree without showing session state.
 
 ## Acceptance criteria
 
@@ -49,23 +52,28 @@ Users need to start from an arbitrary directory, browse to a folder that contain
 - [x] The default shortcut template uses `Space` to enter or end a session, `Left` and `Right` to change slides, `Del` to delete, `Down` to move into `0`, and `Up` to restore.
 - [x] Slideshow mode hides the top shell and keeps the document free of page scrollbars at common desktop sizes.
 - [x] Browser and tree directory lists place numeric names in natural order, such as `1`, `2`, then `10`.
+- [x] The browser defaults UI copy to `zh-CN` or `en` from the browser locale, and a manual toolbar switch can override that choice without reloading the page.
+- [x] The manual language switch lives in the browser toolbar immediately to the left of the help icon and persists across reloads in browser storage.
+- [x] Browser chrome, help, settings, preview, slideshow labels, and backend-generated notices / errors stay in the same selected language.
+- [x] The help modal groups browser, preview, slideshow, and action shortcuts separately; it documents arrow keys as `Left/Right/Up/Down Arrow` and shows `Space` as the default slideshow exit while keeping browser `q` browser-only.
+- [x] The help modal footer stays compact, omits session status, and shows direct child folder count, direct child image count, and recursive visible image count for the current subtree.
 
 ## Default shortcut template
 
 - Browser:
   - `space` starts a work session from the current folder.
   - `q` ends the active session.
-  - `arrowup` and `arrowdown` move to the previous or next visible directory in the tree.
-  - `arrowright` expands the current directory in the tree.
-  - `arrowleft` collapses the current directory in the tree, or returns to its parent when already collapsed.
+  - `arrowup` and `arrowdown` (`Up Arrow` and `Down Arrow`) move to the previous or next visible directory in the tree.
+  - `arrowright` (`Right Arrow`) expands the current directory in the tree.
+  - `arrowleft` (`Left Arrow`) collapses the current directory in the tree, or returns to its parent when already collapsed.
   - Keyboard-driven directory switches do not auto-expand the newly selected folder and wait about `100 ms` before reloading the browser pane.
   - `backspace` goes up one folder.
   - `s` opens settings.
 - Preview:
   - `escape` closes preview.
-  - `arrowleft` and `arrowright` browse preview images.
+  - `arrowleft` and `arrowright` (`Left Arrow` and `Right Arrow`) browse preview images.
 - Slideshow:
-  - `arrowleft` and `arrowright` browse images.
+  - `arrowleft` and `arrowright` (`Left Arrow` and `Right Arrow`) browse images.
   - `space` ends the active session and exits slideshow.
 - Default actions:
   - `delete` deletes to the recycle bin / Trash.
@@ -75,5 +83,4 @@ Users need to start from an arbitrary directory, browse to a folder that contain
 ## Open questions
 
 - The browser layout needs a more compact, tree-like folder presentation and clearer separation between navigation controls and work-session controls.
-- The UI currently has no language switch or browser-language-driven localization layer.
 - The same-image double-action path still needs a guarded UX and test coverage so stale UI state cannot trigger a second invalid request.

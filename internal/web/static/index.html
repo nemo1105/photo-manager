@@ -4,10 +4,58 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Photo Manager</title>
+  <script>
+    (function () {
+      const STORAGE_KEY = "photo-manager.locale";
+
+      function parseLocale(raw) {
+        if (!raw) {
+          return "";
+        }
+        const token = String(raw).trim().split(",")[0].split(";")[0].trim().toLowerCase().replaceAll("_", "-");
+        if (!token) {
+          return "";
+        }
+        if (token.startsWith("zh")) {
+          return "zh-CN";
+        }
+        if (token.startsWith("en")) {
+          return "en";
+        }
+        return "";
+      }
+
+      let locale = "";
+      try {
+        locale = parseLocale(window.localStorage.getItem(STORAGE_KEY));
+      } catch (error) {
+        locale = "";
+      }
+      if (!locale) {
+        const candidates = Array.isArray(window.navigator.languages) && window.navigator.languages.length
+          ? window.navigator.languages
+          : [window.navigator.language || "en"];
+        for (const entry of candidates) {
+          locale = parseLocale(entry);
+          if (locale) {
+            break;
+          }
+        }
+      }
+      if (!locale) {
+        locale = "en";
+      }
+      document.documentElement.lang = locale;
+      window.__photoManagerBootstrap = {
+        locale,
+        storageKey: STORAGE_KEY,
+      };
+    })();
+  </script>
   <link rel="stylesheet" href="/styles.css">
 </head>
 <body>
-  <a class="skip-link" href="#workspace">Skip to main content</a>
+  <a id="skipLink" class="skip-link" href="#workspace">Skip to main content</a>
 
   <div id="app" class="app-shell">
     <header class="shell-header">
@@ -28,7 +76,7 @@
     <div class="modal-card preview-card" role="dialog" aria-modal="true" aria-labelledby="previewTitle">
       <div class="modal-header">
         <div>
-          <p class="modal-kicker">Preview</p>
+          <p id="previewKicker" class="modal-kicker">Preview</p>
           <h2 id="previewTitle" class="modal-title">Image Preview</h2>
         </div>
         <button id="previewCloseButton" class="preview-close-button" type="button" aria-label="Close preview">X</button>
@@ -43,7 +91,7 @@
     <div class="modal-card settings-card" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
       <div class="modal-header">
         <div>
-          <p class="modal-kicker">Configuration</p>
+          <p id="settingsKicker" class="modal-kicker">Configuration</p>
           <h2 id="settingsTitle" class="modal-title">Keys And Actions</h2>
         </div>
         <button id="settingsCloseButton" class="ghost-button utility-button">Close</button>
@@ -66,10 +114,13 @@
     <div class="modal-card help-card" role="dialog" aria-modal="true" aria-labelledby="helpTitle">
       <div class="modal-header">
         <div>
-          <p class="modal-kicker">Help</p>
+          <p id="helpKicker" class="modal-kicker">Help</p>
           <h2 id="helpTitle" class="modal-title">Sorting Guide</h2>
         </div>
-        <button id="helpCloseButton" class="ghost-button utility-button">Close</button>
+        <div class="modal-header-actions">
+          <button id="helpSettingsButton" class="ghost-button utility-button help-header-button" type="button" data-toolbar-action="open-settings">Settings</button>
+          <button id="helpCloseButton" class="ghost-button utility-button" type="button">Close</button>
+        </div>
       </div>
       <div id="helpBody" class="help-body"></div>
     </div>

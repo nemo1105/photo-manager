@@ -12,6 +12,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/nemo1105/photo-manager/internal/config"
+	"github.com/nemo1105/photo-manager/internal/localize"
 )
 
 type App struct {
@@ -72,6 +73,13 @@ type BrowserData struct {
 	Notice                   string         `json:"notice,omitempty"`
 }
 
+type BrowserStatsData struct {
+	CurrentPath         string `json:"currentPath"`
+	DirectoryCount      int    `json:"directoryCount"`
+	ImageCount          int    `json:"imageCount"`
+	RecursiveImageCount int    `json:"recursiveImageCount"`
+}
+
 type TreeData struct {
 	CurrentPath string     `json:"currentPath"`
 	CurrentName string     `json:"currentName"`
@@ -100,6 +108,22 @@ type OpenSessionResult struct {
 	SlideshowPath string      `json:"slideshowPath"`
 }
 
+var (
+	errCurrentDirNoImages     = localize.NewStaticError("current directory has no images", "当前文件夹没有图片")
+	errNoActiveSession        = localize.NewStaticError("no active session", "当前没有活动会话")
+	errImageOutsideCurrentDir = localize.NewStaticError("image is not inside current directory", "图片不在当前目录中")
+	errActionKeyNotConfigured = localize.NewStaticError("action key not configured", "该按键没有配置动作")
+	errSourceDestinationSame  = localize.NewStaticError("source and destination are the same", "源路径与目标路径相同")
+	errRestoreOnlyInTarget    = localize.NewStaticError("restore is only available in configured target directories", "恢复只允许在已配置的目标目录中使用")
+	errUnsupportedAction      = localize.NewStaticError("unsupported action", "不支持该动作")
+	errPathNotDirectory       = localize.NewStaticError("path is not a directory", "该路径不是目录")
+	errPathIsDirectory        = localize.NewStaticError("path is a directory", "该路径是目录")
+	errUnsupportedImage       = localize.NewStaticError("unsupported image", "不支持该图片格式")
+	errAbsolutePathNotAllowed = localize.NewStaticError("absolute path is not allowed", "不允许使用绝对路径")
+	errPathEscapesLaunchRoot  = localize.NewStaticError("path escapes launch root", "路径超出了启动根目录")
+	errTargetEmpty            = localize.NewStaticError("target is empty", "目标路径不能为空")
+)
+
 func New(launchRoot, configPath string, cfg *config.Config, trash Trasher) *App {
 	return &App{
 		launchRoot: filepath.Clean(launchRoot),
@@ -127,7 +151,7 @@ func (a *App) SaveConfig(cfg *config.Config) (*config.Config, error) {
 	return a.cfg.Clone(), nil
 }
 
-func (a *App) Browser(relPath string) (*BrowserData, error) {
+func (a *App) Browser(relPath string, locale localize.Locale) (*BrowserData, error) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 
@@ -136,7 +160,7 @@ func (a *App) Browser(relPath string) (*BrowserData, error) {
 		return nil, err
 	}
 
-	notice := a.maybeAutoEndSessionLocked(absPath)
+	notice := a.maybeAutoEndSessionLocked(locale, absPath)
 
 	dirs, images, err := listDirectory(absPath, a.launchRoot)
 	if err != nil {
@@ -151,13 +175,40 @@ func (a *App) Browser(relPath string) (*BrowserData, error) {
 		CurrentName:              displayName(absPath),
 		ParentPath:               parent,
 		CanGoUp:                  relPath != "",
-		Breadcrumbs:              buildBreadcrumbs(relPath),
+		Breadcrumbs:              buildBreadcrumbs(locale, relPath),
 		Directories:              dirs,
 		Images:                   images,
 		Session:                  a.sessionInfoLocked(),
 		Config:                   a.cfg.Clone(),
 		CurrentDirStartsAsReview: startsAsReview,
 		Notice:                   notice,
+	}, nil
+}
+
+func (a *App) BrowserStats(relPath string) (*BrowserStatsData, error) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+
+	relPath, absPath, err := a.resolveDir(relPath)
+	if err != nil {
+		return nil, err
+	}
+
+	dirs, images, err := listDirectory(absPath, a.launchRoot)
+	if err != nil {
+		return nil, err
+	}
+
+	recursiveImages, err := countVisibleImagesRecursive(absPath)
+	if err != nil {
+		return nil, err
+	}
+
+	return &BrowserStatsData{
+		CurrentPath:         relPath,
+		DirectoryCount:      len(dirs),
+		ImageCount:          len(images),
+		RecursiveImageCount: recursiveImages,
 	}, nil
 }
 
@@ -203,7 +254,7 @@ func (a *App) OpenSession(relPath string) (*OpenSessionResult, error) {
 		return nil, err
 	}
 	if len(images) == 0 {
-		return nil, errors.New("current directory has no images")
+		return nil, errCurrentDirNoImages
 	}
 
 	sessionRootAbs, _ := a.sessionStartRootLocked(absPath)
@@ -221,7 +272,7 @@ func (a *App) EndSession() SessionInfo {
 	return a.sessionInfoLocked()
 }
 
-func (a *App) Slideshow(relPath string) (*SlideshowData, error) {
+func (a *App) Slideshow(relPath string, locale localize.Locale) (*SlideshowData, error) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 
@@ -230,7 +281,7 @@ func (a *App) Slideshow(relPath string) (*SlideshowData, error) {
 		return nil, err
 	}
 
-	notice := a.maybeAutoEndSessionLocked(absPath)
+	notice := a.maybeAutoEndSessionLocked(locale, absPath)
 	dirs, images, err := listDirectory(absPath, a.launchRoot)
 	if err != nil {
 		return nil, err
@@ -255,7 +306,7 @@ func (a *App) Slideshow(relPath string) (*SlideshowData, error) {
 			Key:     binding.Key,
 			Action:  binding.Action,
 			Target:  binding.Target,
-			Label:   actionLabel(binding),
+			Label:   actionLabel(locale, binding),
 			Enabled: enabled,
 		})
 	}
@@ -263,7 +314,7 @@ func (a *App) Slideshow(relPath string) (*SlideshowData, error) {
 	return &SlideshowData{
 		CurrentPath:        relPath,
 		CurrentName:        displayName(absPath),
-		Breadcrumbs:        buildBreadcrumbs(relPath),
+		Breadcrumbs:        buildBreadcrumbs(locale, relPath),
 		Images:             images,
 		Session:            a.sessionInfoLocked(),
 		Config:             a.cfg.Clone(),
@@ -273,20 +324,20 @@ func (a *App) Slideshow(relPath string) (*SlideshowData, error) {
 	}, nil
 }
 
-func (a *App) PerformAction(currentDirRel, imageRel, actionKey string) (*ActionResult, error) {
+func (a *App) PerformAction(currentDirRel, imageRel, actionKey string, locale localize.Locale) (*ActionResult, error) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 
 	if a.session == nil {
-		return nil, errors.New("no active session")
+		return nil, errNoActiveSession
 	}
 
 	currentDirRel, currentDirAbs, err := a.resolveDir(currentDirRel)
 	if err != nil {
 		return nil, err
 	}
-	if notice := a.maybeAutoEndSessionLocked(currentDirAbs); notice != "" {
-		return nil, errors.New(notice)
+	if notice := a.maybeAutoEndSessionLocked(locale, currentDirAbs); notice != "" {
+		return nil, localize.NewStaticError("left the active work directory range, session ended automatically", notice)
 	}
 
 	imageRel, imageAbs, err := a.resolveFile(imageRel)
@@ -294,7 +345,7 @@ func (a *App) PerformAction(currentDirRel, imageRel, actionKey string) (*ActionR
 		return nil, err
 	}
 	if !isWithinDir(imageAbs, currentDirAbs) {
-		return nil, errors.New("image is not inside current directory")
+		return nil, errImageOutsideCurrentDir
 	}
 
 	key, err := config.NormalizeKey(actionKey)
@@ -304,7 +355,7 @@ func (a *App) PerformAction(currentDirRel, imageRel, actionKey string) (*ActionR
 
 	binding, found := findAction(a.cfg.Actions, key)
 	if !found {
-		return nil, errors.New("action key not configured")
+		return nil, errActionKeyNotConfigured
 	}
 
 	var notice string
@@ -319,7 +370,7 @@ func (a *App) PerformAction(currentDirRel, imageRel, actionKey string) (*ActionR
 			return nil, err
 		}
 		if samePath(imageAbs, dstPath) {
-			return nil, errors.New("source and destination are the same")
+			return nil, errSourceDestinationSame
 		}
 		if err := os.MkdirAll(dstDir, 0o755); err != nil {
 			return nil, err
@@ -327,29 +378,29 @@ func (a *App) PerformAction(currentDirRel, imageRel, actionKey string) (*ActionR
 		if err := os.Rename(imageAbs, dstPath); err != nil {
 			return nil, err
 		}
-		notice = fmt.Sprintf("moved %s", filepath.Base(imageAbs))
+		notice = localize.MoveNotice(locale, filepath.Base(imageAbs))
 	case "delete":
 		if err := a.trash.Trash(imageAbs); err != nil {
 			return nil, err
 		}
-		notice = fmt.Sprintf("deleted %s to recycle bin", filepath.Base(imageAbs))
+		notice = localize.DeleteNotice(locale, filepath.Base(imageAbs))
 	case "restore":
 		if !a.dirMatchesMoveTargetLocked(currentDirAbs) {
-			return nil, errors.New("restore is only available in configured target directories")
+			return nil, errRestoreOnlyInTarget
 		}
 		dstPath, err := uniqueDestination(a.session.RootAbs, filepath.Base(imageAbs))
 		if err != nil {
 			return nil, err
 		}
 		if samePath(imageAbs, dstPath) {
-			return nil, errors.New("source and destination are the same")
+			return nil, errSourceDestinationSame
 		}
 		if err := os.Rename(imageAbs, dstPath); err != nil {
 			return nil, err
 		}
-		notice = fmt.Sprintf("restored %s", filepath.Base(imageAbs))
+		notice = localize.RestoreNotice(locale, filepath.Base(imageAbs))
 	default:
-		return nil, errors.New("unsupported action")
+		return nil, errUnsupportedAction
 	}
 
 	_ = currentDirRel
@@ -379,7 +430,7 @@ func (a *App) resolveDir(relPath string) (string, string, error) {
 		return "", "", err
 	}
 	if !info.IsDir() {
-		return "", "", errors.New("path is not a directory")
+		return "", "", errPathNotDirectory
 	}
 	return cleanRel, absPath, nil
 }
@@ -395,15 +446,15 @@ func (a *App) resolveFile(relPath string) (string, string, error) {
 		return "", "", err
 	}
 	if info.IsDir() {
-		return "", "", errors.New("path is a directory")
+		return "", "", errPathIsDirectory
 	}
 	if !isSupportedImage(absPath) {
-		return "", "", errors.New("unsupported image")
+		return "", "", errUnsupportedImage
 	}
 	return cleanRel, absPath, nil
 }
 
-func (a *App) maybeAutoEndSessionLocked(currentAbs string) string {
+func (a *App) maybeAutoEndSessionLocked(locale localize.Locale, currentAbs string) string {
 	if a.session == nil {
 		return ""
 	}
@@ -411,7 +462,7 @@ func (a *App) maybeAutoEndSessionLocked(currentAbs string) string {
 		return ""
 	}
 	a.session = nil
-	return "left the active work directory range, session ended automatically"
+	return localize.SessionAutoEndedNotice(locale)
 }
 
 func (a *App) sessionStartRootLocked(currentAbs string) (string, bool) {
@@ -482,21 +533,12 @@ func findAction(actions []config.ActionBinding, key string) (config.ActionBindin
 	return config.ActionBinding{}, false
 }
 
-func actionLabel(binding config.ActionBinding) string {
-	switch binding.Action {
-	case "move":
-		return "Move to " + binding.Target
-	case "delete":
-		return "Delete"
-	case "restore":
-		return "Restore"
-	default:
-		return binding.Action
-	}
+func actionLabel(locale localize.Locale, binding config.ActionBinding) string {
+	return localize.ActionLabel(locale, binding.Action, binding.Target)
 }
 
-func buildBreadcrumbs(relPath string) []Breadcrumb {
-	breadcrumbs := []Breadcrumb{{Name: "Root", Path: ""}}
+func buildBreadcrumbs(locale localize.Locale, relPath string) []Breadcrumb {
+	breadcrumbs := []Breadcrumb{{Name: localize.RootName(locale), Path: ""}}
 	if relPath == "" {
 		return breadcrumbs
 	}
@@ -539,10 +581,10 @@ func sanitizeRelPath(relPath string) (string, error) {
 	}
 	clean := filepath.Clean(filepath.FromSlash(relPath))
 	if filepath.IsAbs(clean) {
-		return "", errors.New("absolute path is not allowed")
+		return "", errAbsolutePathNotAllowed
 	}
 	if clean == ".." || strings.HasPrefix(clean, ".."+string(filepath.Separator)) {
-		return "", errors.New("path escapes launch root")
+		return "", errPathEscapesLaunchRoot
 	}
 	if clean == "." {
 		return "", nil
@@ -553,7 +595,7 @@ func sanitizeRelPath(relPath string) (string, error) {
 func resolveTargetDir(target, sessionRoot string) (string, error) {
 	target = strings.TrimSpace(target)
 	if target == "" {
-		return "", errors.New("target is empty")
+		return "", errTargetEmpty
 	}
 	if filepath.IsAbs(target) {
 		return filepath.Clean(target), nil
@@ -748,6 +790,35 @@ func hasVisibleChildDirectory(absPath string) bool {
 		return true
 	}
 	return false
+}
+
+func countVisibleImagesRecursive(absPath string) (int, error) {
+	entries, err := os.ReadDir(absPath)
+	if err != nil {
+		return 0, err
+	}
+
+	total := 0
+	for _, entry := range entries {
+		entryPath := filepath.Join(absPath, entry.Name())
+		hidden, err := isHidden(entryPath, entry)
+		if err != nil || hidden {
+			continue
+		}
+
+		if entry.IsDir() {
+			nestedTotal, err := countVisibleImagesRecursive(entryPath)
+			if err != nil {
+				return 0, err
+			}
+			total += nestedTotal
+			continue
+		}
+		if isSupportedImage(entry.Name()) {
+			total += 1
+		}
+	}
+	return total, nil
 }
 
 func isSupportedImage(name string) bool {

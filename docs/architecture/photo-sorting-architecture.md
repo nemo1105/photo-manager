@@ -17,10 +17,13 @@ This application is a single-binary Go tool that starts from an explicit launch 
 - `restore` is only valid when the current directory matches one of the configured `move` targets resolved against `sessionRoot`.
 - When slideshow is opened inside a move-target directory, the action list omits any `move` binding whose destination is that same directory.
 - Directory listing is shallow: only direct child folders and direct child images of the current directory are returned.
+- `GET /api/browser/stats` is side-effect free: it must not start or end sessions, and it reports direct child counts plus recursive visible-image totals for the current subtree.
 - Returned directory lists use natural numeric ordering, so names like `1`, `2`, and `10` sort in human order.
 - Hidden entries are ignored. Supported image formats are `.jpg`, `.jpeg`, `.png`, `.gif`, `.webp`, and `.bmp`.
 - Name conflicts for `move` and `restore` are resolved by creating `name (N).ext` variants.
 - Slideshow mode is rendered as an immersive single-viewer surface. It hides the shared shell and is expected to fit inside the viewport without page scrollbars.
+- Web localization supports only `en` and `zh-CN`; browser locales beginning with `zh` map to `zh-CN`, and everything else falls back to `en`.
+- The browser can override locale selection locally, and that manual choice takes precedence over browser-language detection for later requests from the same browser profile.
 
 ## Interfaces
 
@@ -36,13 +39,15 @@ This application is a single-binary Go tool that starts from an explicit launch 
   - `move.target` accepts relative or absolute paths.
   - The default template maps `space` to session enter/exit, `arrowup` / `arrowdown` / `arrowright` / `arrowleft` to browser-tree navigation, `arrowleft` and `arrowright` to slide navigation, `delete` to delete, `arrowdown` to move into `0`, and `arrowup` to restore.
 - HTTP API:
-  - `GET /api/browser`: current directory listing, breadcrumbs, session status, config, and whether starting here should be framed as reviewing moved photos.
+  - `GET /api/browser`: current directory listing, localized breadcrumbs, session status, config, and whether starting here should be framed as reviewing moved photos.
+  - `GET /api/browser/stats`: current directory path plus direct visible folder count, direct visible image count, and recursive visible image count for help-modal summary stats.
   - `POST /api/session/start`: creates or reuses a session for the current directory.
   - `POST /api/session/end`: clears the active session.
-- `GET /api/slideshow`: current directory image list plus action availability.
+- `GET /api/slideshow`: current directory image list plus localized action labels and action availability.
   - `POST /api/action`: executes one image action using the configured key.
   - `GET /api/config` and `POST /api/config`: load and save validated config.
   - `GET /image`: streams the original image file.
+  - `X-Photo-Manager-Locale` is an optional request header. When present with `en` or `zh-CN`, it overrides `Accept-Language`; otherwise the handler falls back to `Accept-Language`, then `en`.
 
 ## Dependencies
 
@@ -50,6 +55,7 @@ This application is a single-binary Go tool that starts from an explicit launch 
 - `gopkg.in/yaml.v3` for config parsing and persistence.
 - Windows PowerShell or macOS `osascript` for recycle-bin / Trash integration.
 - Browser-side JavaScript in `internal/web/static/app.js` for state transitions and key handling.
+- Internal locale helpers in `internal/localize/` centralize request-locale parsing and backend message text.
 
 ## Decisions
 
@@ -57,8 +63,11 @@ This application is a single-binary Go tool that starts from an explicit launch 
 - Session creation is explicit to protect the sorting logic from accidental clicks while browsing.
 - Browser-mode tree navigation follows the currently visible tree rows, so collapsing an already collapsed directory steps selection back to its parent instead of hiding the active location.
 - Keyboard-driven browser navigation keeps a transient tree focus separate from the last loaded browser directory, preserves the existing expansion state, and debounces browser reloads by `100 ms` to reduce image-list churn during rapid scans.
+- Recursive help stats are fetched lazily through `/api/browser/stats` when the help modal opens, so normal browser navigation stays shallow and avoids subtree walks on every directory change.
 - Relative target directories intentionally use `sessionRoot` so any configured review folder, including the default `0`, still restores back to the original work root.
 - Review-folder entry is explained in the UI as checking already moved photos, rather than exposing the session-root fallback directly.
 - The default action template now favors a single hot folder, `0`, so a fresh install exposes one high-risk move target instead of several competing move destinations.
 - The current implementation prefers a small dependency set over a larger frontend framework.
+- Localization stays dependency-light: frontend strings live in the static app bundle, backend request parsing and user-visible server messages live in `internal/localize/`, the help modal reuses that locale for stats and shortcut copy, and the config file schema remains unchanged.
+- The manual language switch lives in the browser toolbar immediately to the left of the help icon, while slideshow and preview reuse the current locale instead of introducing separate locale controls.
 

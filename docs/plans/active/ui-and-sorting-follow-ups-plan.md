@@ -26,7 +26,9 @@ Track the next round of UX and reliability work after the initial browse/preview
   Current execution focus on 2026-03-21: make repeated clicks on the current tree directory toggle that branch open and closed, instead of relying only on the chevron affordance.
   Current execution focus on 2026-03-21: let browser-mode arrow keys drive the visible tree with configurable up/down selection plus right-expand and left-collapse behavior.
   Current correction focus on 2026-03-21: keep keyboard tree movement from auto-expanding directories, and debounce browser loads by 100 ms so fast directory scans do not stutter on image-heavy folders.
-- [ ] Add zh-CN / en localization with default language chosen from the browser locale.
+  Current execution focus on 2026-03-21: regroup help-modal shortcuts by mode, document `Space` as the slideshow exit while keeping browser `q` browser-only, move `Settings` into the modal header, and replace the help footer session row with tighter direct plus recursive image counts from a dedicated stats endpoint.
+- [x] Add zh-CN / en localization with default language chosen from the browser locale.
+  Current execution focus on 2026-03-21: detect locale from browser language on first load, let the browser toolbar switch between `zh-CN` and `en`, persist manual choice in browser storage, and localize backend notices / errors through the same request locale.
 - [ ] Prevent repeated operations on the same stale image state from surfacing as user-visible errors.
 - [ ] Make the settings key-capture mode visually obvious while waiting for the next key press.
 
@@ -35,6 +37,7 @@ Track the next round of UX and reliability work after the initial browse/preview
 - Layout work touches the main browser and slideshow shell, so regressions can easily break the session indicator or button discoverability.
 - Fixing repeated actions may require both frontend debouncing and backend state validation.
 - Localization will increase UI text surface area and can make button layouts unstable if not tested on smaller screens.
+- The dedicated help stats lookup walks the current subtree recursively, so large folders still need manual runtime verification for latency inside the modal.
 
 ## Decisions
 
@@ -42,10 +45,14 @@ Track the next round of UX and reliability work after the initial browse/preview
 - This is a `Plan class: Standard` document because the work is active but still routine and bounded.
 - The P0 layout refresh keeps the existing sorting semantics unchanged; the redesign is a shell, explorer, and interaction refactor rather than a workflow rewrite.
 - The visual direction for the P0 refresh is a compact explorer/workbench shell with high-contrast neutral surfaces, a single blue accent, and persistent but non-intrusive session highlighting.
+- Localization now defaults to the browser locale, supports only `zh-CN` and `en`, persists manual override in browser storage, and exposes the switch in the browser toolbar immediately to the left of the help icon.
+- Help-modal shortcut guidance is now grouped into browser, preview, slideshow, and action sections; it explicitly names arrow keys, treats `Space` as the default slideshow exit, and uses a dedicated stats request so recursive image totals do not slow normal browser navigation.
 
 ## Verification
 
 - Run `go test ./...` and `go build ./...`.
+- Verify `zh-CN` and `en` both localize browser chrome, help, settings, preview, slideshow copy, and backend toast / error responses.
+- Verify the help modal header places `Settings` immediately left of `Close`, removes session status, and shows direct folder count, direct image count, and recursive image count for the current subtree.
 - Manually verify browse, preview, start-session, move, delete, restore, and auto-end-session behavior in the browser.
 - Manually verify target folders trigger the review toast before session start and the review state inside slideshow.
 - Confirm any UI work still keeps action buttons usable without keyboard shortcuts.

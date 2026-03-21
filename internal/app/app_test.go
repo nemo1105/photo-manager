@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/nemo1105/photo-manager/internal/config"
+	"github.com/nemo1105/photo-manager/internal/localize"
 )
 
 type fakeTrash struct {
@@ -30,7 +31,7 @@ func TestMoveAndRestoreUseSessionRoot(t *testing.T) {
 		t.Fatalf("open session: %v", err)
 	}
 
-	if _, err := app.PerformAction("", "photo.jpg", "arrowdown"); err != nil {
+	if _, err := app.PerformAction("", "photo.jpg", "arrowdown", localize.EN); err != nil {
 		t.Fatalf("move photo: %v", err)
 	}
 
@@ -39,7 +40,7 @@ func TestMoveAndRestoreUseSessionRoot(t *testing.T) {
 		t.Fatalf("expected moved file: %v", err)
 	}
 
-	if _, err := app.PerformAction("0", "0/photo.jpg", "arrowup"); err != nil {
+	if _, err := app.PerformAction("0", "0/photo.jpg", "arrowup", localize.EN); err != nil {
 		t.Fatalf("restore photo: %v", err)
 	}
 
@@ -70,7 +71,7 @@ func TestOpenSessionFromTargetUsesParentAsSessionRoot(t *testing.T) {
 		t.Fatalf("expected slideshow to stay in current directory, got %q", result.SlideshowPath)
 	}
 
-	if _, err := app.PerformAction("work/0", "work/0/review.jpg", "arrowup"); err != nil {
+	if _, err := app.PerformAction("work/0", "work/0/review.jpg", "arrowup", localize.EN); err != nil {
 		t.Fatalf("restore photo from target: %v", err)
 	}
 
@@ -87,7 +88,7 @@ func TestBrowserMarksReviewStartFolders(t *testing.T) {
 	cfg := config.Default()
 	app := New(root, filepath.Join(root, "config.yaml"), cfg, &fakeTrash{})
 
-	reviewData, err := app.Browser("work/0")
+	reviewData, err := app.Browser("work/0", localize.EN)
 	if err != nil {
 		t.Fatalf("browse review folder: %v", err)
 	}
@@ -95,7 +96,7 @@ func TestBrowserMarksReviewStartFolders(t *testing.T) {
 		t.Fatal("expected target directory to be marked as a review start folder")
 	}
 
-	freshData, err := app.Browser("work/fresh")
+	freshData, err := app.Browser("work/fresh", localize.EN)
 	if err != nil {
 		t.Fatalf("browse fresh folder: %v", err)
 	}
@@ -140,7 +141,7 @@ func TestOpenSessionDoesNotFallbackOutsideLaunchRoot(t *testing.T) {
 		t.Fatalf("expected launch root session to stay put, got %q", result.Session.RootPath)
 	}
 
-	data, err := app.Browser("")
+	data, err := app.Browser("", localize.EN)
 	if err != nil {
 		t.Fatalf("browse launch root: %v", err)
 	}
@@ -166,7 +167,7 @@ func TestSlideshowHidesCurrentReviewTargetAction(t *testing.T) {
 		t.Fatalf("open session from review target: %v", err)
 	}
 
-	data, err := app.Slideshow("work/0")
+	data, err := app.Slideshow("work/0", localize.EN)
 	if err != nil {
 		t.Fatalf("load slideshow from review target: %v", err)
 	}
@@ -212,7 +213,7 @@ func TestBrowserAutoEndsSessionOutsideRoot(t *testing.T) {
 		t.Fatalf("open session: %v", err)
 	}
 
-	data, err := app.Browser("other")
+	data, err := app.Browser("other", localize.EN)
 	if err != nil {
 		t.Fatalf("browse other: %v", err)
 	}
@@ -249,6 +250,64 @@ func TestTreeLookupOutsideSessionDoesNotEndSession(t *testing.T) {
 	}
 }
 
+func TestBrowserStatsCountsVisibleRecursiveImages(t *testing.T) {
+	root := t.TempDir()
+	mustWriteFile(t, filepath.Join(root, "work", "cover.jpg"))
+	mustWriteFile(t, filepath.Join(root, "work", "keep.png"))
+	mustWriteFile(t, filepath.Join(root, "work", "notes.txt"))
+	mustWriteFile(t, filepath.Join(root, "work", ".hidden.jpg"))
+	mustWriteFile(t, filepath.Join(root, "work", "nested", "inside.webp"))
+	mustWriteFile(t, filepath.Join(root, "work", "nested", ".ignored.bmp"))
+	mustWriteFile(t, filepath.Join(root, "work", "nested", "deeper", "last.bmp"))
+	mustWriteFile(t, filepath.Join(root, "work", ".secret", "skip.jpg"))
+	mustMkdir(t, filepath.Join(root, "work", "empty"))
+
+	cfg := config.Default()
+	app := New(root, filepath.Join(root, "config.yaml"), cfg, &fakeTrash{})
+
+	stats, err := app.BrowserStats("work")
+	if err != nil {
+		t.Fatalf("browser stats: %v", err)
+	}
+
+	if stats.CurrentPath != "work" {
+		t.Fatalf("expected current path work, got %q", stats.CurrentPath)
+	}
+	if stats.DirectoryCount != 2 {
+		t.Fatalf("expected 2 visible child directories, got %d", stats.DirectoryCount)
+	}
+	if stats.ImageCount != 2 {
+		t.Fatalf("expected 2 visible direct images, got %d", stats.ImageCount)
+	}
+	if stats.RecursiveImageCount != 4 {
+		t.Fatalf("expected 4 visible recursive images, got %d", stats.RecursiveImageCount)
+	}
+}
+
+func TestBrowserStatsOutsideSessionDoesNotEndSession(t *testing.T) {
+	root := t.TempDir()
+	mustWriteFile(t, filepath.Join(root, "work", "a.jpg"))
+	mustWriteFile(t, filepath.Join(root, "other", "nested", "b.jpg"))
+
+	cfg := config.Default()
+	app := New(root, filepath.Join(root, "config.yaml"), cfg, &fakeTrash{})
+
+	if _, err := app.OpenSession("work"); err != nil {
+		t.Fatalf("open session: %v", err)
+	}
+
+	stats, err := app.BrowserStats("other")
+	if err != nil {
+		t.Fatalf("browser stats: %v", err)
+	}
+	if stats.RecursiveImageCount != 1 {
+		t.Fatalf("expected recursive image count 1, got %d", stats.RecursiveImageCount)
+	}
+	if !app.sessionInfoLocked().Active {
+		t.Fatal("expected browser stats lookup to keep the session active")
+	}
+}
+
 func TestMoveAutoRenamesOnConflict(t *testing.T) {
 	root := t.TempDir()
 	mustWriteFile(t, filepath.Join(root, "photo.jpg"))
@@ -260,7 +319,7 @@ func TestMoveAutoRenamesOnConflict(t *testing.T) {
 	if _, err := app.OpenSession(""); err != nil {
 		t.Fatalf("open session: %v", err)
 	}
-	if _, err := app.PerformAction("", "photo.jpg", "arrowdown"); err != nil {
+	if _, err := app.PerformAction("", "photo.jpg", "arrowdown", localize.EN); err != nil {
 		t.Fatalf("move photo: %v", err)
 	}
 
@@ -316,7 +375,7 @@ func TestBrowserAndTreeUseNaturalDirectoryOrder(t *testing.T) {
 	cfg := config.Default()
 	app := New(root, filepath.Join(root, "config.yaml"), cfg, &fakeTrash{})
 
-	browserData, err := app.Browser("")
+	browserData, err := app.Browser("", localize.EN)
 	if err != nil {
 		t.Fatalf("browse root: %v", err)
 	}
@@ -330,6 +389,61 @@ func TestBrowserAndTreeUseNaturalDirectoryOrder(t *testing.T) {
 	}
 	if got := dirNames(treeData.Directories); !reflect.DeepEqual(got, []string{"1", "2", "10"}) {
 		t.Fatalf("unexpected tree directory order: %v", got)
+	}
+}
+
+func TestLocalizedBreadcrumbsActionLabelsAndNotices(t *testing.T) {
+	root := t.TempDir()
+	mustWriteFile(t, filepath.Join(root, "work", "photo.jpg"))
+	mustWriteFile(t, filepath.Join(root, "other", "keep.jpg"))
+
+	cfg := config.Default()
+	app := New(root, filepath.Join(root, "config.yaml"), cfg, &fakeTrash{})
+
+	browserData, err := app.Browser("work", localize.ZHCN)
+	if err != nil {
+		t.Fatalf("browse work: %v", err)
+	}
+	if len(browserData.Breadcrumbs) == 0 || browserData.Breadcrumbs[0].Name != "根目录" {
+		t.Fatalf("expected zh root breadcrumb, got %+v", browserData.Breadcrumbs)
+	}
+
+	if _, err := app.OpenSession("work"); err != nil {
+		t.Fatalf("open session: %v", err)
+	}
+
+	slideshowData, err := app.Slideshow("work", localize.ZHCN)
+	if err != nil {
+		t.Fatalf("load slideshow: %v", err)
+	}
+	labels := map[string]string{}
+	for _, action := range slideshowData.ActionButtons {
+		labels[action.Key] = action.Label
+	}
+	if labels["delete"] != "删除" {
+		t.Fatalf("expected localized delete label, got %q", labels["delete"])
+	}
+	if labels["arrowdown"] != "移动到 0" {
+		t.Fatalf("expected localized move label, got %q", labels["arrowdown"])
+	}
+	if labels["arrowup"] != "恢复" {
+		t.Fatalf("expected localized restore label, got %q", labels["arrowup"])
+	}
+
+	result, err := app.PerformAction("work", "work/photo.jpg", "arrowdown", localize.ZHCN)
+	if err != nil {
+		t.Fatalf("move photo: %v", err)
+	}
+	if result.Notice != "已移动 photo.jpg。" {
+		t.Fatalf("expected localized move notice, got %q", result.Notice)
+	}
+
+	autoEndData, err := app.Browser("other", localize.ZHCN)
+	if err != nil {
+		t.Fatalf("browse other: %v", err)
+	}
+	if autoEndData.Notice != "已离开当前工作目录范围，会话已自动结束。" {
+		t.Fatalf("expected localized auto-end notice, got %q", autoEndData.Notice)
 	}
 }
 

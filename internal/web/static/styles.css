@@ -880,6 +880,13 @@ textarea:focus-visible {
   margin-bottom: 18px;
 }
 
+.modal-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
 .preview-close-button {
   width: 30px;
   height: 30px;
@@ -1249,6 +1256,39 @@ body.browser-mode .browser-tool-group--end {
   margin-left: auto;
 }
 
+body.browser-mode .language-switcher {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px;
+  border: 1px solid rgba(125, 211, 252, 0.12);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+body.browser-mode .language-chip {
+  min-width: 48px;
+  height: 26px;
+  border: 0;
+  border-radius: 999px;
+  padding: 0 10px;
+  background: transparent;
+  color: rgba(230, 238, 252, 0.72);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+body.browser-mode .language-chip:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.06);
+  color: #e6eefc;
+}
+
+body.browser-mode .language-chip.is-active {
+  background: rgba(34, 211, 238, 0.18);
+  color: #dff8ff;
+}
+
 body.browser-mode .browser-tool-button,
 body.browser-mode .browser-icon-button {
   border: 1px solid rgba(125, 211, 252, 0.12);
@@ -1341,14 +1381,12 @@ body.browser-mode .browser-icon-svg {
   stroke-linejoin: round;
 }
 
-body.browser-mode .browser-info-section,
-body.browser-mode .browser-info-row {
+body.browser-mode .browser-info-section {
   display: grid;
   gap: 4px;
 }
 
 body.browser-mode .browser-info-section strong,
-body.browser-mode .browser-info-row strong,
 body.browser-mode .browser-info-key strong {
   font-size: 0.72rem;
   color: #8edcff;
@@ -1358,7 +1396,7 @@ body.browser-mode .browser-info-key strong {
 }
 
 body.browser-mode .browser-info-section span,
-body.browser-mode .browser-info-row span {
+body.browser-mode .browser-help-stats .stat-pill span {
   color: rgba(230, 238, 252, 0.86);
   font-size: 0.8rem;
   word-break: break-word;
@@ -1374,18 +1412,6 @@ body.browser-mode .browser-help-list {
   line-height: 1.5;
 }
 
-body.browser-mode .browser-info-row {
-  grid-template-columns: 1fr auto;
-  align-items: center;
-  gap: 10px;
-}
-
-body.browser-mode .browser-info-hotkeys {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
 body.browser-mode .browser-info-key {
   padding: 7px 8px;
   border-radius: 12px;
@@ -1396,20 +1422,15 @@ body.browser-mode .browser-info-key {
   gap: 8px;
 }
 
-body.browser-mode .browser-help-actions {
-  display: flex;
-  justify-content: flex-start;
-}
-
 body.browser-mode .help-card {
-  width: min(760px, calc(100vw - 32px));
+  width: min(820px, calc(100vw - 32px));
   max-height: calc(100vh - 48px);
   margin: 0;
 }
 
 body.browser-mode .help-body {
   display: grid;
-  gap: 16px;
+  gap: 14px;
 }
 
 body.browser-mode .help-section {
@@ -1417,21 +1438,77 @@ body.browser-mode .help-section {
   gap: 12px;
 }
 
-body.browser-mode .browser-help-settings {
+body.browser-mode .help-header-button {
   min-height: 32px;
-  padding: 0 10px;
-  border: 1px solid rgba(125, 211, 252, 0.12);
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.03);
-  color: #e6eefc;
-  display: inline-flex;
-  align-items: center;
+  padding: 7px 10px;
+}
+
+body.browser-mode .help-header-button strong {
+  font-size: 0.78rem;
+}
+
+body.browser-mode .help-header-button span {
+  margin-top: 2px;
+  font-size: 0.68rem;
+}
+
+body.browser-mode .browser-shortcut-groups {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+body.browser-mode .browser-shortcut-group {
+  min-width: 0;
+  padding: 12px;
+  border-radius: 14px;
+  border: 1px solid rgba(125, 211, 252, 0.1);
+  background: rgba(255, 255, 255, 0.02);
+  display: grid;
+  gap: 10px;
+}
+
+body.browser-mode .browser-shortcut-group h4 {
+  margin: 0;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #8edcff;
+}
+
+body.browser-mode .browser-shortcut-list {
+  display: flex;
+  flex-wrap: wrap;
   gap: 8px;
 }
 
-body.browser-mode .browser-help-settings:hover:not(:disabled) {
-  background: rgba(255, 255, 255, 0.06);
-  border-color: rgba(103, 232, 249, 0.26);
+body.browser-mode .help-section--stats {
+  gap: 10px;
+}
+
+body.browser-mode .browser-help-meta-grid {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+body.browser-mode .browser-help-stats {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+}
+
+body.browser-mode .browser-help-stats .stat-pill {
+  min-width: 0;
+  border-color: rgba(125, 211, 252, 0.1);
+  background: rgba(255, 255, 255, 0.03);
+  color: #e6eefc;
+  justify-content: flex-start;
+}
+
+body.browser-mode .browser-help-stats .stat-pill strong {
+  color: #8edcff;
 }
 
 body.browser-mode .browser-tree-shell {

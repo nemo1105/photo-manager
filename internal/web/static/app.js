@@ -1,5 +1,292 @@
 (function () {
+  const STORAGE_KEY = window.__photoManagerBootstrap?.storageKey || "photo-manager.locale";
+  const MESSAGES = {
+    en: {
+      "common.appTitle": "Photo Manager",
+      "common.skipLink": "Skip to main content",
+      "common.root": "Root",
+      "common.close": "Close",
+      "common.preview": "Preview",
+      "common.help": "Help",
+      "common.language": "Language",
+      "common.languageToggle": "Switch language",
+      "common.unknown": "(unknown)",
+      "common.notStarted": "Not started",
+      "common.settings": "Settings",
+      "common.status": "Status",
+      "shell.sortingWorkspace": "Sorting workspace",
+      "shell.explorerWorkspace": "Explorer workspace",
+      "shell.workSessionActive": "Work session active",
+      "shell.browsingOnly": "Browsing only",
+      "shell.launchRoot": "Launch root",
+      "shell.currentDirectory": "Current directory",
+      "shell.workRoot": "Work root",
+      "browser.loading": "Loading browser...",
+      "browser.sortHere": "Sort Here",
+      "browser.reviewHere": "Review Here",
+      "browser.openHere": "Open Here",
+      "browser.currentDirectoryAria": "Current directory",
+      "browser.noImages": "No images in this folder.",
+      "browser.loadingFolders": "Loading folders...",
+      "browser.toggleFolder": "Toggle {name}",
+      "browser.openHelp": "Open help",
+      "browser.closeHelp": "Close help",
+      "browser.checkMovedPhotos": "Checking photos already moved here.",
+      "slideshow.noImages": "No images",
+      "slideshow.noRemainingImages": "This directory has no remaining images.",
+      "slideshow.sorting": "Sorting",
+      "slideshow.reviewingMovedPhotos": "Reviewing moved photos",
+      "slideshow.prev": "Prev",
+      "slideshow.next": "Next",
+      "slideshow.end": "End",
+      "preview.imagePreview": "Image Preview",
+      "preview.close": "Close preview",
+      "settings.configuration": "Configuration",
+      "settings.keysAndActions": "Keys And Actions",
+      "settings.browserKeys": "Browser Keys",
+      "settings.previewKeys": "Preview Keys",
+      "settings.slideshowKeys": "Slideshow Keys",
+      "settings.startSession": "Start Session",
+      "settings.endSession": "End Session",
+      "settings.treeUp": "Tree Up",
+      "settings.treeDown": "Tree Down",
+      "settings.expandDirectory": "Expand Directory",
+      "settings.collapseDirectory": "Collapse Directory",
+      "settings.upDirectory": "Up Directory",
+      "settings.openSettings": "Open Settings",
+      "settings.closePreview": "Close Preview",
+      "settings.nextPreviewImage": "Next Preview Image",
+      "settings.previousPreviewImage": "Previous Preview Image",
+      "settings.nextSlide": "Next Slide",
+      "settings.previousSlide": "Previous Slide",
+      "settings.actions": "Actions",
+      "settings.actionHelp": "Move actions require a target path. Delete and restore do not accept a target.",
+      "settings.addMove": "Add Move",
+      "settings.addDelete": "Add Delete",
+      "settings.addRestore": "Add Restore",
+      "settings.save": "Save Settings",
+      "settings.capture": "Capture",
+      "settings.pressKey": "Press Key",
+      "settings.key": "Key",
+      "settings.action": "Action",
+      "settings.target": "Target",
+      "settings.remove": "Remove",
+      "settings.removeAction": "Delete this action row",
+      "settings.targetPlaceholder": "0 or D:/Photos/0",
+      "settings.saved": "Settings saved.",
+      "settings.actionType.move": "Move",
+      "settings.actionType.delete": "Delete",
+      "settings.actionType.restore": "Restore",
+      "help.sortingGuide": "Sorting Guide",
+      "help.howToUse": "How To Use",
+      "help.shortcuts": "Shortcuts",
+      "help.browserShortcuts": "Browser",
+      "help.previewShortcuts": "Preview",
+      "help.slideshowShortcuts": "Slideshow",
+      "help.actionShortcuts": "Actions",
+      "help.launchRoot": "Launch root",
+      "help.currentFolder": "Current folder",
+      "help.folders": "Folders here",
+      "help.images": "Images here",
+      "help.recursiveImages": "Images below",
+      "help.loadingRecursiveImages": "Counting...",
+      "help.sessionIdle": "Idle",
+      "help.sessionActive": "Active | {root}",
+      "help.step1": "Browse folders in the tree on the left, and click the current folder again to collapse or reopen it.",
+      "help.step2": "Outside preview and slideshow, use Up Arrow and Down Arrow to switch folders, Right Arrow to expand, and Left Arrow to collapse.",
+      "help.step3": "Click any image to open preview only.",
+      "help.step4": "Use Sort Here, or Review Here in moved-photo folders, to start from the current folder.",
+      "help.step5": "In slideshow, use Left Arrow and Right Arrow to move through images, and Space exits by default.",
+      "help.startReview": "Start / Review",
+      "help.browserEndSession": "End Session In Browser",
+      "help.treeMove": "Move In Tree",
+      "help.expand": "Expand Current Folder",
+      "help.collapse": "Collapse / Parent",
+      "help.up": "Go Up A Folder",
+      "help.end": "Exit / End Session",
+      "help.preview": "Browse Preview Images",
+      "help.closePreview": "Close Preview",
+      "help.slideshowBrowse": "Browse Slideshow Images",
+      "help.openSettings": "Open Settings",
+      "capture.action": "Capturing action {index}. Press one key.",
+      "capture.field": "Capturing {label}. Press one key.",
+      "capture.browser.startSession": "browser start session",
+      "capture.browser.endSession": "browser end session",
+      "capture.browser.treeUp": "browser tree up",
+      "capture.browser.treeDown": "browser tree down",
+      "capture.browser.expandDir": "browser expand directory",
+      "capture.browser.collapseDir": "browser collapse directory",
+      "capture.browser.upDir": "browser up directory",
+      "capture.browser.openSettings": "browser open settings",
+      "capture.preview.close": "preview close",
+      "capture.preview.next": "preview next",
+      "capture.preview.prev": "preview previous",
+      "capture.slideshow.next": "slideshow next",
+      "capture.slideshow.prev": "slideshow previous",
+      "capture.slideshow.endSession": "slideshow end session",
+      "busy.working": "Working",
+      "busy.loadingFolder": "Loading folder",
+      "busy.openingSession": "Opening work session",
+      "busy.endingSession": "Ending work session",
+      "busy.loadingSettings": "Loading settings",
+      "busy.savingSettings": "Saving settings",
+      "error.requestFailed": "Request failed.",
+      "key.space": "Space",
+      "key.escape": "Esc",
+      "key.arrowleft": "Left Arrow",
+      "key.arrowright": "Right Arrow",
+      "key.arrowup": "Up Arrow",
+      "key.arrowdown": "Down Arrow",
+      "key.backspace": "Backspace",
+      "key.enter": "Enter",
+      "key.tab": "Tab",
+      "key.delete": "Del",
+    },
+    "zh-CN": {
+      "common.appTitle": "照片管理器",
+      "common.skipLink": "跳到主要内容",
+      "common.root": "根目录",
+      "common.close": "关闭",
+      "common.preview": "预览",
+      "common.help": "帮助",
+      "common.language": "语言",
+      "common.languageToggle": "切换语言",
+      "common.unknown": "(未知)",
+      "common.notStarted": "未开始",
+      "common.settings": "设置",
+      "common.status": "状态",
+      "shell.sortingWorkspace": "整理工作区",
+      "shell.explorerWorkspace": "浏览工作区",
+      "shell.workSessionActive": "工作会话进行中",
+      "shell.browsingOnly": "仅浏览",
+      "shell.launchRoot": "启动根目录",
+      "shell.currentDirectory": "当前目录",
+      "shell.workRoot": "工作根目录",
+      "browser.loading": "正在加载浏览器...",
+      "browser.sortHere": "在此整理",
+      "browser.reviewHere": "在此复查",
+      "browser.openHere": "在此打开",
+      "browser.currentDirectoryAria": "当前目录",
+      "browser.noImages": "此文件夹中没有图片。",
+      "browser.loadingFolders": "正在加载文件夹...",
+      "browser.toggleFolder": "切换 {name}",
+      "browser.openHelp": "打开帮助",
+      "browser.closeHelp": "关闭帮助",
+      "browser.checkMovedPhotos": "正在检查已经移动到这里的照片。",
+      "slideshow.noImages": "没有图片",
+      "slideshow.noRemainingImages": "此目录中已没有剩余图片。",
+      "slideshow.sorting": "整理中",
+      "slideshow.reviewingMovedPhotos": "正在复查已移动照片",
+      "slideshow.prev": "上一张",
+      "slideshow.next": "下一张",
+      "slideshow.end": "结束",
+      "preview.imagePreview": "图片预览",
+      "preview.close": "关闭预览",
+      "settings.configuration": "配置",
+      "settings.keysAndActions": "快捷键与动作",
+      "settings.browserKeys": "浏览模式快捷键",
+      "settings.previewKeys": "预览快捷键",
+      "settings.slideshowKeys": "幻灯片快捷键",
+      "settings.startSession": "开始会话",
+      "settings.endSession": "结束会话",
+      "settings.treeUp": "目录树向上",
+      "settings.treeDown": "目录树向下",
+      "settings.expandDirectory": "展开目录",
+      "settings.collapseDirectory": "折叠目录",
+      "settings.upDirectory": "返回上级目录",
+      "settings.openSettings": "打开设置",
+      "settings.closePreview": "关闭预览",
+      "settings.nextPreviewImage": "预览下一张",
+      "settings.previousPreviewImage": "预览上一张",
+      "settings.nextSlide": "下一张图片",
+      "settings.previousSlide": "上一张图片",
+      "settings.actions": "动作",
+      "settings.actionHelp": "移动动作需要目标路径。删除和恢复动作不接受目标路径。",
+      "settings.addMove": "添加移动",
+      "settings.addDelete": "添加删除",
+      "settings.addRestore": "添加恢复",
+      "settings.save": "保存设置",
+      "settings.capture": "捕获",
+      "settings.pressKey": "请按键",
+      "settings.key": "按键",
+      "settings.action": "动作",
+      "settings.target": "目标路径",
+      "settings.remove": "移除",
+      "settings.removeAction": "删除这条动作",
+      "settings.targetPlaceholder": "例如 0 或 D:/Photos/0",
+      "settings.saved": "设置已保存。",
+      "settings.actionType.move": "移动",
+      "settings.actionType.delete": "删除",
+      "settings.actionType.restore": "恢复",
+      "help.sortingGuide": "整理说明",
+      "help.howToUse": "使用方法",
+      "help.shortcuts": "快捷键",
+      "help.browserShortcuts": "浏览模式",
+      "help.previewShortcuts": "预览模式",
+      "help.slideshowShortcuts": "幻灯片",
+      "help.actionShortcuts": "动作",
+      "help.launchRoot": "启动根目录",
+      "help.currentFolder": "当前文件夹",
+      "help.folders": "子文件夹",
+      "help.images": "当前目录图片",
+      "help.recursiveImages": "递归图片",
+      "help.loadingRecursiveImages": "统计中...",
+      "help.sessionIdle": "空闲",
+      "help.sessionActive": "进行中 | {root}",
+      "help.step1": "在左侧目录树中浏览文件夹，再次点击当前文件夹可折叠或重新展开。",
+      "help.step2": "在预览和幻灯片之外，可用上方向键和下方向键切换文件夹，右方向键展开，左方向键折叠。",
+      "help.step3": "点击任意图片只会打开预览，不会开始工作会话。",
+      "help.step4": "使用“在此整理”，或在已移动照片文件夹里使用“在此复查”，从当前文件夹开始。",
+      "help.step5": "在幻灯片中，使用左方向键和右方向键切换图片，默认用空格退出。",
+      "help.startReview": "开始 / 复查",
+      "help.browserEndSession": "浏览模式结束会话",
+      "help.treeMove": "目录树移动",
+      "help.expand": "展开当前文件夹",
+      "help.collapse": "折叠 / 返回父级",
+      "help.up": "返回上级文件夹",
+      "help.end": "退出 / 结束会话",
+      "help.preview": "预览切图",
+      "help.closePreview": "关闭预览",
+      "help.slideshowBrowse": "幻灯片切图",
+      "help.openSettings": "打开设置",
+      "capture.action": "正在捕获动作 {index}，请按一个按键。",
+      "capture.field": "正在捕获 {label}，请按一个按键。",
+      "capture.browser.startSession": "浏览模式开始会话",
+      "capture.browser.endSession": "浏览模式结束会话",
+      "capture.browser.treeUp": "浏览模式目录树向上",
+      "capture.browser.treeDown": "浏览模式目录树向下",
+      "capture.browser.expandDir": "浏览模式展开目录",
+      "capture.browser.collapseDir": "浏览模式折叠目录",
+      "capture.browser.upDir": "浏览模式返回上级目录",
+      "capture.browser.openSettings": "浏览模式打开设置",
+      "capture.preview.close": "预览关闭",
+      "capture.preview.next": "预览下一张",
+      "capture.preview.prev": "预览上一张",
+      "capture.slideshow.next": "幻灯片下一张",
+      "capture.slideshow.prev": "幻灯片上一张",
+      "capture.slideshow.endSession": "幻灯片结束会话",
+      "busy.working": "处理中",
+      "busy.loadingFolder": "正在加载文件夹",
+      "busy.openingSession": "正在打开工作会话",
+      "busy.endingSession": "正在结束工作会话",
+      "busy.loadingSettings": "正在加载设置",
+      "busy.savingSettings": "正在保存设置",
+      "error.requestFailed": "请求失败。",
+      "key.space": "空格",
+      "key.escape": "Esc",
+      "key.arrowleft": "左方向键",
+      "key.arrowright": "右方向键",
+      "key.arrowup": "上方向键",
+      "key.arrowdown": "下方向键",
+      "key.backspace": "退格",
+      "key.enter": "回车",
+      "key.tab": "Tab",
+      "key.delete": "Del",
+    },
+  };
+
   const state = {
+    locale: normalizeLocale(window.__photoManagerBootstrap?.locale) || "en",
     mode: "browser",
     browser: null,
     slideshow: null,
@@ -11,6 +298,13 @@
     settingsDraft: null,
     captureTarget: null,
     browserHelpOpen: false,
+    helpStats: {
+      path: "",
+      directoryCount: 0,
+      imageCount: 0,
+      recursiveImageCount: null,
+      loading: false,
+    },
     busy: false,
     busyLabel: "",
     tree: {
@@ -32,10 +326,88 @@
   const helpModal = document.getElementById("helpModal");
 
   bindStaticEvents();
+  applyStaticTranslations();
   init().catch((error) => showNotice(error.message, "error"));
 
   async function init() {
     await loadBrowser("");
+  }
+
+  function normalizeLocale(raw) {
+    if (!raw) {
+      return "";
+    }
+    const token = String(raw).trim().split(",")[0].split(";")[0].trim().toLowerCase().replaceAll("_", "-");
+    if (!token) {
+      return "";
+    }
+    if (token.startsWith("zh")) {
+      return "zh-CN";
+    }
+    if (token.startsWith("en")) {
+      return "en";
+    }
+    return "";
+  }
+
+  function t(key, params) {
+    const dictionary = MESSAGES[state.locale] || MESSAGES.en;
+    const fallback = MESSAGES.en[key] || key;
+    const template = dictionary[key] || fallback;
+    return String(template).replace(/\{(\w+)\}/g, (_, token) => String(params?.[token] ?? ""));
+  }
+
+  function rememberLocale(locale) {
+    try {
+      window.localStorage.setItem(STORAGE_KEY, locale);
+    } catch (error) {
+      // Ignore storage failures and keep the current session locale in memory.
+    }
+  }
+
+  async function setLocale(nextLocale) {
+    const locale = normalizeLocale(nextLocale) || "en";
+    if (locale === state.locale) {
+      return;
+    }
+    rememberLocale(locale);
+    state.locale = locale;
+    if (noticeTimer) {
+      clearTimeout(noticeTimer);
+      noticeTimer = 0;
+    }
+    state.notice = { type: "info", text: "" };
+    applyStaticTranslations();
+    if (state.mode === "slideshow" && state.slideshow) {
+      await loadSlideshow(state.slideshow.currentPath, state.slideshow.index || 0);
+      return;
+    }
+    if (state.browser) {
+      await loadBrowser(state.browser.currentPath || "", { expandTree: false });
+      return;
+    }
+    render();
+  }
+
+  function applyStaticTranslations() {
+    document.documentElement.lang = state.locale;
+    document.title = t("common.appTitle");
+    document.getElementById("skipLink").textContent = t("common.skipLink");
+    document.getElementById("breadcrumbs").setAttribute("aria-label", t("browser.currentDirectoryAria"));
+    document.getElementById("previewKicker").textContent = t("common.preview");
+    document.getElementById("previewTitle").textContent = t("preview.imagePreview");
+    document.getElementById("previewCloseButton").setAttribute("aria-label", t("preview.close"));
+    document.getElementById("settingsKicker").textContent = t("settings.configuration");
+    document.getElementById("settingsTitle").textContent = t("settings.keysAndActions");
+    document.getElementById("settingsCloseButton").textContent = t("common.close");
+    document.getElementById("addMoveActionButton").textContent = t("settings.addMove");
+    document.getElementById("addDeleteActionButton").textContent = t("settings.addDelete");
+    document.getElementById("addRestoreActionButton").textContent = t("settings.addRestore");
+    document.getElementById("saveSettingsButton").textContent = t("settings.save");
+    document.getElementById("helpKicker").textContent = t("common.help");
+    document.getElementById("helpTitle").textContent = t("help.sortingGuide");
+    document.getElementById("helpSettingsButton").setAttribute("aria-label", t("help.openSettings"));
+    document.getElementById("helpCloseButton").textContent = t("common.close");
   }
 
   function bindStaticEvents() {
@@ -67,10 +439,12 @@
   }
 
   async function apiGet(path) {
-    const response = await fetch(path);
+    const response = await fetch(path, {
+      headers: { "X-Photo-Manager-Locale": state.locale },
+    });
     const data = await response.json().catch(() => ({}));
     if (!response.ok) {
-      throw new Error(data.error || "request failed");
+      throw new Error(data.error || t("error.requestFailed"));
     }
     return data;
   }
@@ -78,12 +452,15 @@
   async function apiPost(path, body) {
     const response = await fetch(path, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        "X-Photo-Manager-Locale": state.locale,
+      },
       body: JSON.stringify(body),
     });
     const data = await response.json().catch(() => ({}));
     if (!response.ok) {
-      throw new Error(data.error || "request failed");
+      throw new Error(data.error || t("error.requestFailed"));
     }
     return data;
   }
@@ -93,7 +470,7 @@
       return null;
     }
     state.busy = true;
-    state.busyLabel = label || "Working";
+    state.busyLabel = label || t("busy.working");
     render();
     try {
       return await work();
@@ -134,6 +511,7 @@
     state.config = data.config || state.config;
     state.launchRoot = data.launchRoot || state.launchRoot;
     state.mode = "browser";
+    syncHelpStatsToBrowser(data);
     browserView.hidden = false;
     slideshowView.hidden = true;
     await syncTreeToCurrentPath(data, { expandTree });
@@ -141,6 +519,9 @@
       return;
     }
     state.tree.focusPath = "";
+    if (state.browserHelpOpen) {
+      ensureHelpStats().catch((error) => showNotice(error.message, "error"));
+    }
     if (data.notice) {
       showNotice(data.notice, "info");
       return;
@@ -150,7 +531,7 @@
       data.currentDirStartsAsReview &&
       (!hadBrowserState || previousMode !== "browser" || previousBrowserPath !== data.currentPath)
     ) {
-      showNotice("Checking photos already moved here.", "info");
+      showNotice(t("browser.checkMovedPhotos"), "info");
       return;
     }
     render();
@@ -231,15 +612,84 @@
   function cacheTreeNode(path, name, directories) {
     state.tree.nodes[path || ""] = {
       path: path || "",
-      name: name || pathLabel(path, "Root"),
+      name: name || pathLabel(path, t("common.root")),
       directories: normalizeDirectories(directories),
     };
+  }
+
+  function syncHelpStatsToBrowser(browserData) {
+    const nextPath = browserData?.currentPath || "";
+    const directoryCount = browserData?.directories?.length || 0;
+    const imageCount = browserData?.images?.length || 0;
+    const previous = state.helpStats || {};
+    if (
+      previous.path !== nextPath ||
+      previous.directoryCount !== directoryCount ||
+      previous.imageCount !== imageCount
+    ) {
+      state.helpStats = {
+        path: nextPath,
+        directoryCount,
+        imageCount,
+        recursiveImageCount: null,
+        loading: false,
+      };
+      return;
+    }
+    state.helpStats = {
+      ...previous,
+      path: nextPath,
+      directoryCount,
+      imageCount,
+    };
+  }
+
+  async function ensureHelpStats() {
+    if (!state.browser) {
+      return;
+    }
+
+    const currentPath = state.browser.currentPath || "";
+    syncHelpStatsToBrowser(state.browser);
+    if (state.helpStats.loading || state.helpStats.recursiveImageCount !== null) {
+      return;
+    }
+
+    state.helpStats = {
+      ...state.helpStats,
+      loading: true,
+    };
+    render();
+
+    try {
+      const data = normalizeBrowserStatsData(await apiGet(`/api/browser/stats?path=${encodeURIComponent(currentPath)}`));
+      if (!state.browser || data.currentPath !== (state.browser.currentPath || "")) {
+        return;
+      }
+      state.helpStats = {
+        path: data.currentPath,
+        directoryCount: data.directoryCount,
+        imageCount: data.imageCount,
+        recursiveImageCount: data.recursiveImageCount,
+        loading: false,
+      };
+      render();
+    } catch (error) {
+      if (state.helpStats.path === currentPath) {
+        state.helpStats = {
+          ...state.helpStats,
+          loading: false,
+        };
+        render();
+      }
+      throw error;
+    }
   }
 
   async function changeDirectory(path) {
     state.browserHelpOpen = false;
     cancelScheduledBrowserLoad(true);
-    return withBusy("Loading folder", async () => {
+    return withBusy(t("busy.loadingFolder"), async () => {
       await loadBrowser(path || "", { expandTree: true });
     });
   }
@@ -303,14 +753,14 @@
     if (!canStartWorkFromBrowser()) {
       return null;
     }
-    return withBusy("Opening work session", async () => {
+    return withBusy(t("busy.openingSession"), async () => {
       const result = await apiPost("/api/session/start", { path: state.browser.currentPath });
       await loadSlideshow(result.slideshowPath || state.browser.currentPath, 0);
     });
   }
 
   async function endSession() {
-    return withBusy("Ending work session", async () => {
+    return withBusy(t("busy.endingSession"), async () => {
       await apiPost("/api/session/end", {});
       const currentPath = state.mode === "slideshow" && state.slideshow
         ? state.slideshow.currentPath
@@ -324,7 +774,7 @@
     if (!currentImage) {
       return null;
     }
-    return withBusy(`Running ${actionKey}`, async () => {
+    return withBusy(t("busy.working"), async () => {
       const preferredIndex = state.slideshow.index;
       const result = await apiPost("/api/action", {
         currentPath: state.slideshow.currentPath,
@@ -387,7 +837,7 @@
 
   function rootTreeNode() {
     return state.tree.nodes[""] || {
-      name: state.browser ? state.browser.breadcrumbs[0]?.name || state.browser.currentName || "Root" : "Root",
+      name: state.browser ? state.browser.breadcrumbs[0]?.name || state.browser.currentName || t("common.root") : t("common.root"),
       path: "",
       directories: [],
     };
@@ -489,7 +939,7 @@
 
   async function openSettings() {
     cancelScheduledBrowserLoad(true);
-    return withBusy("Loading settings", async () => {
+    return withBusy(t("busy.loadingSettings"), async () => {
       state.browserHelpOpen = false;
       state.config = await apiGet("/api/config");
       state.settingsDraft = clone(state.config);
@@ -513,7 +963,7 @@
     state.settingsDraft.actions.push({
       key: "",
       action: type,
-      target: type === "move" ? "new-folder" : "",
+      target: "",
     });
     render();
   }
@@ -522,12 +972,12 @@
     if (!state.settingsDraft) {
       return null;
     }
-    return withBusy("Saving settings", async () => {
+    return withBusy(t("busy.savingSettings"), async () => {
       const saved = await apiPost("/api/config", state.settingsDraft);
       state.config = saved;
       state.settingsOpen = false;
       state.captureTarget = null;
-      showNotice("settings saved", "info");
+      showNotice(t("settings.saved"), "info");
       if (state.mode === "slideshow" && state.slideshow) {
         await loadSlideshow(state.slideshow.currentPath, state.slideshow.index || 0);
         return;
@@ -537,6 +987,7 @@
   }
 
   function render() {
+    applyStaticTranslations();
     renderShell();
     renderBrowser();
     renderSlideshow();
@@ -548,8 +999,8 @@
   function renderShell() {
     const session = currentSession();
     const current = currentData();
-    const title = state.mode === "slideshow" ? "Sorting workspace" : "Explorer workspace";
-    const statusLabel = session.active ? "Work session active" : "Browsing only";
+    const title = state.mode === "slideshow" ? t("shell.sortingWorkspace") : t("shell.explorerWorkspace");
+    const statusLabel = session.active ? t("shell.workSessionActive") : t("shell.browsingOnly");
     const statusTone = session.active ? "session" : "";
     const browserMode = state.mode === "browser";
 
@@ -568,21 +1019,21 @@
     document.getElementById("statusBar").innerHTML = `
       <div class="shell-strip">
         <div class="brand-stack">
-          <p class="brand-kicker">Photo Manager</p>
+          <p class="brand-kicker">${escapeHtml(t("common.appTitle"))}</p>
           <div class="brand-title-row">
             <h1 class="shell-title">${escapeHtml(title)}</h1>
             <span class="status-pill ${statusTone}"><strong>${escapeHtml(statusLabel)}</strong></span>
           </div>
         </div>
         <div class="shell-tools">
-          ${utilityButtonHtml("Settings", keyLabel(getConfig(["keys", "browser", "openSettings"])), "open-settings", true)}
+          ${utilityButtonHtml(t("common.settings"), keyLabel(getConfig(["keys", "browser", "openSettings"])), "open-settings", true)}
         </div>
       </div>
       <div class="shell-meta">
-        ${metaChipHtml("Launch root", state.launchRoot || "(unknown)")}
-        ${metaChipHtml("Current directory", pathLabel(current.currentPath, current.currentName || "Root"))}
-        ${metaChipHtml("Work root", session.active ? pathLabel(session.rootPath, "Root") : "Not started", session.active ? "session" : "")}
-        ${state.busy ? metaChipHtml("Status", state.busyLabel || "Working", "busy") : ""}
+        ${metaChipHtml(t("shell.launchRoot"), state.launchRoot || t("common.unknown"))}
+        ${metaChipHtml(t("shell.currentDirectory"), pathLabel(current.currentPath, current.currentName || t("common.root")))}
+        ${metaChipHtml(t("shell.workRoot"), session.active ? pathLabel(session.rootPath, t("common.root")) : t("common.notStarted"), session.active ? "session" : "")}
+        ${state.busy ? metaChipHtml(t("common.status"), state.busyLabel || t("busy.working"), "busy") : ""}
       </div>
     `;
 
@@ -628,13 +1079,13 @@
 
   function renderBrowser() {
     if (!state.browser) {
-      browserView.innerHTML = `<div class="empty-state">Loading browser...</div>`;
+      browserView.innerHTML = `<div class="empty-state">${escapeHtml(t("browser.loading"))}</div>`;
       return;
     }
 
     const session = currentSession();
     const isReviewStart = !session.active && state.browser.currentDirStartsAsReview;
-    const startLabel = session.active ? "Open Here" : (isReviewStart ? "Review Here" : "Sort Here");
+    const startLabel = session.active ? t("browser.openHere") : (isReviewStart ? t("browser.reviewHere") : t("browser.sortHere"));
 
     browserView.innerHTML = `
       <div class="browser-layout">
@@ -644,6 +1095,7 @@
               ${browserToolButtonHtml(startLabel, getConfig(["keys", "browser", "startSession"]), "start-work", canStartWorkFromBrowser(), session.active ? "session" : "primary")}
             </div>
             <div class="browser-tool-group browser-tool-group--end">
+              ${languageSwitcherHtml()}
               ${browserInfoButtonHtml()}
             </div>
           </div>
@@ -653,7 +1105,7 @@
         </aside>
 
         <section class="workbench-pane browser-workbench">
-          <div class="browser-crumbs" aria-label="Current directory">
+          <div class="browser-crumbs" aria-label="${escapeHtml(t("browser.currentDirectoryAria"))}">
             ${browserMiniBreadcrumbHtml()}
           </div>
           <div class="browser-gallery">
@@ -661,7 +1113,7 @@
               <div class="card-grid browser-card-grid">
                 ${state.browser.images.map((image, index) => imageCardHtml(image, index)).join("")}
               </div>
-            ` : `<div class="empty-state browser-empty-state">No images in this folder.</div>`}
+            ` : `<div class="empty-state browser-empty-state">${escapeHtml(t("browser.noImages"))}</div>`}
           </div>
         </section>
       </div>
@@ -681,7 +1133,7 @@
       ? `
           <button class="tree-toggle" data-toggle-tree="" aria-expanded="${rootExpanded}">
             <span class="tree-chevron"></span>
-            <span class="visually-hidden">Toggle ${escapeHtml(rootNode.name || "Root")}</span>
+            <span class="visually-hidden">${escapeHtml(t("browser.toggleFolder", { name: rootNode.name || t("common.root") }))}</span>
           </button>
         `
       : `<span class="tree-spacer" aria-hidden="true"></span>`;
@@ -692,7 +1144,7 @@
           <div class="tree-row tree-row--root" style="--depth:0">
             ${rootToggleMarkup}
             <button class="tree-link ${rootClass}" data-tree-path="" data-tree-has-children="${rootHasChildren}">
-              <strong>${escapeHtml(rootNode.name || "Root")}</strong>
+              <strong>${escapeHtml(rootNode.name || t("common.root"))}</strong>
             </button>
           </div>
         </div>
@@ -704,7 +1156,7 @@
   function renderTreeBranch(parentPath, depth) {
     const node = state.tree.nodes[parentPath || ""];
     if (!node) {
-      return state.tree.loading[parentPath || ""] ? `<div class="tree-loading muted-text">Loading folders...</div>` : "";
+      return state.tree.loading[parentPath || ""] ? `<div class="tree-loading muted-text">${escapeHtml(t("browser.loadingFolders"))}</div>` : "";
     }
     if (!node.directories.length) {
       return "";
@@ -723,13 +1175,13 @@
     const childMarkup = expanded
       ? (node
           ? (node.directories.length ? `<div class="tree-children">${renderTreeBranch(path, depth + 1)}</div>` : "")
-          : `<div class="tree-loading muted-text">Loading folders...</div>`)
+          : `<div class="tree-loading muted-text">${escapeHtml(t("browser.loadingFolders"))}</div>`)
       : "";
     const toggleMarkup = hasChildren
       ? `
           <button class="tree-toggle" data-toggle-tree="${escapeHtml(path)}" aria-expanded="${expanded}">
             <span class="tree-chevron"></span>
-            <span class="visually-hidden">Toggle ${escapeHtml(entry.name)}</span>
+            <span class="visually-hidden">${escapeHtml(t("browser.toggleFolder", { name: entry.name }))}</span>
           </button>
         `
       : `<span class="tree-spacer" aria-hidden="true"></span>`;
@@ -759,7 +1211,7 @@
 
     const images = state.slideshow.images || [];
     const current = currentSlideImage();
-    const counterText = current ? `${state.slideshow.index + 1} / ${images.length}` : "No images";
+    const counterText = current ? `${state.slideshow.index + 1} / ${images.length}` : t("slideshow.noImages");
 
     slideshowView.innerHTML = `
       <div class="slideshow-layout">
@@ -769,7 +1221,7 @@
               <img class="slide-image" src="${escapeHtml(current.url)}" alt="${escapeHtml(current.name)}">
             </div>
           ` : `
-            <div class="empty-state slide-empty-state">This directory has no remaining images.</div>
+            <div class="empty-state slide-empty-state">${escapeHtml(t("slideshow.noRemainingImages"))}</div>
           `}
 
           <div class="slide-bottom-bar">
@@ -777,17 +1229,17 @@
               <strong class="slide-file-name">${escapeHtml(current ? current.name : state.slideshow.currentName)}</strong>
               <div class="slide-meta-row">
                 <span class="slide-counter">${escapeHtml(counterText)}</span>
-                <span class="slide-state-pill">Sorting</span>
-                ${state.slideshow.currentDirIsTarget ? `<span class="slide-state-pill">Reviewing moved photos</span>` : ""}
+                <span class="slide-state-pill">${escapeHtml(t("slideshow.sorting"))}</span>
+                ${state.slideshow.currentDirIsTarget ? `<span class="slide-state-pill">${escapeHtml(t("slideshow.reviewingMovedPhotos"))}</span>` : ""}
               </div>
             </div>
             <div class="slide-toolbar">
               <div class="slide-button-group">
-                ${slideBarButtonHtml("Prev", keyLabel(getConfig(["keys", "slideshow", "prev"])), "slide-prev", !!current)}
-                ${slideBarButtonHtml("Next", keyLabel(getConfig(["keys", "slideshow", "next"])), "slide-next", !!current)}
+                ${slideBarButtonHtml(t("slideshow.prev"), keyLabel(getConfig(["keys", "slideshow", "prev"])), "slide-prev", !!current)}
+                ${slideBarButtonHtml(t("slideshow.next"), keyLabel(getConfig(["keys", "slideshow", "next"])), "slide-next", !!current)}
               </div>
               <div class="slide-button-group">
-                ${slideBarButtonHtml("End", keyLabel(getConfig(["keys", "slideshow", "endSession"])), "end-session", true, "data-toolbar-action")}
+                ${slideBarButtonHtml(t("slideshow.end"), keyLabel(getConfig(["keys", "slideshow", "endSession"])), "end-session", true, "data-toolbar-action")}
               </div>
               <div class="slide-button-group slide-button-group--actions">
                 ${(state.slideshow.actionButtons || []).map((action) => slideBarActionHtml(action, !!current)).join("")}
@@ -826,8 +1278,8 @@
       </div>
     `;
     document.getElementById("previewControls").innerHTML = `
-      ${slideBarButtonHtml("Prev", keyLabel(getConfig(["keys", "preview", "prev"])), "preview-prev", state.preview.index > 0, "data-preview-action")}
-      ${slideBarButtonHtml("Next", keyLabel(getConfig(["keys", "preview", "next"])), "preview-next", state.preview.index < images.length - 1, "data-preview-action")}
+      ${slideBarButtonHtml(t("slideshow.prev"), keyLabel(getConfig(["keys", "preview", "prev"])), "preview-prev", state.preview.index > 0, "data-preview-action")}
+      ${slideBarButtonHtml(t("slideshow.next"), keyLabel(getConfig(["keys", "preview", "next"])), "preview-next", state.preview.index < images.length - 1, "data-preview-action")}
     `;
     bindPreviewEvents();
   }
@@ -839,29 +1291,29 @@
     }
 
     document.getElementById("settingsBody").innerHTML = `
-      ${settingsSectionHtml("Browser Keys", [
-        settingsFieldHtml("Start Session", ["keys", "browser", "startSession"]),
-        settingsFieldHtml("End Session", ["keys", "browser", "endSession"]),
-        settingsFieldHtml("Tree Up", ["keys", "browser", "treeUp"]),
-        settingsFieldHtml("Tree Down", ["keys", "browser", "treeDown"]),
-        settingsFieldHtml("Expand Directory", ["keys", "browser", "expandDir"]),
-        settingsFieldHtml("Collapse Directory", ["keys", "browser", "collapseDir"]),
-        settingsFieldHtml("Up Directory", ["keys", "browser", "upDir"]),
-        settingsFieldHtml("Open Settings", ["keys", "browser", "openSettings"]),
+      ${settingsSectionHtml(t("settings.browserKeys"), [
+        settingsFieldHtml(t("settings.startSession"), ["keys", "browser", "startSession"]),
+        settingsFieldHtml(t("settings.endSession"), ["keys", "browser", "endSession"]),
+        settingsFieldHtml(t("settings.treeUp"), ["keys", "browser", "treeUp"]),
+        settingsFieldHtml(t("settings.treeDown"), ["keys", "browser", "treeDown"]),
+        settingsFieldHtml(t("settings.expandDirectory"), ["keys", "browser", "expandDir"]),
+        settingsFieldHtml(t("settings.collapseDirectory"), ["keys", "browser", "collapseDir"]),
+        settingsFieldHtml(t("settings.upDirectory"), ["keys", "browser", "upDir"]),
+        settingsFieldHtml(t("settings.openSettings"), ["keys", "browser", "openSettings"]),
       ])}
-      ${settingsSectionHtml("Preview Keys", [
-        settingsFieldHtml("Close Preview", ["keys", "preview", "close"]),
-        settingsFieldHtml("Next Preview Image", ["keys", "preview", "next"]),
-        settingsFieldHtml("Previous Preview Image", ["keys", "preview", "prev"]),
+      ${settingsSectionHtml(t("settings.previewKeys"), [
+        settingsFieldHtml(t("settings.closePreview"), ["keys", "preview", "close"]),
+        settingsFieldHtml(t("settings.nextPreviewImage"), ["keys", "preview", "next"]),
+        settingsFieldHtml(t("settings.previousPreviewImage"), ["keys", "preview", "prev"]),
       ])}
-      ${settingsSectionHtml("Slideshow Keys", [
-        settingsFieldHtml("Next Slide", ["keys", "slideshow", "next"]),
-        settingsFieldHtml("Previous Slide", ["keys", "slideshow", "prev"]),
-        settingsFieldHtml("End Session", ["keys", "slideshow", "endSession"]),
+      ${settingsSectionHtml(t("settings.slideshowKeys"), [
+        settingsFieldHtml(t("settings.nextSlide"), ["keys", "slideshow", "next"]),
+        settingsFieldHtml(t("settings.previousSlide"), ["keys", "slideshow", "prev"]),
+        settingsFieldHtml(t("settings.endSession"), ["keys", "slideshow", "endSession"]),
       ])}
       <section class="settings-section">
-        <h3>Actions</h3>
-        <p class="modal-caption">Move actions require a target path. Delete and restore do not accept a target.</p>
+        <h3>${escapeHtml(t("settings.actions"))}</h3>
+        <p class="modal-caption">${escapeHtml(t("settings.actionHelp"))}</p>
         ${(state.settingsDraft.actions || []).map((action, index) => settingsActionRowHtml(action, index)).join("")}
       </section>
     `;
@@ -879,61 +1331,77 @@
       return;
     }
 
-    const session = currentSession();
-    const currentPath = currentData().currentPath || "Root";
-    const sessionRoot = session.active ? (session.rootPath || "Root") : "Not started";
+    const currentPath = currentData().currentPath || t("common.root");
+    const helpSettingsKey = compactKeyText(keyLabel(getConfig(["keys", "browser", "openSettings"])));
+    const treeMoveKeys = [
+      compactKeyText(keyLabel(getConfig(["keys", "browser", "treeUp"]))),
+      compactKeyText(keyLabel(getConfig(["keys", "browser", "treeDown"]))),
+    ].filter(Boolean).join(" / ");
+    const previewBrowseKeys = [
+      compactKeyText(keyLabel(getConfig(["keys", "preview", "prev"]))),
+      compactKeyText(keyLabel(getConfig(["keys", "preview", "next"]))),
+    ].filter(Boolean).join(" / ");
+    const slideshowBrowseKeys = [
+      compactKeyText(keyLabel(getConfig(["keys", "slideshow", "prev"]))),
+      compactKeyText(keyLabel(getConfig(["keys", "slideshow", "next"]))),
+    ].filter(Boolean).join(" / ");
+
+    document.getElementById("helpSettingsButton").innerHTML = `
+      <div>
+        <strong>${escapeHtml(t("common.settings"))}</strong>
+        <span>${escapeHtml(helpSettingsKey)}</span>
+      </div>
+    `;
 
     document.getElementById("helpBody").innerHTML = `
       <section class="settings-section help-section">
-        <h3>How To Use</h3>
+        <h3>${escapeHtml(t("help.howToUse"))}</h3>
         <ol class="browser-help-list">
-          <li>Browse folders in the tree on the left, and click the current folder again to collapse or reopen it.</li>
-          <li>Outside preview and slideshow, use Up and Down to switch folders, Right to expand, and Left to collapse.</li>
-          <li>Click any image to open preview only.</li>
-          <li>Use Sort Here, or Review Here in moved-photo folders, to start from the current folder.</li>
-          <li>In slideshow, use Left and Right to move through images.</li>
+          <li>${escapeHtml(t("help.step1"))}</li>
+          <li>${escapeHtml(t("help.step2"))}</li>
+          <li>${escapeHtml(t("help.step3"))}</li>
+          <li>${escapeHtml(t("help.step4"))}</li>
+          <li>${escapeHtml(t("help.step5"))}</li>
         </ol>
       </section>
       <section class="settings-section help-section">
-        <h3>Shortcuts</h3>
-        <div class="browser-info-hotkeys">
-          ${browserInfoKeyHtml("Start / Review", getConfig(["keys", "browser", "startSession"]))}
-          ${browserInfoKeyHtml("Tree Up", getConfig(["keys", "browser", "treeUp"]))}
-          ${browserInfoKeyHtml("Tree Down", getConfig(["keys", "browser", "treeDown"]))}
-          ${browserInfoKeyHtml("Expand", getConfig(["keys", "browser", "expandDir"]))}
-          ${browserInfoKeyHtml("Collapse", getConfig(["keys", "browser", "collapseDir"]))}
-          ${browserInfoKeyHtml("Up", getConfig(["keys", "browser", "upDir"]))}
-          ${browserInfoKeyHtml("End", getConfig(["keys", "browser", "endSession"]))}
-          ${browserInfoKeyHtml("Preview", "", `${compactKeyText(keyLabel(getConfig(["keys", "preview", "prev"])))} / ${compactKeyText(keyLabel(getConfig(["keys", "preview", "next"])))}`)}
-          ${(state.config?.actions || []).map((action) => browserInfoKeyHtml(shortActionLabel(action), action.key)).join("")}
+        <h3>${escapeHtml(t("help.shortcuts"))}</h3>
+        <div class="browser-shortcut-groups">
+          ${shortcutGroupHtml(t("help.browserShortcuts"), [
+            browserInfoKeyHtml(t("help.startReview"), getConfig(["keys", "browser", "startSession"])),
+            browserInfoKeyHtml(t("help.browserEndSession"), getConfig(["keys", "browser", "endSession"])),
+            browserInfoKeyHtml(t("help.treeMove"), "", treeMoveKeys),
+            browserInfoKeyHtml(t("help.expand"), getConfig(["keys", "browser", "expandDir"])),
+            browserInfoKeyHtml(t("help.collapse"), getConfig(["keys", "browser", "collapseDir"])),
+            browserInfoKeyHtml(t("help.up"), getConfig(["keys", "browser", "upDir"])),
+            browserInfoKeyHtml(t("help.openSettings"), getConfig(["keys", "browser", "openSettings"])),
+          ])}
+          ${shortcutGroupHtml(t("help.previewShortcuts"), [
+            browserInfoKeyHtml(t("help.closePreview"), getConfig(["keys", "preview", "close"])),
+            browserInfoKeyHtml(t("help.preview"), "", previewBrowseKeys),
+          ])}
+          ${shortcutGroupHtml(t("help.slideshowShortcuts"), [
+            browserInfoKeyHtml(t("help.slideshowBrowse"), "", slideshowBrowseKeys),
+            browserInfoKeyHtml(t("help.end"), getConfig(["keys", "slideshow", "endSession"])),
+          ])}
+          ${shortcutGroupHtml(t("help.actionShortcuts"), (state.config?.actions || []).map((action) => browserInfoKeyHtml(shortActionLabel(action), action.key)))}
         </div>
       </section>
-      <section class="settings-section help-section">
-        <div class="browser-info-section">
-          <strong>Workspace</strong>
-          <span>${escapeHtml(state.launchRoot || "(unknown)")}</span>
+      <section class="settings-section help-section help-section--stats">
+        <div class="browser-help-meta-grid">
+          <div class="browser-info-section">
+            <strong>${escapeHtml(t("help.launchRoot"))}</strong>
+            <span>${escapeHtml(state.launchRoot || t("common.unknown"))}</span>
+          </div>
+          <div class="browser-info-section">
+            <strong>${escapeHtml(t("help.currentFolder"))}</strong>
+            <span>${escapeHtml(currentPath)}</span>
+          </div>
         </div>
-        <div class="browser-info-section">
-          <strong>Current folder</strong>
-          <span>${escapeHtml(currentPath)}</span>
-        </div>
-        <div class="browser-info-section">
-          <strong>Session</strong>
-          <span>${escapeHtml(session.active ? `Active | ${sessionRoot}` : "Idle")}</span>
-        </div>
-        <div class="browser-info-row">
-          <span>Folders</span>
-          <strong>${escapeHtml(String(state.browser?.directories?.length || 0))}</strong>
-        </div>
-        <div class="browser-info-row">
-          <span>Images</span>
-          <strong>${escapeHtml(String(state.browser?.images?.length || 0))}</strong>
-        </div>
-        <div class="browser-help-actions">
-          <button class="browser-help-settings" type="button" data-toolbar-action="open-settings">
-            <span>Settings</span>
-            <span class="browser-tool-key">${escapeHtml(compactKeyText(keyLabel(getConfig(["keys", "browser", "openSettings"]))))}</span>
-          </button>
+        <div class="browser-help-stats">
+          ${statPillHtml(t("help.folders"), String(state.helpStats.directoryCount))}
+          ${statPillHtml(t("help.images"), String(state.helpStats.imageCount))}
+          ${statPillHtml(t("help.recursiveImages"), helpRecursiveImageCountText())}
         </div>
       </section>
     `;
@@ -975,6 +1443,10 @@
           }
           if (action === "open-settings") {
             await openSettings();
+            return;
+          }
+          if (action === "set-locale") {
+            await setLocale(button.dataset.locale);
           }
         } catch (error) {
           showNotice(error.message, "error");
@@ -990,8 +1462,12 @@
       }
       button.dataset.boundHelpToggle = "true";
       button.addEventListener("click", () => {
-        state.browserHelpOpen = !state.browserHelpOpen;
+        const opening = !state.browserHelpOpen;
+        state.browserHelpOpen = opening;
         render();
+        if (opening) {
+          ensureHelpStats().catch((error) => showNotice(error.message, "error"));
+        }
       });
     });
     browserView.querySelectorAll("[data-tree-path]").forEach((button) => {
@@ -1349,26 +1825,26 @@
 
   function shortActionLabel(action) {
     if (!action) {
-      return "Action";
+      return t("settings.action");
     }
     if (action.action === "delete") {
-      return "Delete";
+      return t("settings.actionType.delete");
     }
     if (action.action === "restore") {
-      return "Restore";
+      return t("settings.actionType.restore");
     }
     if (action.action === "move") {
       const target = String(action.target || "").replaceAll("\\", "/").split("/").filter(Boolean).pop();
       if (!target) {
-        return "Move";
+        return t("settings.actionType.move");
       }
-      return target.length > 14 ? "Move" : target;
+      return target.length > 14 ? t("settings.actionType.move") : target;
     }
     return action.label || action.action;
   }
 
   function compactKeyText(label) {
-    return String(label || "").replace(/^Key:\s*/, "");
+    return String(label || "").trim();
   }
 
   function imageCardHtml(image, index) {
@@ -1395,14 +1871,40 @@
     `;
   }
 
+  function languageSwitcherHtml() {
+    return `
+      <div class="language-switcher" role="group" aria-label="${escapeHtml(t("common.languageToggle"))}">
+        <button
+          class="language-chip ${state.locale === "zh-CN" ? "is-active" : ""}"
+          type="button"
+          data-toolbar-action="set-locale"
+          data-locale="zh-CN"
+          ${state.busy ? "disabled" : ""}
+        >
+          中文
+        </button>
+        <button
+          class="language-chip ${state.locale === "en" ? "is-active" : ""}"
+          type="button"
+          data-toolbar-action="set-locale"
+          data-locale="en"
+          ${state.busy ? "disabled" : ""}
+        >
+          EN
+        </button>
+      </div>
+    `;
+  }
+
   function browserInfoButtonHtml() {
     const expanded = state.browserHelpOpen ? "true" : "false";
+    const ariaLabel = state.browserHelpOpen ? t("browser.closeHelp") : t("browser.openHelp");
     return `
       <div class="browser-info">
         <button
           class="browser-icon-button ${state.browserHelpOpen ? "is-active" : ""}"
           type="button"
-          aria-label="Open help"
+          aria-label="${escapeHtml(ariaLabel)}"
           aria-expanded="${expanded}"
           aria-controls="helpModal"
           data-browser-help-toggle
@@ -1431,6 +1933,27 @@
         ${keyText ? `<span>${escapeHtml(keyText)}</span>` : ""}
       </span>
     `;
+  }
+
+  function shortcutGroupHtml(title, items) {
+    return `
+      <section class="browser-shortcut-group">
+        <h4>${escapeHtml(title)}</h4>
+        <div class="browser-shortcut-list">
+          ${items.join("")}
+        </div>
+      </section>
+    `;
+  }
+
+  function helpRecursiveImageCountText() {
+    if (state.helpStats.loading) {
+      return t("help.loadingRecursiveImages");
+    }
+    if (state.helpStats.recursiveImageCount === null || state.helpStats.recursiveImageCount === undefined) {
+      return t("common.unknown");
+    }
+    return String(state.helpStats.recursiveImageCount);
   }
 
   function browserMiniBreadcrumbHtml() {
@@ -1484,7 +2007,7 @@
         <div class="capture-row">
           <input value="${escapeHtml(value)}" readonly>
           <button class="secondary-button utility-button capture-button ${isCapturing ? "capturing" : ""}" data-capture-key="${escapeHtml(captureKey)}">
-            ${escapeHtml(isCapturing ? "Press Key" : "Capture")}
+            ${escapeHtml(isCapturing ? t("settings.pressKey") : t("settings.capture"))}
           </button>
         </div>
       </div>
@@ -1496,16 +2019,16 @@
     return `
       <div class="settings-row">
         <div class="settings-field">
-          <label>Key</label>
+          <label>${escapeHtml(t("settings.key"))}</label>
           <div class="capture-row">
             <input value="${escapeHtml(action.key || "")}" readonly>
             <button class="secondary-button utility-button capture-button ${isCapturing ? "capturing" : ""}" data-capture-action="${index}">
-              ${escapeHtml(isCapturing ? "Press Key" : "Capture")}
+              ${escapeHtml(isCapturing ? t("settings.pressKey") : t("settings.capture"))}
             </button>
           </div>
         </div>
         <div class="settings-field">
-          <label>Action</label>
+          <label>${escapeHtml(t("settings.action"))}</label>
           <select data-action-field="action" data-action-index="${index}">
             ${optionHtml("move", action.action === "move")}
             ${optionHtml("delete", action.action === "delete")}
@@ -1513,13 +2036,13 @@
           </select>
         </div>
         <div class="settings-field">
-          <label>Target</label>
-          <input data-action-field="target" data-action-index="${index}" value="${escapeHtml(action.target || "")}" placeholder="0 or D:/Photos/0" ${action.action === "move" ? "" : "disabled"}>
+          <label>${escapeHtml(t("settings.target"))}</label>
+          <input data-action-field="target" data-action-index="${index}" value="${escapeHtml(action.target || "")}" placeholder="${escapeHtml(t("settings.targetPlaceholder"))}" ${action.action === "move" ? "" : "disabled"}>
         </div>
         <div class="settings-row-actions">
           <button class="action-tile action-tile--compact action-tile--danger" data-remove-action="${index}">
-            <strong>Remove</strong>
-            <span>Delete this action row</span>
+            <strong>${escapeHtml(t("settings.remove"))}</strong>
+            <span>${escapeHtml(t("settings.removeAction"))}</span>
           </button>
         </div>
       </div>
@@ -1527,7 +2050,7 @@
   }
 
   function optionHtml(value, selected) {
-    return `<option value="${value}" ${selected ? "selected" : ""}>${value}</option>`;
+    return `<option value="${value}" ${selected ? "selected" : ""}>${escapeHtml(t(`settings.actionType.${value}`))}</option>`;
   }
 
   function captureHintText() {
@@ -1535,27 +2058,27 @@
       return "";
     }
     if (state.captureTarget.type === "action") {
-      return `Capturing action ${state.captureTarget.index + 1}. Press one key.`;
+      return t("capture.action", { index: state.captureTarget.index + 1 });
     }
-    return `Capturing ${capturePathLabel(state.captureTarget.path)}. Press one key.`;
+    return t("capture.field", { label: capturePathLabel(state.captureTarget.path) });
   }
 
   function capturePathLabel(path) {
     const labelMap = {
-      "keys.browser.startSession": "browser start session",
-      "keys.browser.endSession": "browser end session",
-      "keys.browser.treeUp": "browser tree up",
-      "keys.browser.treeDown": "browser tree down",
-      "keys.browser.expandDir": "browser expand directory",
-      "keys.browser.collapseDir": "browser collapse directory",
-      "keys.browser.upDir": "browser up directory",
-      "keys.browser.openSettings": "browser open settings",
-      "keys.preview.close": "preview close",
-      "keys.preview.next": "preview next",
-      "keys.preview.prev": "preview previous",
-      "keys.slideshow.next": "slideshow next",
-      "keys.slideshow.prev": "slideshow previous",
-      "keys.slideshow.endSession": "slideshow end session",
+      "keys.browser.startSession": t("capture.browser.startSession"),
+      "keys.browser.endSession": t("capture.browser.endSession"),
+      "keys.browser.treeUp": t("capture.browser.treeUp"),
+      "keys.browser.treeDown": t("capture.browser.treeDown"),
+      "keys.browser.expandDir": t("capture.browser.expandDir"),
+      "keys.browser.collapseDir": t("capture.browser.collapseDir"),
+      "keys.browser.upDir": t("capture.browser.upDir"),
+      "keys.browser.openSettings": t("capture.browser.openSettings"),
+      "keys.preview.close": t("capture.preview.close"),
+      "keys.preview.next": t("capture.preview.next"),
+      "keys.preview.prev": t("capture.preview.prev"),
+      "keys.slideshow.next": t("capture.slideshow.next"),
+      "keys.slideshow.prev": t("capture.slideshow.prev"),
+      "keys.slideshow.endSession": t("capture.slideshow.endSession"),
     };
     return labelMap[path.join(".")] || path.join(".");
   }
@@ -1577,8 +2100,8 @@
     }
     return {
       currentPath: "",
-      currentName: "Root",
-      breadcrumbs: [{ name: "Root", path: "" }],
+      currentName: t("common.root"),
+      breadcrumbs: [{ name: t("common.root"), path: "" }],
       canGoUp: false,
       parentPath: "",
       session: { active: false, rootPath: "" },
@@ -1651,6 +2174,22 @@
     };
   }
 
+  function normalizeBrowserStatsData(data) {
+    const numberOrZero = (value) => {
+      const numeric = Number(value);
+      if (!Number.isFinite(numeric) || numeric < 0) {
+        return 0;
+      }
+      return Math.trunc(numeric);
+    };
+    return {
+      currentPath: data?.currentPath || "",
+      directoryCount: numberOrZero(data?.directoryCount),
+      imageCount: numberOrZero(data?.imageCount),
+      recursiveImageCount: numberOrZero(data?.recursiveImageCount),
+    };
+  }
+
   function normalizeDirectories(value) {
     return Array.isArray(value)
       ? value.map((entry) => ({
@@ -1673,8 +2212,8 @@
 
   function normalizeBreadcrumbs(value) {
     return Array.isArray(value)
-      ? value.map((entry) => ({ name: entry.name || "Root", path: entry.path || "" }))
-      : [{ name: "Root", path: "" }];
+      ? value.map((entry) => ({ name: entry.name || t("common.root"), path: entry.path || "" }))
+      : [{ name: t("common.root"), path: "" }];
   }
 
   function normalizeSession(value) {
@@ -1703,7 +2242,7 @@
   }
 
   function pathLabel(path, fallback) {
-    return path && path.length ? path : fallback || "Root";
+    return path && path.length ? path : fallback || t("common.root");
   }
 
   function canonicalKey(event) {
@@ -1728,18 +2267,18 @@
       return "";
     }
     const map = {
-      space: "Space",
-      escape: "Esc",
-      arrowleft: "Left",
-      arrowright: "Right",
-      arrowup: "Up",
-      arrowdown: "Down",
-      backspace: "Backspace",
-      enter: "Enter",
-      tab: "Tab",
-      delete: "Del",
+      space: t("key.space"),
+      escape: t("key.escape"),
+      arrowleft: t("key.arrowleft"),
+      arrowright: t("key.arrowright"),
+      arrowup: t("key.arrowup"),
+      arrowdown: t("key.arrowdown"),
+      backspace: t("key.backspace"),
+      enter: t("key.enter"),
+      tab: t("key.tab"),
+      delete: t("key.delete"),
     };
-    return `Key: ${map[key] || key.toUpperCase()}`;
+    return map[key] || key.toUpperCase();
   }
 
   function clearNotice() {

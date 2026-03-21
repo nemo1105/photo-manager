@@ -5,14 +5,18 @@ import (
 	"encoding/json"
 	"errors"
 	"io/fs"
+	"log"
 	"net/http"
 
 	"github.com/nemo1105/photo-manager/internal/app"
 	"github.com/nemo1105/photo-manager/internal/config"
+	"github.com/nemo1105/photo-manager/internal/localize"
 )
 
 //go:embed static/*
 var assets embed.FS
+
+var errInvalidRequest = localize.NewStaticError("invalid request body", "请求体无效")
 
 type Handler struct {
 	app        *app.App
@@ -41,6 +45,7 @@ func NewHandler(photoApp *app.App) http.Handler {
 	mux.Handle("/app.js", h.staticFS)
 	mux.Handle("/styles.css", h.staticFS)
 	mux.HandleFunc("/api/browser", h.handleBrowser)
+	mux.HandleFunc("/api/browser/stats", h.handleBrowserStats)
 	mux.HandleFunc("/api/tree", h.handleTree)
 	mux.HandleFunc("/api/session/start", h.handleSessionStart)
 	mux.HandleFunc("/api/session/end", h.handleSessionEnd)
@@ -65,9 +70,23 @@ func (h *Handler) handleBrowser(w http.ResponseWriter, r *http.Request) {
 		methodNotAllowed(w)
 		return
 	}
-	data, err := h.app.Browser(r.URL.Query().Get("path"))
+	locale := localize.FromRequest(r)
+	data, err := h.app.Browser(r.URL.Query().Get("path"), locale)
 	if err != nil {
-		writeError(w, err)
+		writeError(w, r, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, data)
+}
+
+func (h *Handler) handleBrowserStats(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		methodNotAllowed(w)
+		return
+	}
+	data, err := h.app.BrowserStats(r.URL.Query().Get("path"))
+	if err != nil {
+		writeError(w, r, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, data)
@@ -80,7 +99,7 @@ func (h *Handler) handleTree(w http.ResponseWriter, r *http.Request) {
 	}
 	data, err := h.app.Tree(r.URL.Query().Get("path"))
 	if err != nil {
-		writeError(w, err)
+		writeError(w, r, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, data)
@@ -95,12 +114,12 @@ func (h *Handler) handleSessionStart(w http.ResponseWriter, r *http.Request) {
 		Path string `json:"path"`
 	}
 	if err := decodeJSON(r, &req); err != nil {
-		writeError(w, err)
+		writeError(w, r, err)
 		return
 	}
 	result, err := h.app.OpenSession(req.Path)
 	if err != nil {
-		writeError(w, err)
+		writeError(w, r, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, result)
@@ -121,9 +140,10 @@ func (h *Handler) handleSlideshow(w http.ResponseWriter, r *http.Request) {
 		methodNotAllowed(w)
 		return
 	}
-	data, err := h.app.Slideshow(r.URL.Query().Get("path"))
+	locale := localize.FromRequest(r)
+	data, err := h.app.Slideshow(r.URL.Query().Get("path"), locale)
 	if err != nil {
-		writeError(w, err)
+		writeError(w, r, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, data)
@@ -140,12 +160,12 @@ func (h *Handler) handleAction(w http.ResponseWriter, r *http.Request) {
 		ActionKey   string `json:"actionKey"`
 	}
 	if err := decodeJSON(r, &req); err != nil {
-		writeError(w, err)
+		writeError(w, r, err)
 		return
 	}
-	result, err := h.app.PerformAction(req.CurrentPath, req.ImagePath, req.ActionKey)
+	result, err := h.app.PerformAction(req.CurrentPath, req.ImagePath, req.ActionKey, localize.FromRequest(r))
 	if err != nil {
-		writeError(w, err)
+		writeError(w, r, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, result)
@@ -158,12 +178,12 @@ func (h *Handler) handleConfig(w http.ResponseWriter, r *http.Request) {
 	case http.MethodPost:
 		var req config.Config
 		if err := decodeJSON(r, &req); err != nil {
-			writeError(w, err)
+			writeError(w, r, err)
 			return
 		}
 		cfg, err := h.app.SaveConfig(&req)
 		if err != nil {
-			writeError(w, err)
+			writeError(w, r, err)
 			return
 		}
 		writeJSON(w, http.StatusOK, cfg)
@@ -179,7 +199,7 @@ func (h *Handler) handleImage(w http.ResponseWriter, r *http.Request) {
 	}
 	path, err := h.app.ImagePath(r.URL.Query().Get("path"))
 	if err != nil {
-		writeError(w, err)
+		writeError(w, r, err)
 		return
 	}
 	http.ServeFile(w, r, path)
@@ -189,7 +209,10 @@ func decodeJSON(r *http.Request, dst any) error {
 	defer r.Body.Close()
 	dec := json.NewDecoder(r.Body)
 	dec.DisallowUnknownFields()
-	return dec.Decode(dst)
+	if err := dec.Decode(dst); err != nil {
+		return errInvalidRequest
+	}
+	return nil
 }
 
 func writeJSON(w http.ResponseWriter, status int, data any) {
@@ -198,12 +221,25 @@ func writeJSON(w http.ResponseWriter, status int, data any) {
 	_ = json.NewEncoder(w).Encode(data)
 }
 
-func writeError(w http.ResponseWriter, err error) {
+func writeError(w http.ResponseWriter, r *http.Request, err error) {
+	locale := localize.FromRequest(r)
 	status := http.StatusBadRequest
-	if errors.Is(err, fs.ErrNotExist) {
+	message := ""
+
+	var userErr localize.UserMessager
+	switch {
+	case errors.Is(err, fs.ErrNotExist):
 		status = http.StatusNotFound
+		message = localize.NotFound(locale)
+	case errors.As(err, &userErr):
+		message = userErr.UserMessage(locale)
+	default:
+		status = http.StatusInternalServerError
+		message = localize.UnexpectedError(locale)
+		log.Printf("request failed: %v", err)
 	}
-	writeJSON(w, status, map[string]string{"error": err.Error()})
+
+	writeJSON(w, status, map[string]string{"error": message})
 }
 
 func methodNotAllowed(w http.ResponseWriter) {

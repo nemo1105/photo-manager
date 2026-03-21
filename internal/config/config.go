@@ -5,9 +5,11 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"unicode/utf8"
 
+	"github.com/nemo1105/photo-manager/internal/localize"
 	"gopkg.in/yaml.v3"
 )
 
@@ -51,12 +53,113 @@ type ActionBinding struct {
 	Target string `yaml:"target,omitempty" json:"target,omitempty"`
 }
 
+type ValidationCode string
+
+const (
+	validationDuplicateField          ValidationCode = "duplicate_field"
+	validationDuplicateActionKey      ValidationCode = "duplicate_action_key"
+	validationActionConflictSlideshow ValidationCode = "action_conflicts_with_slideshow"
+)
+
+type ValidationError struct {
+	Path      string
+	Code      ValidationCode
+	OtherPath string
+	Key       string
+	Err       error
+}
+
+func (e *ValidationError) Error() string {
+	if e == nil {
+		return ""
+	}
+	switch e.Code {
+	case validationDuplicateField:
+		return fmt.Sprintf("%s duplicates %s", e.Path, e.OtherPath)
+	case validationDuplicateActionKey:
+		return fmt.Sprintf("%s duplicates another action", e.Path)
+	case validationActionConflictSlideshow:
+		return fmt.Sprintf("action key %q conflicts with slideshow keys", e.Key)
+	default:
+		if e.Err == nil {
+			return e.Path
+		}
+		return fmt.Sprintf("%s: %v", e.Path, e.Err)
+	}
+}
+
+func (e *ValidationError) Unwrap() error {
+	if e == nil {
+		return nil
+	}
+	return e.Err
+}
+
+func (e *ValidationError) UserMessage(locale localize.Locale) string {
+	if e == nil {
+		return ""
+	}
+	label := validationFieldLabel(locale, e.Path)
+	other := validationFieldLabel(locale, e.OtherPath)
+
+	switch e.Code {
+	case validationDuplicateField:
+		if locale == localize.ZHCN {
+			return fmt.Sprintf("%s与%s重复。", label, other)
+		}
+		return fmt.Sprintf("%s duplicates %s.", label, other)
+	case validationDuplicateActionKey:
+		if locale == localize.ZHCN {
+			return fmt.Sprintf("%s与其他动作快捷键重复。", label)
+		}
+		return fmt.Sprintf("%s duplicates another action key.", label)
+	case validationActionConflictSlideshow:
+		if locale == localize.ZHCN {
+			return fmt.Sprintf("%s与幻灯片导航快捷键冲突。", label)
+		}
+		return fmt.Sprintf("%s conflicts with slideshow navigation keys.", label)
+	}
+
+	switch {
+	case errors.Is(e.Err, errEmptyKey):
+		if locale == localize.ZHCN {
+			return fmt.Sprintf("%s不能为空。", label)
+		}
+		return fmt.Sprintf("%s cannot be empty.", label)
+	case errors.Is(e.Err, errInvalidKey):
+		if locale == localize.ZHCN {
+			return fmt.Sprintf("%s必须是单个按键。", label)
+		}
+		return fmt.Sprintf("%s must be a single key.", label)
+	case errors.Is(e.Err, errInvalidAction):
+		if locale == localize.ZHCN {
+			return fmt.Sprintf("%s必须是移动、删除或恢复。", label)
+		}
+		return fmt.Sprintf("%s must be move, delete, or restore.", label)
+	case errors.Is(e.Err, errMissingTarget):
+		if locale == localize.ZHCN {
+			return fmt.Sprintf("%s需要目标路径。", label)
+		}
+		return fmt.Sprintf("%s requires a target path.", label)
+	case errors.Is(e.Err, errUnexpectedTarget):
+		if locale == localize.ZHCN {
+			return fmt.Sprintf("%s只适用于移动动作。", label)
+		}
+		return fmt.Sprintf("%s is only used by move actions.", label)
+	default:
+		if locale == localize.ZHCN {
+			return "配置无效。"
+		}
+		return "Configuration is invalid."
+	}
+}
+
 var (
-	errEmptyKey         = errors.New("key cannot be empty")
-	errInvalidKey       = errors.New("key must be a single key")
-	errInvalidAction    = errors.New("action must be move, delete, or restore")
-	errMissingTarget    = errors.New("move action requires target")
-	errUnexpectedTarget = errors.New("delete and restore actions cannot have target")
+	errEmptyKey         = localize.NewStaticError("key cannot be empty", "按键不能为空")
+	errInvalidKey       = localize.NewStaticError("key must be a single key", "按键必须是单个按键")
+	errInvalidAction    = localize.NewStaticError("action must be move, delete, or restore", "动作必须是 move、delete 或 restore")
+	errMissingTarget    = localize.NewStaticError("move action requires target", "move 动作需要目标路径")
+	errUnexpectedTarget = localize.NewStaticError("delete and restore actions cannot have target", "delete 和 restore 动作不能包含目标路径")
 )
 
 var namedKeys = map[string]struct{}{
@@ -219,10 +322,17 @@ func (c *Config) ValidateAndNormalize() error {
 		for field, ptr := range group.keys {
 			key, err := NormalizeKey(*ptr)
 			if err != nil {
-				return fmt.Errorf("%s.%s: %w", group.name, field, err)
+				return &ValidationError{
+					Path: validationPath(group.name, field),
+					Err:  err,
+				}
 			}
 			if other, exists := seen[key]; exists {
-				return fmt.Errorf("%s.%s duplicates %s", group.name, field, other)
+				return &ValidationError{
+					Path:      validationPath(group.name, field),
+					Code:      validationDuplicateField,
+					OtherPath: validationPath(group.name, other),
+				}
 			}
 			seen[key] = field
 			*ptr = key
@@ -233,36 +343,56 @@ func (c *Config) ValidateAndNormalize() error {
 	for i := range c.Actions {
 		key, err := NormalizeKey(c.Actions[i].Key)
 		if err != nil {
-			return fmt.Errorf("actions[%d].key: %w", i, err)
+			return &ValidationError{
+				Path: actionValidationPath(i, "key"),
+				Err:  err,
+			}
 		}
 		c.Actions[i].Key = key
 		c.Actions[i].Action = strings.ToLower(strings.TrimSpace(c.Actions[i].Action))
 		c.Actions[i].Target = strings.TrimSpace(c.Actions[i].Target)
 
 		if _, exists := actionKeys[key]; exists {
-			return fmt.Errorf("actions[%d].key duplicates another action", i)
+			return &ValidationError{
+				Path: actionValidationPath(i, "key"),
+				Code: validationDuplicateActionKey,
+			}
 		}
 		actionKeys[key] = i
 
 		switch c.Actions[i].Action {
 		case "move":
 			if c.Actions[i].Target == "" {
-				return fmt.Errorf("actions[%d]: %w", i, errMissingTarget)
+				return &ValidationError{
+					Path: actionValidationPath(i, "target"),
+					Err:  errMissingTarget,
+				}
 			}
 		case "delete", "restore":
 			if c.Actions[i].Target != "" {
-				return fmt.Errorf("actions[%d]: %w", i, errUnexpectedTarget)
+				return &ValidationError{
+					Path: actionValidationPath(i, "target"),
+					Err:  errUnexpectedTarget,
+				}
 			}
 		default:
-			return fmt.Errorf("actions[%d]: %w", i, errInvalidAction)
+			return &ValidationError{
+				Path: actionValidationPath(i, "action"),
+				Err:  errInvalidAction,
+			}
 		}
 	}
 
-	for key := range actionKeys {
+	for i := range c.Actions {
+		key := c.Actions[i].Key
 		if key == c.Keys.Slideshow.Next ||
 			key == c.Keys.Slideshow.Prev ||
 			key == c.Keys.Slideshow.EndSession {
-			return fmt.Errorf("action key %q conflicts with slideshow keys", key)
+			return &ValidationError{
+				Path: actionValidationPath(i, "key"),
+				Code: validationActionConflictSlideshow,
+				Key:  key,
+			}
 		}
 	}
 
@@ -277,6 +407,9 @@ func NormalizeKey(key string) (string, error) {
 	if key == " " {
 		return "space", nil
 	}
+	if key == "esc" {
+		return "escape", nil
+	}
 	if _, ok := namedKeys[key]; ok {
 		return key, nil
 	}
@@ -284,4 +417,94 @@ func NormalizeKey(key string) (string, error) {
 		return "", errInvalidKey
 	}
 	return key, nil
+}
+
+func validationPath(group, field string) string {
+	return group + "." + field
+}
+
+func actionValidationPath(index int, field string) string {
+	return fmt.Sprintf("actions[%d].%s", index, field)
+}
+
+func validationFieldLabel(locale localize.Locale, path string) string {
+	switch path {
+	case "browser.start_session":
+		return localizedLabel(locale, "Browser start session key", "浏览模式开始会话快捷键")
+	case "browser.end_session":
+		return localizedLabel(locale, "Browser end session key", "浏览模式结束会话快捷键")
+	case "browser.tree_up":
+		return localizedLabel(locale, "Browser tree up key", "浏览模式目录树向上快捷键")
+	case "browser.tree_down":
+		return localizedLabel(locale, "Browser tree down key", "浏览模式目录树向下快捷键")
+	case "browser.expand_dir":
+		return localizedLabel(locale, "Browser expand directory key", "浏览模式展开目录快捷键")
+	case "browser.collapse_dir":
+		return localizedLabel(locale, "Browser collapse directory key", "浏览模式折叠目录快捷键")
+	case "browser.up_dir":
+		return localizedLabel(locale, "Browser parent directory key", "浏览模式返回上级目录快捷键")
+	case "browser.open_settings":
+		return localizedLabel(locale, "Browser open settings key", "浏览模式打开设置快捷键")
+	case "preview.close":
+		return localizedLabel(locale, "Preview close key", "预览关闭快捷键")
+	case "preview.next":
+		return localizedLabel(locale, "Preview next image key", "预览下一张快捷键")
+	case "preview.prev":
+		return localizedLabel(locale, "Preview previous image key", "预览上一张快捷键")
+	case "slideshow.next":
+		return localizedLabel(locale, "Slideshow next image key", "幻灯片下一张快捷键")
+	case "slideshow.prev":
+		return localizedLabel(locale, "Slideshow previous image key", "幻灯片上一张快捷键")
+	case "slideshow.end_session":
+		return localizedLabel(locale, "Slideshow end session key", "幻灯片结束会话快捷键")
+	}
+
+	if strings.HasPrefix(path, "actions[") {
+		closeIndex := strings.Index(path, "]")
+		if closeIndex > len("actions[") {
+			index, err := strconv.Atoi(path[len("actions["):closeIndex])
+			if err == nil {
+				switch strings.TrimPrefix(path[closeIndex+1:], ".") {
+				case "key":
+					return localizedActionLabel(locale, index, "key")
+				case "action":
+					return localizedActionLabel(locale, index, "action")
+				case "target":
+					return localizedActionLabel(locale, index, "target")
+				}
+			}
+		}
+	}
+
+	return path
+}
+
+func localizedActionLabel(locale localize.Locale, index int, field string) string {
+	number := index + 1
+	switch field {
+	case "key":
+		if locale == localize.ZHCN {
+			return fmt.Sprintf("动作 %d 的按键", number)
+		}
+		return fmt.Sprintf("Action %d key", number)
+	case "action":
+		if locale == localize.ZHCN {
+			return fmt.Sprintf("动作 %d 的类型", number)
+		}
+		return fmt.Sprintf("Action %d type", number)
+	case "target":
+		if locale == localize.ZHCN {
+			return fmt.Sprintf("动作 %d 的目标路径", number)
+		}
+		return fmt.Sprintf("Action %d target", number)
+	default:
+		return fmt.Sprintf("actions[%d].%s", index, field)
+	}
+}
+
+func localizedLabel(locale localize.Locale, en, zh string) string {
+	if locale == localize.ZHCN {
+		return zh
+	}
+	return en
 }
