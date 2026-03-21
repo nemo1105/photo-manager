@@ -3,6 +3,7 @@ export function createViewHelpers({
   t,
   escapeHtml,
   keyLabel,
+  keyBindingLabel,
   getSettingsValue,
   isCapturePath,
   isCaptureAction,
@@ -232,7 +233,7 @@ export function createViewHelpers({
       <div class="settings-field settings-key-row">
         <label>${escapeHtml(label)}</label>
         <button class="capture-row ${isCapturing ? "capturing" : ""}" data-capture-key="${escapeHtml(captureKey)}" type="button">
-          <span class="key-value-chip ${isCapturing ? "capturing" : ""}">${escapeHtml(value || " ")}</span>
+          <span class="key-value-chip ${isCapturing ? "capturing" : ""}">${escapeHtml(keyBindingLabel(value) || " ")}</span>
           <span class="capture-inline-text">${escapeHtml(isCapturing ? t("settings.pressKey") : t("settings.capture"))}</span>
         </button>
       </div>
@@ -263,7 +264,7 @@ export function createViewHelpers({
             ${escapeHtml(t("settings.remove"))}
           </button>
           <button class="capture-row ${isCapturing ? "capturing" : ""}" data-capture-action="${index}" type="button">
-            <span class="key-value-chip ${isCapturing ? "capturing" : ""}">${escapeHtml(action.key || " ")}</span>
+            <span class="key-value-chip ${isCapturing ? "capturing" : ""}">${escapeHtml(keyBindingLabel(action.key) || " ")}</span>
             <span class="capture-inline-text">${escapeHtml(isCapturing ? t("settings.pressKey") : t("settings.capture"))}</span>
           </button>
         </div>

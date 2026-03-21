@@ -254,9 +254,9 @@
 }
 
 .key-value-chip {
-  width: 104px;
-  min-width: 104px;
-  flex: 0 0 104px;
+  width: 124px;
+  min-width: 124px;
+  flex: 0 0 124px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -518,4 +518,3 @@
     animation: none !important;
   }
 }
-

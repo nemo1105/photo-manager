@@ -181,6 +181,49 @@ export function createAppHelpers({ state, t }) {
     return map[key] || key.toUpperCase();
   }
 
+  function keyBindingLabel(key) {
+    if (!key) {
+      return "";
+    }
+    const normalized = String(key).trim().toLowerCase();
+    if (!normalized) {
+      return "";
+    }
+    if (state.locale === "zh-CN") {
+      const map = {
+        space: t("key.space"),
+        escape: t("key.escape"),
+        arrowleft: t("key.arrowleft"),
+        arrowright: t("key.arrowright"),
+        arrowup: t("key.arrowup"),
+        arrowdown: t("key.arrowdown"),
+        backspace: t("key.backspace"),
+        enter: t("key.enter"),
+        tab: t("key.tab"),
+        delete: t("key.delete"),
+      };
+      return map[normalized] || normalized;
+    }
+    const map = {
+      space: "space",
+      escape: "esc",
+      arrowleft: "arrow-left",
+      arrowright: "arrow-right",
+      arrowup: "arrow-up",
+      arrowdown: "arrow-down",
+      backspace: "backspace",
+      enter: "enter",
+      tab: "tab",
+      delete: "del",
+    };
+    if (map[normalized]) {
+      return map[normalized];
+    }
+    return normalized.length === 1 && /^[a-z0-9]$/i.test(normalized)
+      ? normalized.toUpperCase()
+      : normalized;
+  }
+
   function capturePathLabel(path) {
     const labelMap = {
       "keys.browser.startSession": t("capture.browser.startSession"),
@@ -253,6 +296,7 @@ export function createAppHelpers({ state, t }) {
     isCaptureAction,
     isCapturePath,
     isPathAncestor,
+    keyBindingLabel,
     keyLabel,
     normalizeBreadcrumbs,
     normalizeBrowserData,
