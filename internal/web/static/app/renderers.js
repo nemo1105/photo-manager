@@ -411,21 +411,25 @@ export function createRenderers(deps) {
       <section class="settings-section help-section">
         <h3>${escapeHtml(t("help.shortcuts"))}</h3>
         <div class="browser-shortcut-groups">
-          ${shortcutGroupHtml(t("help.browserShortcuts"), [
-            browserInfoKeyHtml(t("help.startReview"), getConfig(["keys", "browser", "startSession"])),
-            browserInfoKeyHtml(t("help.treeMove"), "", treeMoveKeys),
-            browserInfoKeyHtml(t("help.expand"), getConfig(["keys", "browser", "expandDir"])),
-            browserInfoKeyHtml(t("help.collapse"), getConfig(["keys", "browser", "collapseDir"])),
-          ])}
-          ${shortcutGroupHtml(t("help.previewShortcuts"), [
-            browserInfoKeyHtml(t("help.closePreview"), getConfig(["keys", "preview", "close"])),
-            browserInfoKeyHtml(t("help.preview"), "", previewBrowseKeys),
-          ])}
-          ${shortcutGroupHtml(t("help.slideshowShortcuts"), [
-            browserInfoKeyHtml(t("help.slideshowBrowse"), "", slideshowBrowseKeys),
-            browserInfoKeyHtml(t("help.end"), getConfig(["keys", "slideshow", "endSession"])),
-          ])}
-          ${shortcutGroupHtml(t("help.actionShortcuts"), (state.config?.actions || []).map((action) => browserInfoKeyHtml(shortActionLabel(action), action.key)))}
+          <div class="browser-shortcut-column">
+            ${shortcutGroupHtml(t("help.browserShortcuts"), [
+              browserInfoKeyHtml(t("help.startReview"), getConfig(["keys", "browser", "startSession"])),
+              browserInfoKeyHtml(t("help.treeMove"), "", treeMoveKeys),
+              browserInfoKeyHtml(t("help.expand"), getConfig(["keys", "browser", "expandDir"])),
+              browserInfoKeyHtml(t("help.collapse"), getConfig(["keys", "browser", "collapseDir"])),
+            ])}
+            ${shortcutGroupHtml(t("help.previewShortcuts"), [
+              browserInfoKeyHtml(t("help.closePreview"), getConfig(["keys", "preview", "close"])),
+              browserInfoKeyHtml(t("help.preview"), "", previewBrowseKeys),
+            ])}
+          </div>
+          <div class="browser-shortcut-column">
+            ${shortcutGroupHtml(t("help.slideshowShortcuts"), [
+              browserInfoKeyHtml(t("help.slideshowBrowse"), "", slideshowBrowseKeys),
+              browserInfoKeyHtml(t("help.end"), getConfig(["keys", "slideshow", "endSession"])),
+            ])}
+            ${shortcutGroupHtml(t("help.actionShortcuts"), (state.config?.actions || []).map((action) => browserInfoKeyHtml(shortActionLabel(action), action.key)))}
+          </div>
         </div>
       </section>
       <section class="settings-section help-section help-section--stats">

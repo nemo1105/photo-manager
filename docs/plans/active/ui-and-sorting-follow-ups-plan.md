@@ -32,6 +32,8 @@ Track the next round of UX and reliability work after the initial browse/preview
   Current execution focus on 2026-03-21: remove the browser-side settings shortcut, keep settings entry explicit through the help header button, switch help shortcuts to a stable two-column layout, and shrink preview/sorting-view buttons to the same compact height as the surrounding chrome.
   Current correction focus on 2026-03-21: keep every help-modal shortcut row to a single line so longer preview labels do not grow taller than neighboring shortcut rows.
   Current correction focus on 2026-03-21: keep the help modal content scrolled to and laid out from the top, instead of visually anchoring the shortcut grid from the bottom edge.
+  Current correction focus on 2026-03-21: keep shorter help shortcut cards like Preview and Sorting View pinned to the top of their row instead of stretching and leaving empty space above their entries.
+  Current correction focus on 2026-03-21: stack help shortcuts by column so Folder Browsing sits directly above Preview, Sorting View sits directly above Sorting Actions, and the paired cards touch vertically without an extra gap.
   Current correction focus on 2026-03-21: keep the browser start-work button brighter on hover, and hide the bottom-right toast shell entirely until a notice is active so idle chrome does not leave a stray border.
   Current correction focus on 2026-03-21: keep the browse-root row pinned open, remove its chevron affordance, and render it with the same folder-row treatment as normal directories.
   Current correction focus on 2026-03-21: pull the browse-root row slightly left so its folder chip aligns with the left edge of child-folder chevrons.
