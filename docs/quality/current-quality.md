@@ -47,6 +47,7 @@ Status: active
 - Missing coverage:
   - Browser-side UI flows in the static frontend bundle under `internal/web/static/app.js` and `internal/web/static/app/`.
   - Automated browser verification that the browse-gallery overflow menu opens from the bottom-right trigger, dismisses on outside click, and refreshes masonry layout after delete.
+  - Automated browser verification that deeper browser-tree levels keep increasing indentation instead of visually collapsing onto the same column.
   - Automated browser verification that move and command aliases render in the sorting footer and help modal, and that command aliases render in the command terminal title.
 - Layout verification that browser mode keeps the tree and image list inside the viewport without a large header shell.
 - Manual verification that browse-gallery masonry sizing stays stable across mixed orientations, lazy image loads, and window resizes without horizontal overflow.

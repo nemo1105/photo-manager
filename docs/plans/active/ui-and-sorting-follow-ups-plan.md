@@ -18,6 +18,7 @@ Track the remaining UI and reliability work after the browse/preview/sorting flo
 - [x] Add interactive `command` actions with alias-based labels, one active terminal session at a time, and stable output-before-exit delivery.
 - [x] Rework the folder-browsing gallery into an aspect-ratio-aware masonry layout that uses loaded image dimensions, keeps images uncropped, and treats `350 px` portrait-width / landscape-height targets as soft goals when space allows.
 - [x] Add a per-photo overflow menu on browse-gallery cards with browser-mode single-image delete routed through the recycle bin / Trash without starting sorting.
+- [x] Restore visible indentation progression for deeper levels in the browser tree so third-level folders no longer visually collapse onto second-level rows.
 - [ ] Prevent repeated operations on stale slideshow state from surfacing as user-visible errors.
 - [ ] Make the settings key-capture state more obvious while waiting for the next key press.
 
@@ -49,6 +50,7 @@ Track the remaining UI and reliability work after the browse/preview/sorting flo
 - Verify browse-gallery cards show a bottom-right overflow trigger, the popup offers `Delete`, and deleting from browser mode sends the file to the recycle bin / Trash without starting sorting.
 - Verify refreshing or reopening browser mode during an active slideshow ends the session silently and does not surface browser-side active-session controls.
 - Verify the directory tree shows right-aligned image counts for the browse root and visible folder rows, with an estimate marker when deeper visible subfolders exceed the 3-level scan cap.
+- Verify second- and third-level folders in browser mode render with distinct indentation so nesting remains readable in deeper trees.
 - Verify browser help and settings no longer surface `up_dir`, browser-side `end_session`, or browser-side `open_settings`, and `/api/browser` omits `parentPath` and `canGoUp`.
 - Verify `command` opens an interactive full-screen terminal, starts in the sort-starting folder even from review mode, and still delivers trailing output before the terminal reports exit.
 - Verify move and command aliases render directly in sorting-facing UI and the command terminal title, while legacy configs without aliases still fail save until corrected.

@@ -16,7 +16,7 @@ body.browser-mode .browser-tree-shell {
 body.browser-mode .tree-row {
   grid-template-columns: 16px minmax(0, 1fr);
   gap: 3px;
-  padding-left: calc(var(--depth) * 4px);
+  padding-left: calc(var(--depth) * 8px);
 }
 
 body.browser-mode .tree-branch,
