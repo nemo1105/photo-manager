@@ -216,6 +216,7 @@ body.browser-mode .browser-card-grid[data-masonry-ready="true"] {
 body.browser-mode .image-card {
   grid-column: auto / span var(--card-column-span, 1);
   grid-row: auto / span var(--card-row-span, 1);
+  position: relative;
   padding: 10px;
   gap: 10px;
   border-radius: 20px;
@@ -230,6 +231,26 @@ body.browser-mode .image-card:hover:not(:disabled) {
   background: rgba(255, 255, 255, 0.05);
   border-color: rgba(103, 232, 249, 0.18);
   box-shadow: none;
+}
+
+body.browser-mode .image-card-preview {
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  display: grid;
+  gap: 10px;
+}
+
+body.browser-mode .image-card-preview:focus-visible {
+  outline: none;
+}
+
+body.browser-mode .image-card-preview:focus-visible .thumb-stage {
+  border-color: rgba(34, 211, 238, 0.34);
+  box-shadow: 0 0 0 1px rgba(34, 211, 238, 0.22);
 }
 
 body.browser-mode .thumb-stage {
@@ -257,11 +278,77 @@ body.browser-mode .thumb {
 
 body.browser-mode .image-meta {
   gap: 0;
+  padding-right: 52px;
 }
 
 body.browser-mode .image-name {
   font-size: 0.92rem;
   font-weight: 500;
+}
+
+body.browser-mode .image-card-menu-wrap {
+  position: absolute;
+  right: 10px;
+  bottom: 10px;
+  display: grid;
+  justify-items: end;
+  gap: 8px;
+}
+
+body.browser-mode .image-card-menu-toggle,
+body.browser-mode .image-card-menu-item {
+  border: 1px solid rgba(103, 232, 249, 0.14);
+  background: rgba(8, 12, 22, 0.9);
+  color: #e6eefc;
+}
+
+body.browser-mode .image-card-menu-toggle {
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 10px 24px rgba(3, 7, 18, 0.28);
+}
+
+body.browser-mode .image-card-menu-toggle:hover:not(:disabled),
+body.browser-mode .image-card-menu-toggle[aria-expanded="true"] {
+  border-color: rgba(34, 211, 238, 0.28);
+  background: rgba(15, 23, 42, 0.96);
+}
+
+body.browser-mode .image-card-menu-toggle .browser-icon-svg {
+  width: 16px;
+  height: 16px;
+}
+
+body.browser-mode .image-card-menu {
+  min-width: 116px;
+  padding: 6px;
+  border-radius: 14px;
+  border: 1px solid rgba(103, 232, 249, 0.14);
+  background: rgba(8, 12, 22, 0.96);
+  box-shadow: 0 16px 36px rgba(3, 7, 18, 0.38);
+}
+
+body.browser-mode .image-card-menu-item {
+  width: 100%;
+  min-height: 36px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  font-size: 0.82rem;
+  text-align: left;
+}
+
+body.browser-mode .image-card-menu-item:hover:not(:disabled) {
+  border-color: rgba(248, 113, 113, 0.28);
+  background: rgba(69, 10, 10, 0.92);
+}
+
+body.browser-mode .image-card-menu-item--danger {
+  color: #fecaca;
 }
 
 body.browser-mode .browser-empty-state {

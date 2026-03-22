@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"errors"
 	"io"
 	"os"
 	"path/filepath"
@@ -340,6 +341,39 @@ func TestOpenSessionKeepsCurrentDirectoryWhenNotTarget(t *testing.T) {
 	}
 	if result.Session.RootPath != "work/fresh" {
 		t.Fatalf("expected session root to stay on current directory, got %q", result.Session.RootPath)
+	}
+}
+
+func TestPerformBrowserImageActionDeletesWithoutSession(t *testing.T) {
+	root := t.TempDir()
+	mustWriteFile(t, filepath.Join(root, "work", "photo.jpg"))
+
+	trash := &fakeTrash{}
+	app := New(root, filepath.Join(root, "config.yaml"), config.Default(), trash)
+
+	result, err := app.PerformBrowserImageAction("work", "work/photo.jpg", "delete", localize.ZHCN)
+	if err != nil {
+		t.Fatalf("browser delete photo: %v", err)
+	}
+
+	if len(trash.paths) != 1 || trash.paths[0] != filepath.Join(root, "work", "photo.jpg") {
+		t.Fatalf("unexpected trash paths: %+v", trash.paths)
+	}
+	if _, err := os.Stat(filepath.Join(root, "work", "photo.jpg")); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("expected deleted file to be gone, stat err=%v", err)
+	}
+	if result.Notice != "已将 photo.jpg 移到回收站。" {
+		t.Fatalf("unexpected delete notice: %q", result.Notice)
+	}
+}
+
+func TestPerformBrowserImageActionRejectsUnsupportedAction(t *testing.T) {
+	root := t.TempDir()
+	mustWriteFile(t, filepath.Join(root, "work", "photo.jpg"))
+
+	app := New(root, filepath.Join(root, "config.yaml"), config.Default(), &fakeTrash{})
+	if _, err := app.PerformBrowserImageAction("work", "work/photo.jpg", "move", localize.EN); err == nil {
+		t.Fatal("expected unsupported browser image action to fail")
 	}
 }
 

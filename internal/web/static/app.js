@@ -41,6 +41,7 @@ const state = {
     browser: null,
     slideshow: null,
     preview: {open: false, images: [], index: 0},
+    browserImageMenuIndex: -1,
     config: null,
     launchRoot: "",
     notice: {type: "info", text: ""},
@@ -166,6 +167,9 @@ const eventHandlers = createEventHandlers({
     handleTreePathClick,
     toggleTree,
     openPreview,
+    toggleBrowserImageMenu,
+    closeBrowserImageMenu,
+    runBrowserImageAction,
     runAction,
     movePreview,
     closePreview,
@@ -294,6 +298,24 @@ function applyStaticTranslations() {
             ? t("command.terminate")
             : t("command.close"),
     );
+}
+
+function closeBrowserImageMenu() {
+    if (state.browserImageMenuIndex === -1) {
+        return;
+    }
+    state.browserImageMenuIndex = -1;
+    render();
+}
+
+function toggleBrowserImageMenu(index) {
+    const nextIndex = Number(index);
+    if (!Number.isInteger(nextIndex) || nextIndex < 0) {
+        return;
+    }
+    state.browserHelpOpen = false;
+    state.browserImageMenuIndex = state.browserImageMenuIndex === nextIndex ? -1 : nextIndex;
+    render();
 }
 
 async function apiGet(path) {
@@ -566,6 +588,7 @@ async function performBrowserLoad(path, options) {
     state.config = data.config || state.config;
     state.launchRoot = data.launchRoot || state.launchRoot;
     state.mode = "browser";
+    state.browserImageMenuIndex = -1;
     browserView.hidden = false;
     slideshowView.hidden = true;
     await refreshVisibleTreeNodes(data.currentPath);
@@ -603,6 +626,7 @@ async function loadSlideshow(path, preferredIndex) {
     state.slideshow = data;
     state.config = data.config || state.config;
     state.browserHelpOpen = false;
+    state.browserImageMenuIndex = -1;
     if (!data.session.active) {
         await loadBrowser(path || "");
         if (data.notice) {
@@ -691,6 +715,7 @@ function cacheTreeNode(path, name, directories, imageCount, imageCountEstimated)
 
 async function changeDirectory(path) {
     state.browserHelpOpen = false;
+    state.browserImageMenuIndex = -1;
     cancelScheduledBrowserLoad(true);
     return withBusy(t("busy.loadingFolder"), async () => {
         await loadBrowser(path || "", {expandTree: true});
@@ -829,6 +854,26 @@ async function runAction(actionKey) {
     });
 }
 
+async function runBrowserImageAction(index, action) {
+    const image = state.browser?.images?.[Number(index)];
+    if (!image) {
+        return null;
+    }
+
+    state.browserImageMenuIndex = -1;
+    render();
+
+    return withBusy(t("busy.working"), async () => {
+        const result = await apiPost("/api/browser/action", {
+            currentPath: state.browser.currentPath,
+            imagePath: image.path,
+            action,
+        });
+        showNotice(result.notice, "info");
+        await loadBrowser(state.browser.currentPath || "", {expandTree: false});
+    });
+}
+
 async function terminateCommandTerminal() {
     const socket = state.commandTerminal.socket;
     if (!socket || socket.readyState !== window.WebSocket.OPEN) {
@@ -856,6 +901,7 @@ async function closeCommandTerminal() {
 function openPreview(index) {
     cancelScheduledBrowserLoad(true);
     state.browserHelpOpen = false;
+    state.browserImageMenuIndex = -1;
     state.preview = {
         open: true,
         images: normalizeImages(state.browser ? state.browser.images : []),

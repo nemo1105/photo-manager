@@ -80,15 +80,43 @@ export function createViewHelpers({
   }
 
   function imageCardHtml(image, index) {
+    const menuOpen = state.browserImageMenuIndex === index;
     return `
-      <button class="image-card" data-gallery-card data-preview-index="${index}">
-        <div class="thumb-stage" data-gallery-stage>
-          <img class="thumb" data-gallery-image src="${escapeHtml(image.url)}" alt="${escapeHtml(image.name)}" loading="lazy" decoding="async">
+      <article class="image-card ${menuOpen ? "is-menu-open" : ""}" data-gallery-card>
+        <button class="image-card-preview" type="button" data-preview-index="${index}">
+          <div class="thumb-stage" data-gallery-stage>
+            <img class="thumb" data-gallery-image src="${escapeHtml(image.url)}" alt="${escapeHtml(image.name)}" loading="lazy" decoding="async">
+          </div>
+          <div class="image-meta">
+            <strong class="image-name">${escapeHtml(image.name)}</strong>
+          </div>
+        </button>
+        <div class="image-card-menu-wrap" data-browser-image-menu>
+          <button
+            class="image-card-menu-toggle"
+            type="button"
+            aria-label="${escapeHtml(t("browser.moreActions"))}"
+            aria-haspopup="menu"
+            aria-expanded="${menuOpen ? "true" : "false"}"
+            data-browser-image-menu-toggle="${index}"
+          >
+            ${browserMoreIconHtml()}
+          </button>
+          ${menuOpen ? `
+            <div class="image-card-menu" role="menu" aria-label="${escapeHtml(t("browser.imageActions"))}">
+              <button
+                class="image-card-menu-item image-card-menu-item--danger"
+                type="button"
+                role="menuitem"
+                data-browser-image-action="${index}"
+                data-browser-image-action-type="delete"
+              >
+                ${escapeHtml(t("browser.deleteImage"))}
+              </button>
+            </div>
+          ` : ""}
         </div>
-        <div class="image-meta">
-          <strong class="image-name">${escapeHtml(image.name)}</strong>
-        </div>
-      </button>
+      </article>
     `;
   }
 
@@ -153,6 +181,16 @@ export function createViewHelpers({
         <circle cx="12" cy="12" r="9"></circle>
         <path d="M12 10v6"></path>
         <circle cx="12" cy="7.25" r="1"></circle>
+      </svg>
+    `;
+  }
+
+  function browserMoreIconHtml() {
+    return `
+      <svg class="browser-icon-svg" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+        <circle cx="6" cy="12" r="1.6" style="fill:currentColor;stroke:none"></circle>
+        <circle cx="12" cy="12" r="1.6" style="fill:currentColor;stroke:none"></circle>
+        <circle cx="18" cy="12" r="1.6" style="fill:currentColor;stroke:none"></circle>
       </svg>
     `;
   }

@@ -30,6 +30,15 @@ func (stubTrash) Trash(string) error {
 	return nil
 }
 
+type deletingStubTrash struct {
+	paths []string
+}
+
+func (d *deletingStubTrash) Trash(path string) error {
+	d.paths = append(d.paths, path)
+	return os.Remove(path)
+}
+
 type fakeHandlerTerminalManager struct {
 	reserved []terminal.Spec
 	session  terminal.Session
@@ -411,6 +420,42 @@ func TestHandleActionWithoutSortingUsesUserLanguage(t *testing.T) {
 	}
 	if payload["error"] != "请先开始整理" {
 		t.Fatalf("unexpected localized action error: %q", payload["error"])
+	}
+}
+
+func TestHandleBrowserActionDeletesPhotoWithoutSession(t *testing.T) {
+	root := t.TempDir()
+	mustWriteHandlerFile(t, filepath.Join(root, "work", "a.jpg"))
+
+	trash := &deletingStubTrash{}
+	handler := NewHandler(app.New(root, filepath.Join(root, "config.yaml"), config.Default(), trash))
+
+	req := httptest.NewRequest(http.MethodPost, "/api/browser/action", bytes.NewBufferString(`{"currentPath":"work","imagePath":"work/a.jpg","action":"delete"}`))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-Photo-Manager-Locale", "zh-CN")
+
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d body=%s", rec.Code, rec.Body.String())
+	}
+
+	if len(trash.paths) != 1 || trash.paths[0] != filepath.Join(root, "work", "a.jpg") {
+		t.Fatalf("unexpected trash calls: %+v", trash.paths)
+	}
+	if _, err := os.Stat(filepath.Join(root, "work", "a.jpg")); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("expected deleted file to be gone, stat err=%v", err)
+	}
+
+	var payload struct {
+		Notice string `json:"notice"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &payload); err != nil {
+		t.Fatalf("decode payload: %v", err)
+	}
+	if payload.Notice != "已将 a.jpg 移到回收站。" {
+		t.Fatalf("unexpected localized delete notice: %q", payload.Notice)
 	}
 }
 

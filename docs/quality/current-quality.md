@@ -8,6 +8,7 @@ Status: active
 - Keep path handling and file operations contained inside `launchRoot`, except when the user explicitly configured an absolute move target.
 - Keep sorting semantics anchored to `sessionRoot`, including review-folder entry, restore behavior, and command working-directory selection.
 - Keep browser and sorting states unambiguous: browser mode must not preserve an active session, and sorting actions must stay available by both keyboard and visible buttons.
+- Keep browser-mode single-image actions constrained and explicit: the browse-gallery overflow menu must not start sorting and delete must still use the recycle bin / Trash.
 - Keep the browser tree predictable and bounded: natural directory ordering, keyboard/tree behavior alignment, and image counts capped at 3 descendant levels with explicit estimate marking.
 - Keep folder-browsing image cards aligned to decoded image ratios so mixed portrait and landscape folders do not waste large thumbnail areas on empty frame space.
 - Keep user-facing copy consistent within the selected locale and centered on sorting/review terminology rather than internal implementation terms.
@@ -42,8 +43,10 @@ Status: active
   - Alias-based move and command labels in slideshow data, plus alias-based terminal titles in command-start responses.
   - Task-first user terminology across UI dictionaries, backend notices, and settings validation labels.
   - Windows PowerShell path quoting for recycle-bin deletion.
+  - Browser-mode single-image delete without an active session.
 - Missing coverage:
   - Browser-side UI flows in the static frontend bundle under `internal/web/static/app.js` and `internal/web/static/app/`.
+  - Automated browser verification that the browse-gallery overflow menu opens from the bottom-right trigger, dismisses on outside click, and refreshes masonry layout after delete.
   - Automated browser verification that move and command aliases render in the sorting footer and help modal, and that command aliases render in the command terminal title.
 - Layout verification that browser mode keeps the tree and image list inside the viewport without a large header shell.
 - Manual verification that browse-gallery masonry sizing stays stable across mixed orientations, lazy image loads, and window resizes without horizontal overflow.

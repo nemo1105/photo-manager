@@ -104,6 +104,10 @@ type ActionResult struct {
 	Session SessionInfo `json:"session"`
 }
 
+type BrowserImageActionResult struct {
+	Notice string `json:"notice"`
+}
+
 type CommandStartResult struct {
 	CommandSessionID string      `json:"commandSessionId"`
 	Command          string      `json:"command"`
@@ -414,6 +418,37 @@ func (a *App) PerformAction(currentDirRel, imageRel, actionKey string, locale lo
 		Notice:  notice,
 		Session: a.sessionInfoLocked(),
 	}, nil
+}
+
+func (a *App) PerformBrowserImageAction(currentDirRel, imageRel, action string, locale localize.Locale) (*BrowserImageActionResult, error) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+
+	_, currentDirAbs, err := a.resolveDir(currentDirRel)
+	if err != nil {
+		return nil, err
+	}
+
+	imageRel, imageAbs, err := a.resolveFile(imageRel)
+	if err != nil {
+		return nil, err
+	}
+	if !isWithinDir(imageAbs, currentDirAbs) {
+		return nil, errImageOutsideCurrentDir
+	}
+
+	switch strings.ToLower(strings.TrimSpace(action)) {
+	case "delete":
+		if err := a.trash.Trash(imageAbs); err != nil {
+			return nil, err
+		}
+		_ = imageRel
+		return &BrowserImageActionResult{
+			Notice: localize.DeleteNotice(locale, filepath.Base(imageAbs)),
+		}, nil
+	default:
+		return nil, errUnsupportedAction
+	}
 }
 
 func (a *App) StartCommandAction(currentDirRel, imageRel, actionKey string, locale localize.Locale) (*CommandStartResult, error) {

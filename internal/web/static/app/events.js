@@ -21,6 +21,9 @@ export function createEventHandlers(deps) {
     handleTreePathClick,
     toggleTree,
     openPreview,
+    toggleBrowserImageMenu,
+    closeBrowserImageMenu,
+    runBrowserImageAction,
     runAction,
     movePreview,
     closePreview,
@@ -38,6 +41,7 @@ export function createEventHandlers(deps) {
 
   function bindStaticEvents() {
     document.addEventListener("keydown", onKeyDown);
+    document.addEventListener("click", onDocumentClick);
     document.getElementById("settingsCloseButton").addEventListener("click", closeSettings);
     document.getElementById("helpCloseButton").addEventListener("click", closeHelp);
     document.getElementById("commandTerminalActionButton").addEventListener("click", () => {
@@ -132,6 +136,7 @@ export function createEventHandlers(deps) {
       }
       button.dataset.boundHelpToggle = "true";
       button.addEventListener("click", () => {
+        closeBrowserImageMenu();
         state.browserHelpOpen = !state.browserHelpOpen;
         render();
       });
@@ -162,6 +167,29 @@ export function createEventHandlers(deps) {
       }
       button.dataset.boundPreviewIndex = "true";
       button.addEventListener("click", () => openPreview(Number(button.dataset.previewIndex)));
+    });
+    browserView.querySelectorAll("[data-browser-image-menu-toggle]").forEach((button) => {
+      if (button.dataset.boundBrowserImageMenuToggle === "true") {
+        return;
+      }
+      button.dataset.boundBrowserImageMenuToggle = "true";
+      button.addEventListener("click", (event) => {
+        event.stopPropagation();
+        toggleBrowserImageMenu(Number(button.dataset.browserImageMenuToggle));
+      });
+    });
+    browserView.querySelectorAll("[data-browser-image-action]").forEach((button) => {
+      if (button.dataset.boundBrowserImageAction === "true") {
+        return;
+      }
+      button.dataset.boundBrowserImageAction = "true";
+      button.addEventListener("click", (event) => {
+        event.stopPropagation();
+        runBrowserImageAction(
+          Number(button.dataset.browserImageAction),
+          button.dataset.browserImageActionType,
+        ).catch((error) => showNotice(error.message, "error"));
+      });
     });
   }
 
@@ -333,6 +361,12 @@ export function createEventHandlers(deps) {
       return;
     }
 
+    if (state.browserImageMenuIndex !== -1 && key === "escape") {
+      event.preventDefault();
+      closeBrowserImageMenu();
+      return;
+    }
+
     if (state.busy || state.settingsOpen) {
       return;
     }
@@ -427,6 +461,16 @@ export function createEventHandlers(deps) {
       event.preventDefault();
       runAction(action.key).catch((error) => showNotice(error.message, "error"));
     }
+  }
+
+  function onDocumentClick(event) {
+    if (state.browserImageMenuIndex === -1) {
+      return;
+    }
+    if (event.target.closest("[data-browser-image-menu]")) {
+      return;
+    }
+    closeBrowserImageMenu();
   }
 
   return {

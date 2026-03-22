@@ -35,6 +35,7 @@ Users need to start from an arbitrary directory, browse to a folder that contain
 - Command-terminal transport must not surface process exit before already-written terminal output has been delivered to the browser.
 - Slideshow mode is an immersive full-viewport viewer and must not introduce browser-level scrollbars during normal desktop use.
 - Browser and tree directory lists should sort naturally by numeric segments instead of pure lexicographic order.
+- Browser-gallery cards may expose per-photo browser-mode actions, but those actions must not implicitly create sorting state.
 - Browser UI localization supports only `zh-CN` and `en`; any browser locale starting with `zh` maps to `zh-CN`, and other browser locales fall back to `en`.
 - Manual language switching is browser-local only, takes precedence over browser-language detection, and must not require a config-file change.
 - The help modal should group shortcuts by mode, name arrow keys explicitly as arrow keys, show `Space` as the default slideshow exit, and use a two-column shortcut grid at common desktop widths.
@@ -55,12 +56,14 @@ Users need to start from an arbitrary directory, browse to a folder that contain
 
 - [x] Starting the CLI in any folder opens a browser UI rooted at that folder.
 - [x] Clicking an image opens preview only and does not start sorting.
+- [x] Browse-gallery cards expose a bottom-right `More actions` entry that opens a per-photo menu.
 - [x] Starting sorting is only possible from the browser view through the fixed button or its configured key.
 - [x] When the current folder is a configured relative move target, the browser frames it as reviewing already moved photos and starting there uses the parent folder as the work root.
 - [x] While sorting is active, the page shows clear sorting/review state and enables action buttons in the sorting view.
 - [x] In a review folder, slideshow hides the move action that points to the current directory while still exposing other actions and `restore`.
 - [x] `move` creates missing target folders and auto-renames on conflicts.
 - [x] `delete` sends the image to the platform recycle bin / Trash.
+- [x] Browser-mode per-photo `delete` also sends the image to the platform recycle bin / Trash and does not require starting sorting first.
 - [x] `restore` is shown only inside configured move-target directories and returns the image to the session root.
 - [x] `command` opens a full-screen interactive terminal, starts in `sessionRoot`, and keeps the terminal visible until the user closes it after the process exits.
 - [x] Starting `command` from a review folder still uses the parent sort-starting folder as the working directory.
@@ -97,6 +100,7 @@ Users need to start from an arbitrary directory, browse to a folder that contain
   - `arrowright` (`Right Arrow`) expands the current directory in the tree.
   - `arrowleft` (`Left Arrow`) collapses the current directory in the tree, or returns to its parent when already collapsed.
   - Keyboard-driven directory switches do not auto-expand the newly selected folder and wait about `100 ms` before reloading the browser pane.
+  - Each browse-gallery card exposes a bottom-right overflow menu; today it contains only `Delete`, which sends that one photo to the recycle bin / Trash without starting sorting.
   - Settings opens from the help modal header button instead of a dedicated keyboard shortcut.
   - Loading browser mode ends any active sorting state; folder browsing does not expose a separate exit-sorting key.
 - Preview:

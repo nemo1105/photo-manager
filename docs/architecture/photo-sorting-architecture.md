@@ -21,6 +21,7 @@ This application is a single-binary Go tool that starts from an explicit launch 
 - `launchRoot` is fixed at process start and comes from the CLI `-dir` argument when provided, otherwise from the current working directory used to launch the CLI.
 - All browser and image paths are expressed as launch-root-relative paths and are sanitized so they cannot escape `launchRoot`.
 - Browsing folders and previewing images never starts a work session. Only `POST /api/session/start` does.
+- Browser-mode single-image actions run without a work session; they stay constrained to the current browser directory and currently support only recycle-bin delete.
 - Browser mode and active slideshow/work-session state are mutually exclusive. Any successful `GET /api/browser` clears the current session before returning browser data.
 - A work session owns one `sessionRoot`. Relative action targets are resolved from `sessionRoot` for the entire session.
 - `command` actions also anchor to `sessionRoot`; they do not use the current image directory as their working directory.
@@ -59,6 +60,7 @@ This application is a single-binary Go tool that starts from an explicit launch 
   - The default template maps `space` to browser session start and slideshow session end, `arrowup` / `arrowdown` / `arrowright` / `arrowleft` to browser-tree navigation, `arrowleft` and `arrowright` to slide navigation, `delete` to delete, `arrowdown` to move into `0`, and `arrowup` to restore.
 - HTTP API:
 - `GET /api/browser`: current directory listing, localized breadcrumbs, config, whether starting here should be framed as reviewing moved photos, current-directory bounded image-count metadata, and per-directory bounded image counts for each visible child folder. Calling it also clears any active session so browser mode never renders with an active session. The payload intentionally omits legacy parent-navigation fields such as `parentPath` and `canGoUp`.
+- `POST /api/browser/action`: executes browser-mode single-image actions for the current directory without requiring a session. The current implementation supports `delete` only.
 - `GET /api/tree`: current directory path, current-directory bounded image-count metadata, and visible child directories with per-directory bounded image counts.
   - `POST /api/session/start`: creates or reuses a session for the current directory.
   - `POST /api/session/end`: clears the active session.
@@ -96,6 +98,7 @@ This application is a single-binary Go tool that starts from an explicit launch 
 - Command-terminal UX is modal and fullscreen. The process keeps the terminal surface until exit, then the user closes that surface manually to return to sorting.
 - The browser bundle remains dependency-light by vendoring browser-ready `xterm.js` assets into the embedded static tree instead of introducing a separate frontend build system.
 - The browse gallery keeps the backend payload unchanged and derives portrait/landscape layout from browser-decoded `naturalWidth` / `naturalHeight`, so supported image formats do not need matching Go-side metadata decoders.
+- The browse-gallery overflow trigger is a frontend-only affordance layered onto each card; it does not change gallery payload shape and uses a dedicated browser-action endpoint instead of the slideshow action-key path.
 - Review-folder entry is explained in the UI as checking already moved photos, rather than exposing the session-root fallback directly.
 - The default action template now favors a single hot folder, `0`, so a fresh install exposes one high-risk move target instead of several competing move destinations.
 - `command.command` intentionally stays as plain shell text with no placeholder DSL or auto-injected current-image/current-directory variables.
