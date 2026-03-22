@@ -504,3 +504,8 @@ body.browser-mode .tree-link.ancestor {
 
 body.browser-mode .tree-link strong {
   font-size: 0.82rem;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}

@@ -5,6 +5,6 @@
 @import url("/styles/04-browser-shell.css");
 @import url("/styles/05-browser-overrides.css");
 @import url("/styles/06-slideshow-mode.css");
-@import url("/styles/vendor/xterm.css");
 @import url("/styles/07-command-terminal.css");
+@import url("/styles/vendor/xterm.css");
 

@@ -287,5 +287,3 @@ body.app-busy select {
   color: var(--text);
 }
 
-.notice {
-  position: fixed;
