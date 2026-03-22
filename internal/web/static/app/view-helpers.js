@@ -81,9 +81,9 @@ export function createViewHelpers({
 
   function imageCardHtml(image, index) {
     return `
-      <button class="image-card" data-preview-index="${index}">
-        <div class="thumb-stage">
-          <img class="thumb" src="${escapeHtml(image.url)}" alt="${escapeHtml(image.name)}" loading="lazy" decoding="async">
+      <button class="image-card" data-gallery-card data-preview-index="${index}">
+        <div class="thumb-stage" data-gallery-stage>
+          <img class="thumb" data-gallery-image src="${escapeHtml(image.url)}" alt="${escapeHtml(image.name)}" loading="lazy" decoding="async">
         </div>
         <div class="image-meta">
           <strong class="image-name">${escapeHtml(image.name)}</strong>

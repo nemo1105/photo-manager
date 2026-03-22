@@ -36,6 +36,7 @@ This application is a single-binary Go tool that starts from an explicit launch 
 - Each visible directory row carries a bounded subtree image count computed from that folder's direct images plus at most 3 levels of visible descendants. If visible subfolders continue deeper, the count is marked as estimated instead of walking unboundedly.
 - Returned directory lists use natural numeric ordering, so names like `1`, `2`, and `10` sort in human order.
 - Hidden entries are ignored. Supported image formats are `.jpg`, `.jpeg`, `.png`, `.gif`, `.webp`, and `.bmp`.
+- Browse-gallery card sizing is client-side only: the API still returns `name`, `path`, and `url`, while the browser measures decoded image dimensions after load and packs cards into a masonry grid without cropping the image.
 - Name conflicts for `move` and `restore` are resolved by creating `name (N).ext` variants.
 - Slideshow mode is rendered as an immersive single-viewer surface. It hides the shared shell and is expected to fit inside the viewport without page scrollbars.
 - Web localization supports only `en` and `zh-CN`; browser locales beginning with `zh` map to `zh-CN`, and everything else falls back to `en`.
@@ -94,6 +95,7 @@ This application is a single-binary Go tool that starts from an explicit launch 
 - `command` actions intentionally follow that same `sessionRoot` rule, even when the slideshow is currently inside a review folder.
 - Command-terminal UX is modal and fullscreen. The process keeps the terminal surface until exit, then the user closes that surface manually to return to sorting.
 - The browser bundle remains dependency-light by vendoring browser-ready `xterm.js` assets into the embedded static tree instead of introducing a separate frontend build system.
+- The browse gallery keeps the backend payload unchanged and derives portrait/landscape layout from browser-decoded `naturalWidth` / `naturalHeight`, so supported image formats do not need matching Go-side metadata decoders.
 - Review-folder entry is explained in the UI as checking already moved photos, rather than exposing the session-root fallback directly.
 - The default action template now favors a single hot folder, `0`, so a fresh install exposes one high-risk move target instead of several competing move destinations.
 - `command.command` intentionally stays as plain shell text with no placeholder DSL or auto-injected current-image/current-directory variables.

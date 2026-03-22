@@ -37,6 +37,7 @@ export function createRenderers(deps) {
     browserInfoKeyHtml,
     shortcutGroupHtml,
     shortActionLabel,
+    galleryLayout,
     bindShellEvents,
     bindBrowserEvents,
     bindSlideshowEvents,
@@ -154,6 +155,7 @@ export function createRenderers(deps) {
 
   function renderBrowser() {
     if (!state.browser) {
+      galleryLayout.clear();
       browserView.innerHTML = `<div class="empty-state">${escapeHtml(t("browser.loading"))}</div>`;
       return;
     }
@@ -184,7 +186,7 @@ export function createRenderers(deps) {
           </div>
           <div class="browser-gallery">
             ${state.browser.images.length ? `
-              <div class="card-grid browser-card-grid">
+              <div class="card-grid browser-card-grid" data-browser-gallery>
                 ${state.browser.images.map((image, index) => imageCardHtml(image, index)).join("")}
               </div>
             ` : `<div class="empty-state browser-empty-state">${escapeHtml(t("browser.noImages"))}</div>`}
@@ -195,6 +197,11 @@ export function createRenderers(deps) {
 
     bindShellEvents();
     bindBrowserEvents();
+    if (state.mode === "browser" && state.browser.images.length) {
+      galleryLayout.bind(browserView.querySelector("[data-browser-gallery]"));
+      return;
+    }
+    galleryLayout.clear();
   }
 
   function renderTree() {

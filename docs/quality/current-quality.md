@@ -9,6 +9,7 @@ Status: active
 - Keep sorting semantics anchored to `sessionRoot`, including review-folder entry, restore behavior, and command working-directory selection.
 - Keep browser and sorting states unambiguous: browser mode must not preserve an active session, and sorting actions must stay available by both keyboard and visible buttons.
 - Keep the browser tree predictable and bounded: natural directory ordering, keyboard/tree behavior alignment, and image counts capped at 3 descendant levels with explicit estimate marking.
+- Keep folder-browsing image cards aligned to decoded image ratios so mixed portrait and landscape folders do not waste large thumbnail areas on empty frame space.
 - Keep user-facing copy consistent within the selected locale and centered on sorting/review terminology rather than internal implementation terms.
 - Keep the command-terminal flow modal and ordered so terminal input does not leak back to sorting and fast-exiting commands still show their final output before exit.
 - Keep move and command aliases consistent across sorting-facing UI while still tolerating legacy configs until the next save.
@@ -44,8 +45,9 @@ Status: active
 - Missing coverage:
   - Browser-side UI flows in the static frontend bundle under `internal/web/static/app.js` and `internal/web/static/app/`.
   - Automated browser verification that move and command aliases render in the sorting footer and help modal, and that command aliases render in the command terminal title.
-  - Layout verification that browser mode keeps the tree and image list inside the viewport without a large header shell.
-  - Layout verification that slideshow mode stays scrollbar-free at runtime.
+- Layout verification that browser mode keeps the tree and image list inside the viewport without a large header shell.
+- Manual verification that browse-gallery masonry sizing stays stable across mixed orientations, lazy image loads, and window resizes without horizontal overflow.
+- Layout verification that slideshow mode stays scrollbar-free at runtime.
   - Manual verification that the regrouped help modal keeps its two-column shortcut layout and header actions readable across browser widths.
   - Manual verification that directory-tree count badges stay aligned and refresh after sorting actions.
   - Manual verification that refreshing during slideshow ends the session and reopens browser mode without browser-side active-session controls.

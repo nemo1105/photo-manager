@@ -10,6 +10,7 @@ import {
 } from "./app/helpers.js";
 import {MESSAGES} from "./app/messages.js";
 import {createEventHandlers} from "./app/events.js";
+import {createGalleryLayout} from "./app/gallery-layout.js";
 import {createRenderers} from "./app/renderers.js";
 import {createViewHelpers} from "./app/view-helpers.js";
 import {Terminal} from "./app/vendor/xterm.mjs";
@@ -141,6 +142,7 @@ let bindSlideshowEvents;
 let bindPreviewEvents;
 let bindSettingsEvents;
 let bindCommandTerminalEvents;
+const galleryLayout = createGalleryLayout();
 
 const eventHandlers = createEventHandlers({
     state,
@@ -225,6 +227,7 @@ bindCommandTerminalEvents = eventHandlers.bindCommandTerminalEvents;
     browserInfoKeyHtml,
     shortcutGroupHtml,
     shortActionLabel,
+    galleryLayout,
     bindShellEvents,
     bindBrowserEvents,
     bindSlideshowEvents,
