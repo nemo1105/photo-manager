@@ -276,6 +276,9 @@ export function createRenderers(deps) {
     const images = state.slideshow.images || [];
     const current = currentSlideImage();
     const counterText = current ? `${state.slideshow.index + 1} / ${images.length}` : t("slideshow.noImages");
+    const actionButtons = state.slideshow.actionButtons || [];
+    const fixedActions = actionButtons.filter((action) => action.action === "delete" || action.action === "restore");
+    const customActions = actionButtons.filter((action) => action.action !== "delete" && action.action !== "restore");
 
     slideshowView.innerHTML = `
       <div class="slideshow-layout">
@@ -289,26 +292,29 @@ export function createRenderers(deps) {
           `}
 
           <div class="slide-bottom-bar">
-            <div class="slide-meta-inline">
-              <strong class="slide-file-name">${escapeHtml(current ? current.name : state.slideshow.currentName)}</strong>
+            <div class="slide-meta-stack">
               <div class="slide-meta-row">
+                <strong class="slide-file-name">${escapeHtml(current ? current.name : state.slideshow.currentName)}</strong>
                 <span class="slide-counter">${escapeHtml(counterText)}</span>
                 <span class="slide-state-pill">${escapeHtml(t("slideshow.sorting"))}</span>
                 ${state.slideshow.currentDirIsTarget ? `<span class="slide-state-pill">${escapeHtml(t("slideshow.reviewingMovedPhotos"))}</span>` : ""}
               </div>
             </div>
-            <div class="slide-toolbar">
-              <div class="slide-button-group">
+            <div class="slide-toolbar slide-toolbar--fixed">
+              <div class="slide-button-group slide-button-group--fixed">
                 ${slideBarButtonHtml(t("slideshow.prev"), keyLabel(getConfig(["keys", "slideshow", "prev"])), "slide-prev", !!current)}
                 ${slideBarButtonHtml(t("slideshow.next"), keyLabel(getConfig(["keys", "slideshow", "next"])), "slide-next", !!current)}
-              </div>
-              <div class="slide-button-group">
                 ${slideBarButtonHtml(t("slideshow.end"), keyLabel(getConfig(["keys", "slideshow", "endSession"])), "end-session", true, "data-toolbar-action")}
-              </div>
-              <div class="slide-button-group slide-button-group--actions">
-                ${(state.slideshow.actionButtons || []).map((action) => slideBarActionHtml(action, !!current)).join("")}
+                ${fixedActions.map((action) => slideBarActionHtml(action, !!current)).join("")}
               </div>
             </div>
+            ${customActions.length ? `
+              <div class="slide-toolbar slide-toolbar--custom">
+                <div class="slide-button-group slide-button-group--actions">
+                  ${customActions.map((action) => slideBarActionHtml(action, !!current)).join("")}
+                </div>
+              </div>
+            ` : ""}
           </div>
         </section>
       </div>

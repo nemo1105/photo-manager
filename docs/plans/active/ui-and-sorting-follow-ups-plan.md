@@ -17,6 +17,7 @@ Track the next round of UX and reliability work after the initial browse/preview
   Current execution focus on 2026-03-21: remove the slideshow browser-return path, keep `Space` as the single exit, and frame target-folder entry as reviewing already moved photos while restoring to the parent work root.
   Current execution focus on 2026-03-21: center slideshow metadata in the bottom bar and hide the self-target move button while reviewing moved photos.
   Current execution focus on 2026-03-21: route review hints and action feedback through animated bottom-right toast notifications, and drop low-value session start/end notices.
+  Current correction focus on 2026-03-22: regroup sorting-view footer chrome so filename, progress, and sorting status share one centered line, place previous/next/exit plus delete/restore directly below it, and render custom actions in their own centered row when present.
 - [x] Replace the folder card list with a narrower tree-like folder view that still makes hierarchy obvious.
   Current execution focus on 2026-03-20: implement a lazily expanded explorer tree, backed by a tree-only API path so expanding the tree does not accidentally end an active session.
   Current execution focus on 2026-03-20: restyle the browser into a dark, compact resource explorer with a minimal tree, mini breadcrumb, toast notices, and an info-only metadata affordance.
