@@ -99,6 +99,11 @@ body.browser-mode .tree-link strong {
   font-weight: 500;
   flex: 1 1 auto;
   min-width: 0;
+  line-height: 16px;
+}
+
+body.browser-mode .tree-link span {
+  margin-top: 0;
 }
 
 body.browser-mode .tree-link-copy,
@@ -114,10 +119,11 @@ body.browser-mode .tree-link-copy {
 }
 
 body.browser-mode .tree-decoration-strip {
-  display: inline-flex;
+  display: flex;
   align-items: center;
   gap: 4px;
   flex: 0 0 auto;
+  min-height: 16px;
 }
 
 body.browser-mode .tree-decoration {
