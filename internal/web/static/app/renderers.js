@@ -96,9 +96,10 @@ export function createRenderers(deps) {
     return `<span class="tree-decoration-strip">${items}</span>`;
   }
 
-  function treeLabelHtml(label, imageCount, estimated, decorations) {
+  function treeLabelHtml(label, imageCount, estimated, decorations, pending) {
     const estimateText = t("browser.estimatedCountTooltip");
     const decorationMarkup = treeDecorationsHtml(decorations);
+    const pendingTitle = escapeHtml(t("busy.loadingFolder"));
     return `
       <span class="tree-link-copy">
         ${decorationMarkup}
@@ -107,6 +108,11 @@ export function createRenderers(deps) {
       <span class="tree-count" aria-label="${escapeHtml(t("browser.imageCountAria", { count: imageCount }))}">
         <span class="tree-count-value">${escapeHtml(String(imageCount))}</span>
         ${estimated ? `<span class="tree-count-estimate" title="${escapeHtml(estimateText)}" aria-label="${escapeHtml(estimateText)}">!</span>` : ""}
+        ${pending ? `
+          <span class="tree-pending-indicator" title="${pendingTitle}" aria-label="${pendingTitle}">
+            <span class="visually-hidden">${pendingTitle}</span>
+          </span>
+        ` : ""}
       </span>
     `;
   }
@@ -200,13 +206,16 @@ export function createRenderers(deps) {
       return;
     }
 
-    const isReviewStart = state.browser.currentDirStartsAsReview;
+    const isBrowserLoading = !!state.browserPending?.active;
+    const browserTargetPath = isBrowserLoading ? state.browserPending.path || "" : state.browser.currentPath;
+    const isReviewStart = !isBrowserLoading && state.browser.currentDirStartsAsReview;
     const startLabel = isReviewStart ? t("browser.reviewHere") : t("browser.sortHere");
     const previousGallery = browserView.querySelector(".browser-gallery");
     const galleryScrollTop = previousGallery ? previousGallery.scrollTop : 0;
     const galleryScrollLeft = previousGallery ? previousGallery.scrollLeft : 0;
     const viewportScrollX = window.scrollX;
     const viewportScrollY = window.scrollY;
+    const loadingPath = pathLabel(browserTargetPath, rootTreeNode().name || t("common.root"));
 
     browserView.innerHTML = `
       <div class="browser-layout">
@@ -230,7 +239,12 @@ export function createRenderers(deps) {
             ${browserMiniBreadcrumbHtml()}
           </div>
           <div class="browser-gallery">
-            ${state.browser.images.length ? `
+            ${isBrowserLoading ? `
+              <div class="empty-state browser-empty-state browser-loading-state">
+                <strong class="browser-loading-title">${escapeHtml(t("busy.loadingFolder"))}</strong>
+                <span class="browser-loading-path">${escapeHtml(loadingPath)}</span>
+              </div>
+            ` : state.browser.images.length ? `
               <div class="card-grid browser-card-grid" data-browser-gallery>
                 ${state.browser.images.map((image, index) => imageCardHtml(image, index)).join("")}
               </div>
@@ -251,7 +265,7 @@ export function createRenderers(deps) {
 
     bindShellEvents();
     bindBrowserEvents();
-    if (state.mode === "browser" && state.browser.images.length) {
+    if (state.mode === "browser" && !isBrowserLoading && state.browser.images.length) {
       galleryLayout.bind(browserView.querySelector("[data-browser-gallery]"));
       return;
     }
@@ -261,6 +275,7 @@ export function createRenderers(deps) {
   function renderTree() {
     const rootNode = rootTreeNode();
     const selectedPath = currentTreeSelectionPath();
+    const rootPending = !!state.browserPending?.active && state.browserPending.path === "";
     const rootClass = selectedPath === "" ? "current" : (isPathAncestor("", selectedPath) ? "ancestor" : "");
     const rootHasChildren = !!rootNode.directories.length || !!state.tree.loading[""];
     return `
@@ -268,8 +283,14 @@ export function createRenderers(deps) {
         <div class="tree-node">
           <div class="tree-row tree-row--root" style="--depth:0">
             <span class="tree-spacer" aria-hidden="true"></span>
-            <button class="tree-link ${rootClass}" data-tree-path="" data-tree-has-children="${rootHasChildren}">
-              ${treeLabelHtml(rootNode.name || t("common.root"), rootNode.imageCount || 0, !!rootNode.imageCountEstimated, rootNode.decorations)}
+            <button class="tree-link ${rootClass} ${rootPending ? "pending" : ""}" data-tree-path="" data-tree-has-children="${rootHasChildren}">
+              ${treeLabelHtml(
+                rootNode.name || t("common.root"),
+                rootNode.imageCount || 0,
+                !!rootNode.imageCountEstimated,
+                rootNode.decorations,
+                rootPending,
+              )}
             </button>
           </div>
         </div>
@@ -294,6 +315,7 @@ export function createRenderers(deps) {
     const selectedPath = currentTreeSelectionPath();
     const selected = selectedPath === path;
     const ancestor = !selected && isPathAncestor(path, selectedPath);
+    const pending = !!state.browserPending?.active && state.browserPending.path === path;
     const expanded = !!state.tree.expanded[path];
     const node = state.tree.nodes[path];
     const hasChildren = !!entry.hasChildren || (!!node && node.directories.length > 0);
@@ -316,11 +338,11 @@ export function createRenderers(deps) {
         <div class="tree-row" style="--depth:${depth}">
           ${toggleMarkup}
           <button
-            class="tree-link ${selected ? "current" : (ancestor ? "ancestor" : "")}"
+            class="tree-link ${selected ? "current" : (ancestor ? "ancestor" : "")} ${pending ? "pending" : ""}"
             data-tree-path="${escapeHtml(path)}"
             data-tree-has-children="${hasChildren}"
           >
-            ${treeLabelHtml(entry.name, entry.imageCount || 0, !!entry.imageCountEstimated, entry.decorations)}
+            ${treeLabelHtml(entry.name, entry.imageCount || 0, !!entry.imageCountEstimated, entry.decorations, pending)}
           </button>
         </div>
         ${childMarkup}

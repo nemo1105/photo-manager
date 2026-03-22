@@ -39,6 +39,7 @@ This application is a single-binary Go tool that starts from an explicit launch 
 - Directory decorations are local to the directory being evaluated. The built-in `done-marker` only checks for `done.txt` inside that exact folder; it does not bubble state up to parent folders.
 - Directory-decoration failures are isolated: a failed decorator is logged and skipped without failing the whole browser or tree request.
 - Returned directory lists use natural numeric ordering, so names like `1`, `2`, and `10` sort in human order.
+- Folder browsing stays interactive while `GET /api/browser` is in flight: the newest requested directory becomes the selected target immediately, the gallery clears to a loading state for that target once the request starts, and stale responses or superseded request failures must not roll the UI back.
 - Hidden entries are ignored. Supported image formats are `.jpg`, `.jpeg`, `.png`, `.gif`, `.webp`, and `.bmp`.
 - Browse-gallery card sizing is client-side only: the API still returns `name`, `path`, and `url`, while the browser measures decoded image dimensions after load and packs cards into a masonry grid without cropping the image.
 - Name conflicts for `move` and `restore` are resolved by creating `name (N).ext` variants.
@@ -94,6 +95,7 @@ This application is a single-binary Go tool that starts from an explicit launch 
 - Refreshing or directly loading browser mode during an active session intentionally ends that session instead of attempting to reconstruct slideshow state in browser mode.
 - Browser-mode tree navigation follows the currently visible tree rows, so collapsing an already collapsed directory steps selection back to its parent instead of hiding the active location.
 - Keyboard-driven browser navigation keeps a transient tree focus separate from the last loaded browser directory, preserves the existing expansion state, and debounces browser reloads by `100 ms` to reduce image-list churn during rapid scans.
+- Mouse and keyboard browse loads share a latest-request-wins frontend state machine. The tree selection follows the newest target, the gallery shows a loading panel for that target when the request is active, and stale responses or stale request errors are ignored instead of restoring older browser content.
 - Parent navigation intentionally lives inside `collapse_dir`; the product no longer exposes a separate browser `up_dir` shortcut because it duplicated the same navigation outcome.
 - The browser payload also drops the old `parentPath` / `canGoUp` fields so the transport contract does not preserve an obsolete parent-navigation model.
 - Directory counts now travel with the existing browser and tree payloads, so the help modal no longer needs its own subtree-stats request path.

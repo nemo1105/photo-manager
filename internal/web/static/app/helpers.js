@@ -291,7 +291,7 @@ export function createAppHelpers({ state, t }) {
   }
 
   function canStartWorkFromBrowser() {
-    if (!state.browser) {
+    if (!state.browser || state.browserPending?.active) {
       return false;
     }
     return state.browser.images.length > 0;

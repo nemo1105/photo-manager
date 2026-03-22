@@ -20,6 +20,7 @@ Track the remaining UI and reliability work after the browse/preview/sorting flo
 - [x] Add a per-photo overflow menu on browse-gallery cards with browser-mode single-image delete routed through the recycle bin / Trash without starting sorting.
 - [x] Restore visible indentation progression for deeper levels in the browser tree so third-level folders no longer visually collapse onto second-level rows.
 - [x] Add an internal directory-decoration plugin path for browser-tree status icons, including a built-in `done.txt` green check marker with locale-aware tooltips.
+- [x] Keep folder browsing interactive during directory loads so the latest mouse or keyboard target wins, the target row shows a light loading marker, the gallery switches to a loading state, and stale responses or stale errors do not roll the UI back.
 - [ ] Prevent repeated operations on stale slideshow state from surfacing as user-visible errors.
 - [ ] Make the settings key-capture state more obvious while waiting for the next key press.
 
@@ -42,6 +43,7 @@ Track the remaining UI and reliability work after the browse/preview/sorting flo
 - Browser settings entry is explicit through the help modal header button; folder browsing no longer reserves a dedicated settings shortcut.
 - Directory rows show bounded image counts from the existing browser/tree payloads, with a 3-level scan cap and an estimate marker for deeper visible subtrees.
 - Directory status icons now ride on the existing browser/tree payloads through an internal decorator registry; v1 uses a localized `done-marker` for folders that directly contain `done.txt`.
+- Browser directory loads now use a latest-request-wins UI state: the tree stays clickable, the newest target row stays selected, the gallery clears to a loading state once the request starts, and stale responses or superseded request failures are ignored.
 - `command` actions run as raw shell text with no placeholder DSL or injected current-image/current-directory variables; the only guaranteed execution context is the initial `sessionRoot` working directory.
 - `alias` is the user-facing label for move and command actions. Legacy configs without it may load, but save remains blocked until the alias is filled.
 
@@ -55,6 +57,7 @@ Track the remaining UI and reliability work after the browse/preview/sorting flo
 - Verify the directory tree shows right-aligned image counts for the browse root and visible folder rows, with an estimate marker when deeper visible subfolders exceed the 3-level scan cap.
 - Verify second- and third-level folders in browser mode render with distinct indentation so nesting remains readable in deeper trees.
 - Verify adding or removing `done.txt` changes the tree decoration after the next browser or tree refresh, and verify the green check stays aligned with counts and selected-row styling.
+- Verify rapid tree clicks and debounced keyboard scans keep the latest target selected, keep the tree clickable, switch the gallery to a loading state instead of showing stale photos, and avoid stale error toasts or hover flashing.
 - Verify browser help and settings no longer surface `up_dir`, browser-side `end_session`, or browser-side `open_settings`, and `/api/browser` omits `parentPath` and `canGoUp`.
 - Verify `command` opens an interactive full-screen terminal, starts in the sort-starting folder even from review mode, and still delivers trailing output before the terminal reports exit.
 - Verify move and command aliases render directly in sorting-facing UI and the command terminal title, while legacy configs without aliases still fail save until corrected.

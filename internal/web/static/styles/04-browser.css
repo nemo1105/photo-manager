@@ -159,6 +159,14 @@
   color: var(--muted);
 }
 
+.tree-pending-indicator {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  display: inline-flex;
+  flex: 0 0 auto;
+}
+
 .workbench-grid {
   display: grid;
   gap: 18px;

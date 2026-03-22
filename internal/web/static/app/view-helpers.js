@@ -216,10 +216,32 @@ export function createViewHelpers({
     `;
   }
 
+  function currentBrowserDisplayPath() {
+    if (state.browserPending?.active) {
+      return state.browserPending.path || "";
+    }
+    return state.browser?.currentPath || "";
+  }
+
+  function fallbackBrowserBreadcrumbs(path) {
+    const rootName = normalizeBreadcrumbs(state.browser?.breadcrumbs)[0]?.name || t("common.root");
+    const crumbs = [{ name: rootName, path: "" }];
+    const parts = String(path || "").split("/").filter(Boolean);
+    let current = "";
+    parts.forEach((part) => {
+      current = current ? `${current}/${part}` : part;
+      crumbs.push({ name: part, path: current });
+    });
+    return crumbs;
+  }
+
   function browserMiniBreadcrumbHtml() {
-    const crumbs = normalizeBreadcrumbs(state.browser?.breadcrumbs);
+    const currentPath = currentBrowserDisplayPath();
+    const crumbs = state.browserPending?.active
+      ? fallbackBrowserBreadcrumbs(currentPath)
+      : normalizeBreadcrumbs(state.browser?.breadcrumbs);
     return crumbs.map((crumb) => {
-      if (crumb.path === state.browser.currentPath) {
+      if (crumb.path === currentPath) {
         return `<span class="browser-crumb browser-crumb--current">${escapeHtml(crumb.name)}</span>`;
       }
       return `<button class="browser-crumb" data-browse-path="${escapeHtml(crumb.path)}">${escapeHtml(crumb.name)}</button>`;

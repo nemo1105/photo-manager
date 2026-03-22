@@ -40,6 +40,7 @@ Users need to start from an arbitrary directory, browse to a folder that contain
 - Manual language switching is browser-local only, takes precedence over browser-language detection, and must not require a config-file change.
 - The help modal should group shortcuts by mode, name arrow keys explicitly as arrow keys, show `Space` as the default slideshow exit, and use a two-column shortcut grid at common desktop widths.
 - The directory tree should show right-aligned image counts for the browse root and each visible folder row, counting the folder itself plus at most 3 visible descendant levels and marking deeper visible subtrees as estimated.
+- Folder browsing must stay interactive while a directory load is in flight: the latest clicked or debounced target wins, stale browser responses must not roll the UI back to an older folder, and the image pane should switch to a loading state instead of continuing to show the previous folder's photos.
 - Folder-tree status decorations come from built-in directory rules in v1. They are not edited through settings, are not loaded from external scripts, and apply only to the directory being evaluated unless a future rule explicitly changes that contract.
 - Folder browsing should keep each image fully visible and size gallery cards from the browser-decoded image dimensions; portrait and square photos target about `350 px` stage width, landscape photos target about `350 px` stage height, and narrow widths may relax those targets to avoid horizontal overflow.
 
@@ -76,6 +77,7 @@ Users need to start from an arbitrary directory, browse to a folder that contain
 - [x] Config edits in the browser are validated and saved back to `~/.photo-manager/config.yaml`.
 - [x] Outside preview and slideshow, configurable browser tree keys move through the visible directory list with Up / Down and expand or collapse the current directory with Right / Left.
 - [x] Keyboard-driven directory changes keep the tree expansion state unchanged and debounce browser loading by about 100 ms so rapid scans across image folders do not trigger repeated heavy refreshes.
+- [x] Mouse-driven and keyboard-driven folder changes keep the tree clickable during loading, immediately preserve the latest target row as selected, clear the image pane into a loading state once the request starts, and ignore stale responses so an older folder cannot overwrite the newest choice.
 - [x] The default shortcut template uses `Space` to start work from browser mode and `Space` again to end work from slideshow mode, with `Left` / `Right` for slide navigation, `Del` for delete, `Down` to move into `0`, and `Up` to restore.
 - [x] Slideshow mode hides the top shell and keeps the document free of page scrollbars at common desktop sizes.
 - [x] Browser and tree directory lists place numeric names in natural order, such as `1`, `2`, then `10`.
@@ -102,6 +104,7 @@ Users need to start from an arbitrary directory, browse to a folder that contain
   - `arrowright` (`Right Arrow`) expands the current directory in the tree.
   - `arrowleft` (`Left Arrow`) collapses the current directory in the tree, or returns to its parent when already collapsed.
   - Keyboard-driven directory switches do not auto-expand the newly selected folder and wait about `100 ms` before reloading the browser pane.
+  - Once a folder load starts, the latest target row stays selected, the tree remains clickable, and the browser pane switches to a loading state for that target instead of leaving the previous folder's photos visible.
   - Each browse-gallery card exposes a bottom-right overflow menu; today it contains only `Delete`, which sends that one photo to the recycle bin / Trash without starting sorting.
   - Settings opens from the help modal header button instead of a dedicated keyboard shortcut.
   - Loading browser mode ends any active sorting state; folder browsing does not expose a separate exit-sorting key.

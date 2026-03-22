@@ -33,6 +33,14 @@ function createCommandTerminalState() {
     };
 }
 
+function createBrowserPendingState() {
+    return {
+        active: false,
+        path: "",
+        requestToken: 0,
+    };
+}
+
 const STORAGE_KEY = window.__photoManagerBootstrap?.storageKey || "photo-manager.locale";
 
 const state = {
@@ -50,6 +58,7 @@ const state = {
     captureTarget: null,
     browserHelpOpen: false,
     commandTerminal: createCommandTerminalState(),
+    browserPending: createBrowserPendingState(),
     busy: false,
     busyLabel: "",
     tree: {
@@ -63,6 +72,7 @@ const state = {
 let noticeTimer = 0;
 let browserLoadTimer = 0;
 let browserLoadToken = 0;
+let currentBrowserLoadPromise = null;
 let commandResizeTimer = 0;
 
 const browserView = document.getElementById("browserView");
@@ -272,7 +282,7 @@ async function setLocale(nextLocale) {
         return;
     }
     if (state.browser) {
-        await loadBrowser(state.browser.currentPath || "", {expandTree: false});
+        await loadBrowser(currentBrowserTargetPath(), {expandTree: false});
         return;
     }
     render();
@@ -553,6 +563,45 @@ async function withBusy(label, work) {
     }
 }
 
+function trackBrowserLoad(promise) {
+    const tracked = promise.finally(() => {
+        if (currentBrowserLoadPromise === tracked) {
+            currentBrowserLoadPromise = null;
+        }
+    });
+    currentBrowserLoadPromise = tracked;
+    return tracked;
+}
+
+function currentLoadedBrowserPath() {
+    return state.browser ? state.browser.currentPath : "";
+}
+
+function currentBrowserTargetPath() {
+    if (state.browserPending.active) {
+        return state.browserPending.path || "";
+    }
+    if (state.mode === "browser" && state.tree.focusPath) {
+        return state.tree.focusPath;
+    }
+    return currentLoadedBrowserPath();
+}
+
+function clearCurrentBrowserPending(requestToken) {
+    if (!state.browserPending.active || state.browserPending.requestToken !== requestToken) {
+        return false;
+    }
+    state.browserPending = createBrowserPendingState();
+    return true;
+}
+
+async function waitForCurrentBrowserLoad() {
+    if (!currentBrowserLoadPromise) {
+        return;
+    }
+    await currentBrowserLoadPromise;
+}
+
 function cancelScheduledBrowserLoad(clearFocus) {
     if (browserLoadTimer) {
         clearTimeout(browserLoadTimer);
@@ -570,14 +619,32 @@ function nextBrowserLoadToken() {
 
 async function performBrowserLoad(path, options) {
     const settings = options || {};
+    const targetPath = path || "";
     const expandTree = settings.expandTree !== false;
     const requestToken = settings.requestToken || browserLoadToken;
     const previousMode = state.mode;
-    const previousBrowserPath = state.browser ? state.browser.currentPath : "";
+    const previousBrowserPath = currentLoadedBrowserPath();
     const hadBrowserState = !!state.browser;
-    const data = normalizeBrowserData(await apiGet(`/api/browser?path=${encodeURIComponent(path || "")}`));
+    state.browserPending = {
+        active: true,
+        path: targetPath,
+        requestToken,
+    };
+    state.tree.focusPath = "";
+    render();
+    let data;
+    try {
+        data = normalizeBrowserData(await apiGet(`/api/browser?path=${encodeURIComponent(targetPath)}`));
+    } catch (error) {
+        if (requestToken !== browserLoadToken) {
+            return null;
+        }
+        clearCurrentBrowserPending(requestToken);
+        render();
+        throw error;
+    }
     if (requestToken !== browserLoadToken) {
-        return;
+        return null;
     }
     state.browser = data;
     state.config = data.config || state.config;
@@ -586,15 +653,26 @@ async function performBrowserLoad(path, options) {
     state.browserImageMenuIndex = -1;
     browserView.hidden = false;
     slideshowView.hidden = true;
-    await refreshVisibleTreeNodes(data.currentPath);
-    await syncTreeToCurrentPath(data, {expandTree});
+    try {
+        await refreshVisibleTreeNodes(data.currentPath, {requestToken, silent: true});
+        await syncTreeToCurrentPath(data, {expandTree, requestToken, silent: true});
+    } catch (error) {
+        if (requestToken !== browserLoadToken) {
+            return null;
+        }
+        clearCurrentBrowserPending(requestToken);
+        render();
+        throw error;
+    }
     if (requestToken !== browserLoadToken) {
-        return;
+        return null;
     }
     state.tree.focusPath = "";
+    clearCurrentBrowserPending(requestToken);
+    render();
     if (data.notice) {
         showNotice(data.notice, "info");
-        return;
+        return data;
     }
     if (
         !data.session.active &&
@@ -602,18 +680,18 @@ async function performBrowserLoad(path, options) {
         (!hadBrowserState || previousMode !== "browser" || previousBrowserPath !== data.currentPath)
     ) {
         showNotice(t("browser.checkMovedPhotos"), "info");
-        return;
+        return data;
     }
-    render();
+    return data;
 }
 
 async function loadBrowser(path, options) {
     cancelScheduledBrowserLoad(false);
-    return performBrowserLoad(path, {
+    return trackBrowserLoad(performBrowserLoad(path, {
         expandTree: true,
         requestToken: nextBrowserLoadToken(),
         ...options,
-    });
+    }));
 }
 
 async function loadSlideshow(path, preferredIndex) {
@@ -643,6 +721,7 @@ async function loadSlideshow(path, preferredIndex) {
 async function loadTreeNode(path, options) {
     const key = path || "";
     const forceRefresh = !!options?.forceRefresh;
+    const silent = !!options?.silent;
     if (!forceRefresh && state.tree.nodes[key]) {
         return state.tree.nodes[key];
     }
@@ -650,7 +729,9 @@ async function loadTreeNode(path, options) {
         return null;
     }
     state.tree.loading[key] = true;
-    render();
+    if (!silent) {
+        render();
+    }
     try {
         const data = normalizeTreeData(await apiGet(`/api/tree?path=${encodeURIComponent(key)}`));
         cacheTreeNode(
@@ -664,18 +745,25 @@ async function loadTreeNode(path, options) {
         return state.tree.nodes[key];
     } finally {
         delete state.tree.loading[key];
-        render();
+        if (!silent) {
+            render();
+        }
     }
 }
 
-async function refreshVisibleTreeNodes(currentPath) {
+async function refreshVisibleTreeNodes(currentPath, options) {
+    const requestToken = options?.requestToken || browserLoadToken;
+    const silent = options?.silent !== false;
     const paths = new Set([""]);
     pathChain(currentPath || "").forEach((path) => paths.add(path));
     Object.keys(state.tree.expanded || {}).forEach((path) => {
         paths.add(path || "");
     });
     for (const path of paths) {
-        await loadTreeNode(path, {forceRefresh: true});
+        if (requestToken !== browserLoadToken) {
+            return;
+        }
+        await loadTreeNode(path, {forceRefresh: true, silent});
     }
 }
 
@@ -684,6 +772,8 @@ async function syncTreeToCurrentPath(browserData, options) {
         expandTree: true,
         ...options,
     };
+    const requestToken = settings.requestToken || browserLoadToken;
+    const silent = settings.silent !== false;
     cacheTreeNode(
         browserData.currentPath,
         browserData.currentName,
@@ -700,8 +790,11 @@ async function syncTreeToCurrentPath(browserData, options) {
         state.tree.expanded[path] = true;
     });
     for (const ancestor of chain.slice(0, -1)) {
+        if (requestToken !== browserLoadToken) {
+            return;
+        }
         if (!state.tree.nodes[ancestor]) {
-            await loadTreeNode(ancestor);
+            await loadTreeNode(ancestor, {silent});
         }
     }
 }
@@ -721,16 +814,11 @@ async function changeDirectory(path) {
     state.browserHelpOpen = false;
     state.browserImageMenuIndex = -1;
     cancelScheduledBrowserLoad(true);
-    return withBusy(t("busy.loadingFolder"), async () => {
-        await loadBrowser(path || "", {expandTree: true});
-    });
+    return loadBrowser(path || "", {expandTree: true});
 }
 
 function currentTreeSelectionPath() {
-    if (state.mode === "browser" && state.tree.focusPath) {
-        return state.tree.focusPath;
-    }
-    return state.browser ? state.browser.currentPath : "";
+    return currentBrowserTargetPath();
 }
 
 function parentTreePath(path) {
@@ -750,33 +838,36 @@ function scheduleKeyboardDirectoryLoad(path) {
     render();
     browserLoadTimer = window.setTimeout(() => {
         browserLoadTimer = 0;
-        performBrowserLoad(nextPath, {
+        trackBrowserLoad(performBrowserLoad(nextPath, {
             expandTree: false,
             requestToken,
-        }).catch((error) => showNotice(error.message, "error"));
+        })).catch((error) => showNotice(error.message, "error"));
     }, 100);
 }
 
 async function flushScheduledBrowserLoad() {
     const focusedPath = state.tree.focusPath;
-    if (!focusedPath || (state.browser && focusedPath === state.browser.currentPath)) {
+    if (!focusedPath || focusedPath === currentLoadedBrowserPath()) {
         cancelScheduledBrowserLoad(true);
         return;
     }
     cancelScheduledBrowserLoad(false);
-    await performBrowserLoad(focusedPath, {
+    await trackBrowserLoad(performBrowserLoad(focusedPath, {
         expandTree: false,
         requestToken: nextBrowserLoadToken(),
-    });
+    }));
 }
 
 async function handleTreePathClick(path, hasChildren) {
     const key = path || "";
-    if (!key && state.browser && state.browser.currentPath === "") {
+    const selectedPath = currentBrowserTargetPath();
+    if (!key && selectedPath === "") {
         return;
     }
-    if (key && hasChildren && state.browser && state.browser.currentPath === key) {
-        await toggleTree(key);
+    if (selectedPath === key) {
+        if (key && hasChildren) {
+            await toggleTree(key);
+        }
         return;
     }
     await changeDirectory(key);
@@ -784,13 +875,15 @@ async function handleTreePathClick(path, hasChildren) {
 
 async function openWorkMode() {
     await flushScheduledBrowserLoad();
+    await waitForCurrentBrowserLoad();
     cancelScheduledBrowserLoad(true);
     if (!canStartWorkFromBrowser()) {
         return null;
     }
+    const browserPath = currentLoadedBrowserPath();
     return withBusy(t("busy.openingSession"), async () => {
-        const result = await apiPost("/api/session/start", {path: state.browser.currentPath});
-        await loadSlideshow(result.slideshowPath || state.browser.currentPath, 0);
+        const result = await apiPost("/api/session/start", {path: browserPath});
+        await loadSlideshow(result.slideshowPath || browserPath, 0);
     });
 }
 
@@ -1122,7 +1215,7 @@ async function saveSettings() {
             await loadSlideshow(state.slideshow.currentPath, state.slideshow.index || 0);
             return;
         }
-        await loadBrowser(state.browser ? state.browser.currentPath : "");
+        await loadBrowser(currentBrowserTargetPath());
     });
 }
 
