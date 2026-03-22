@@ -1,0 +1,122 @@
+/* Shared slideshow layout and controls outside immersive mode overrides. */
+.slideshow-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 320px;
+  gap: 16px;
+  align-items: start;
+}
+
+.slide-stage,
+.slide-rail {
+  border-radius: var(--radius-xl);
+  padding: 18px;
+}
+
+.slide-stage,
+.slide-rail,
+.slide-path,
+.preview-meta {
+  display: grid;
+}
+
+.slide-stage {
+  gap: 18px;
+  min-height: calc(100vh - 210px);
+}
+
+.slide-head,
+.rail-head {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.slide-frame {
+  min-height: clamp(420px, 68vh, 880px);
+  padding: 18px;
+  border-radius: 18px;
+  background:
+    radial-gradient(circle at top, rgba(14, 165, 233, 0.08), transparent 42%),
+    linear-gradient(180deg, rgba(241, 247, 252, 0.94) 0%, rgba(228, 238, 247, 0.92) 100%);
+  border: 1px solid rgba(180, 201, 219, 0.72);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.slide-image,
+.preview-image {
+  width: auto;
+  height: auto;
+  max-width: 100%;
+  object-fit: contain;
+}
+
+.slide-image {
+  max-height: min(76vh, 920px);
+}
+
+.slide-path,
+.preview-meta {
+  gap: 4px;
+}
+
+.slide-path strong,
+.preview-meta strong {
+  word-break: break-word;
+}
+
+.slide-rail {
+  gap: 14px;
+}
+
+.rail-section {
+  border: 1px solid var(--line);
+  border-radius: 22px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.95) 0%, rgba(246, 249, 252, 0.95) 100%);
+  padding: 14px;
+  display: grid;
+  gap: 12px;
+}
+
+.rail-heading {
+  display: grid;
+  gap: 4px;
+}
+
+.rail-heading h3,
+.settings-section h3 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.rail-stack,
+.rail-buttons {
+  display: grid;
+  gap: 10px;
+}
+
+.slide-empty-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+@media (max-width: 1200px) {
+  .slideshow-layout {
+    grid-template-columns: minmax(0, 1fr) 300px;
+  }
+}
+
+@media (max-width: 1024px) {
+  .slideshow-layout,
+  .slide-head {
+    grid-template-columns: 1fr;
+    display: grid;
+  }
+
+  .slide-rail {
+    order: 2;
+  }
+}

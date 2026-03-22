@@ -39,6 +39,7 @@ Track the next round of UX and reliability work after the initial browse/preview
   Current correction focus on 2026-03-21: pull the browse-root row slightly left so its folder chip aligns with the left edge of child-folder chevrons.
   Current execution focus on 2026-03-21: restyle the settings modal to match the same modal-card, section-card, and compact utility-button language already used by help and the main browser shell.
   Current execution focus on 2026-03-21: split the oversized frontend stylesheet into imported CSS modules so each static style file stays under 500 lines without changing load order.
+  Current execution focus on 2026-03-22: replace the brittle numbered CSS split with a stable concern-based structure covering tokens, reset, shell, shared components, browser view, overlays, settings, mode overrides, and terminal styling.
   Current correction focus on 2026-03-22: make the help-modal `Close` header button use the same compact utility-button treatment as the adjacent `Settings` button.
   Current correction focus on 2026-03-22: shrink settings-modal inputs, action rows, and footer buttons so they match the compact control sizing used by the surrounding browser chrome.
   Current correction focus on 2026-03-22: redesign settings bindings as compact keyboard-edit rows with keycap-like values, smaller destructive actions, and footer buttons that match the browser utility controls.

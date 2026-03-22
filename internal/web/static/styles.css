@@ -1,10 +1,14 @@
-@import url("/styles/00-base.css");
-@import url("/styles/01-layout.css");
-@import url("/styles/02-surfaces.css");
-@import url("/styles/03-responsive.css");
-@import url("/styles/04-browser-shell.css");
-@import url("/styles/05-browser-overrides.css");
-@import url("/styles/06-slideshow-mode.css");
-@import url("/styles/07-command-terminal.css");
+@import url("/styles/00-tokens.css");
+@import url("/styles/01-reset.css");
+@import url("/styles/02-shell.css");
+@import url("/styles/03-components.css");
+@import url("/styles/04-browser.css");
+@import url("/styles/05-slideshow.css");
+@import url("/styles/06-overlays.css");
+@import url("/styles/07-settings.css");
+@import url("/styles/08-browser-mode-chrome.css");
+@import url("/styles/09-browser-mode-browser.css");
+@import url("/styles/10-browser-mode-theme.css");
+@import url("/styles/11-slideshow-mode.css");
 @import url("/styles/vendor/xterm.css");
-
+@import url("/styles/12-command-terminal.css");

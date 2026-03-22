@@ -1,3 +1,8 @@
+/* Settings modal layout and compact editing controls. */
+.settings-card {
+  width: min(1220px, calc(100vw - 24px));
+}
+
 .settings-body {
   display: grid;
   gap: 18px;
@@ -207,14 +212,11 @@
 }
 
 .capture-row {
-  display: flex;
-  align-items: center;
   justify-content: flex-end;
   gap: 0;
   min-width: 0;
   min-height: 32px;
   padding: 2px;
-  border: 0;
   border: 1px solid rgba(180, 201, 219, 0.72);
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.72);
@@ -301,10 +303,6 @@
   background: rgba(255, 255, 255, 0.88);
 }
 
-.capture-row:focus-visible {
-  box-shadow: 0 0 0 3px rgba(3, 105, 161, 0.16);
-}
-
 .settings-footer {
   align-items: center;
   justify-content: space-between;
@@ -323,14 +321,14 @@
   font-size: 0.78rem;
 }
 
+.settings-card .settings-row-actions {
+  align-items: center;
+}
+
 .settings-card .settings-row-actions .action-tile--compact {
   min-width: 84px;
   justify-content: center;
   text-align: center;
-}
-
-.settings-card .settings-row-actions {
-  align-items: center;
 }
 
 .settings-danger-button {
@@ -355,63 +353,6 @@
   align-items: center;
 }
 
-.visually-hidden {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  margin: -1px;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-  white-space: nowrap;
-  border: 0;
-}
-
-@media (max-width: 1200px) {
-  .browser-layout {
-    grid-template-columns: 280px minmax(0, 1fr);
-  }
-
-  .slideshow-layout {
-    grid-template-columns: minmax(0, 1fr) 300px;
-  }
-}
-
-@media (max-width: 1024px) {
-  .app-shell {
-    padding: 14px;
-  }
-
-  .browser-layout,
-  .slideshow-layout,
-  .shell-strip,
-  .workbench-head,
-  .slide-head,
-  .modal-header,
-  .settings-row,
-  .settings-footer {
-    grid-template-columns: 1fr;
-    display: grid;
-  }
-
-  .explorer-pane {
-    position: static;
-  }
-
-  .tree-shell {
-    max-height: 320px;
-  }
-
-  .workbench-actions,
-  .shell-tools {
-    justify-content: flex-start;
-  }
-
-  .slide-rail {
-    order: 2;
-  }
-}
-
 @media (max-width: 900px) {
   .settings-section-head {
     display: grid;
@@ -423,10 +364,7 @@
     text-align: left;
   }
 
-  .settings-row {
-    grid-template-columns: 1fr;
-  }
-
+  .settings-row,
   .settings-key-row,
   .settings-row--action {
     grid-template-columns: 1fr;
@@ -438,7 +376,8 @@
   }
 
   .settings-action-inline,
-  .settings-action-tail {
+  .settings-action-tail,
+  .settings-row-actions {
     width: 100%;
     justify-content: flex-start;
   }
@@ -449,72 +388,14 @@
     flex: 1 1 auto;
   }
 
-  .settings-row-actions {
-    width: 100%;
-  }
-
   .settings-row-actions .action-tile {
     min-width: 0;
   }
 }
 
 @media (max-width: 720px) {
-  .app-shell {
-    padding: 10px;
-  }
-
-  .status-bar,
-  .breadcrumbs,
-  .notice,
-  .explorer-pane,
-  .workbench-pane,
-  .slide-stage,
-  .slide-rail,
-  .modal-card {
-    border-radius: 20px;
-  }
-
-  .card-grid {
-    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-  }
-
-  .thumb-stage {
-    min-height: 160px;
-  }
-
-  .control-tile,
-  .action-tile,
-  .rail-button {
-    min-width: 0;
-    min-height: 72px;
-  }
-
-  .preview-controls .slide-bar-button {
-    flex: 1 1 108px;
-    justify-content: center;
-  }
-
-  .tree-row {
-    padding-left: calc(var(--depth) * 10px);
-  }
-
-  .modal-card {
-    width: calc(100vw - 16px);
-    max-height: calc(100vh - 16px);
-    margin: 8px auto;
-    padding: 14px;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  html {
-    scroll-behavior: auto;
-  }
-
-  *,
-  *::before,
-  *::after {
-    transition: none !important;
-    animation: none !important;
+  .settings-footer {
+    grid-template-columns: 1fr;
+    display: grid;
   }
 }

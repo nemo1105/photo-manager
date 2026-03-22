@@ -1,0 +1,144 @@
+/* Shared application shell and top-level surfaces. */
+.app-shell {
+  width: min(var(--content-width), 100%);
+  margin: 0 auto;
+  padding: 18px;
+  display: grid;
+  gap: 12px;
+}
+
+.shell-header {
+  position: sticky;
+  top: 12px;
+  z-index: 30;
+  display: grid;
+  gap: 10px;
+}
+
+.status-bar,
+.breadcrumbs,
+.explorer-pane,
+.workbench-pane,
+.slide-stage,
+.slide-rail,
+.modal-card {
+  background: var(--surface);
+  backdrop-filter: blur(18px);
+  border: 1px solid rgba(255, 255, 255, 0.68);
+  box-shadow: var(--shadow);
+}
+
+.status-bar {
+  border-radius: 24px;
+  padding: 14px 18px;
+}
+
+.shell-strip {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 16px;
+  align-items: start;
+}
+
+.brand-stack {
+  min-width: 0;
+}
+
+.brand-kicker,
+.section-kicker,
+.modal-kicker,
+.rail-kicker,
+.pane-kicker {
+  margin: 0;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--accent-strong);
+}
+
+.brand-title-row {
+  margin-top: 4px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.shell-title,
+.section-title,
+.modal-title {
+  margin: 0;
+  font-family: "Bahnschrift", "Aptos", "Segoe UI", "PingFang SC", sans-serif;
+  letter-spacing: 0.01em;
+  color: var(--text);
+}
+
+.shell-title {
+  font-size: clamp(1.2rem, 1rem + 0.6vw, 1.65rem);
+}
+
+.shell-meta {
+  margin-top: 12px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.shell-tools {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.breadcrumbs {
+  border-radius: 18px;
+  padding: 8px 10px;
+  display: flex;
+  gap: 8px;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+}
+
+.main-layout {
+  min-height: calc(100vh - 180px);
+}
+
+.view {
+  padding: 0;
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+}
+
+@media (max-width: 1024px) {
+  .app-shell {
+    padding: 14px;
+  }
+
+  .shell-strip {
+    grid-template-columns: 1fr;
+    display: grid;
+  }
+
+  .shell-tools {
+    justify-content: flex-start;
+  }
+}
+
+@media (max-width: 720px) {
+  .app-shell {
+    padding: 10px;
+  }
+
+  .status-bar,
+  .breadcrumbs,
+  .explorer-pane,
+  .workbench-pane,
+  .slide-stage,
+  .slide-rail,
+  .modal-card {
+    border-radius: 20px;
+  }
+}

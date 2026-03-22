@@ -1,3 +1,4 @@
+/* Full-screen immersive slideshow mode. */
 body.slideshow-mode {
   min-height: 100dvh;
   height: 100dvh;
@@ -69,9 +70,6 @@ body.slideshow-mode .slide-image {
 body.slideshow-mode .slide-empty-state {
   min-height: 0;
   height: calc(100dvh - 98px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
   border-color: rgba(255, 255, 255, 0.12);
   background: rgba(255, 255, 255, 0.03);
   color: rgba(226, 232, 240, 0.86);
@@ -198,23 +196,12 @@ body.slideshow-mode .slide-bar-button:hover:not(:disabled) {
 }
 
 .slide-bar-label {
-  font-size: 0.82rem;
-  font-weight: 600;
   color: #f8fafc;
 }
 
 .slide-bar-key {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 20px;
-  height: 16px;
-  padding: 0 5px;
-  border-radius: 999px;
   background: rgba(255, 255, 255, 0.08);
   color: rgba(226, 232, 240, 0.78);
-  font-size: 0.62rem;
-  line-height: 1;
 }
 
 body.slideshow-mode .slide-bar-button--danger {
@@ -285,4 +272,3 @@ body.slideshow-mode .slide-bar-button--danger .slide-bar-key {
     flex-wrap: wrap;
   }
 }
-
