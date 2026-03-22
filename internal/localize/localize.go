@@ -118,9 +118,12 @@ func RestoreNotice(locale Locale, name string) string {
 	return choose(locale, fmt.Sprintf("Restored %s.", name), fmt.Sprintf("已恢复 %s。", name))
 }
 
-func ActionLabel(locale Locale, action, target string) string {
+func ActionLabel(locale Locale, action, target, alias string) string {
 	switch action {
 	case "move":
+		if strings.TrimSpace(alias) != "" {
+			return strings.TrimSpace(alias)
+		}
 		if locale == ZHCN {
 			return fmt.Sprintf("移动到 %s", target)
 		}
@@ -130,6 +133,9 @@ func ActionLabel(locale Locale, action, target string) string {
 	case "restore":
 		return ActionName(locale, action)
 	case "command":
+		if strings.TrimSpace(alias) != "" {
+			return strings.TrimSpace(alias)
+		}
 		return ActionName(locale, action)
 	default:
 		return action

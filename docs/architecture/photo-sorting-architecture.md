@@ -29,6 +29,7 @@ This application is a single-binary Go tool that starts from an explicit launch 
 - `restore` is only valid when the current directory matches one of the configured `move` targets resolved against `sessionRoot`.
 - When slideshow is opened inside a move-target directory, the action list omits any `move` binding whose destination is that same directory.
 - `command.command` is raw shell text only. The product does not expand placeholders or inject current-image or current-directory variables.
+- `alias` is the user-facing label for `move` and `command` actions. Sorting buttons and help action labels prefer it; command-terminal titles also prefer it for `command` actions. Legacy configs without it fall back to the old target-based or generic command labels until the user saves a fixed config.
 - Only one interactive command-terminal session may exist at a time, and while it is open the sorting UI must not also react to keyboard shortcuts.
 - Directory listing is shallow: only direct child folders and direct child images of the current directory are returned.
 - Each visible directory row carries a bounded subtree image count computed from that folder's direct images plus at most 3 levels of visible descendants. If visible subfolders continue deeper, the count is marked as estimated instead of walking unboundedly.
@@ -52,6 +53,7 @@ This application is a single-binary Go tool that starts from an explicit launch 
   - `actions[]` defines `move`, `delete`, `restore`, and `command` buttons/shortcuts.
   - `move.target` accepts relative or absolute paths.
   - `command.command` stores the raw command-line text to run via the platform shell.
+  - `alias` stores the user-facing label for `move` and `command` actions. It is required on save for those action types and rejected on `delete` / `restore`.
   - The default template maps `space` to browser session start and slideshow session end, `arrowup` / `arrowdown` / `arrowright` / `arrowleft` to browser-tree navigation, `arrowleft` and `arrowright` to slide navigation, `delete` to delete, `arrowdown` to move into `0`, and `arrowup` to restore.
 - HTTP API:
 - `GET /api/browser`: current directory listing, localized breadcrumbs, config, whether starting here should be framed as reviewing moved photos, current-directory bounded image-count metadata, and per-directory bounded image counts for each visible child folder. Calling it also clears any active session so browser mode never renders with an active session. The payload intentionally omits legacy parent-navigation fields such as `parentPath` and `canGoUp`.
@@ -60,7 +62,7 @@ This application is a single-binary Go tool that starts from an explicit launch 
   - `POST /api/session/end`: clears the active session.
 - `GET /api/slideshow`: current directory image list plus localized action labels and action availability.
   - `POST /api/action`: executes `move`, `delete`, or `restore` for one image using the configured key.
-  - `POST /api/command/start`: validates a `command` action against the current slideshow state and reserves one interactive terminal session.
+  - `POST /api/command/start`: validates a `command` action against the current slideshow state, reserves one interactive terminal session, and returns both the raw command text plus the alias-based terminal title.
   - `GET /api/command/ws?id=...`: upgrades to WebSocket, attaches the reserved terminal session, streams output, accepts input/resize/terminate messages, and emits exit state.
   - `GET /api/config` and `POST /api/config`: load and save validated config.
   - `GET /image`: streams the original image file.
@@ -94,6 +96,7 @@ This application is a single-binary Go tool that starts from an explicit launch 
 - Review-folder entry is explained in the UI as checking already moved photos, rather than exposing the session-root fallback directly.
 - The default action template now favors a single hot folder, `0`, so a fresh install exposes one high-risk move target instead of several competing move destinations.
 - `command.command` intentionally stays as plain shell text with no placeholder DSL or auto-injected current-image/current-directory variables.
+- Missing `alias` on `move` or `command` is treated as a legacy-load compatibility case only: config load tolerates it, but config save rejects it until the user fills the alias.
 - The current implementation prefers a small dependency set over a larger frontend framework.
 - `keys.browser.end_session` is intentionally removed from the product contract; old YAML that still contains it is ignored on load and dropped on the next save.
 - `keys.browser.up_dir` is intentionally removed from the product contract; old YAML that still contains it is ignored on load and dropped on the next save.

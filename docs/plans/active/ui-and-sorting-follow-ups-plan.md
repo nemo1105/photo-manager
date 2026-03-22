@@ -62,6 +62,7 @@ Track the next round of UX and reliability work after the initial browse/preview
 - [ ] Make the settings key-capture mode visually obvious while waiting for the next key press.
 - [x] Add interactive `command` actions with a full-screen terminal overlay rooted at the current sort-starting folder.
   Current execution focus on 2026-03-22: add a `command` action type to the action library, open it in a full-screen in-page terminal, keep the shell working directory fixed to `sessionRoot`, and hold the terminal open until the user closes it after process exit.
+  Current correction focus on 2026-03-22: add required `alias` values for move and command sorting-facing labels, show the alias itself in sorting/help/terminal titles, keep legacy configs loadable when alias is missing, and block saving until the alias is filled.
 
 ## Risks
 
@@ -91,6 +92,7 @@ Track the next round of UX and reliability work after the initial browse/preview
 - `keys.browser.open_settings` is removed from the product contract so folder-browsing keys stay focused on navigation plus sorting start. Settings now opens only from the help modal header button, and old YAML with `browser.open_settings` is ignored and dropped on the next save.
 - The browser payload no longer carries legacy `parentPath` / `canGoUp` fields, and the frontend no longer keeps an unused `up-dir` toolbar action branch.
 - `command` actions run as raw shell text with no placeholder DSL or auto-injected current-image/current-directory variables; the only guaranteed execution context is the initial `sessionRoot` working directory.
+- `alias` is now the user-facing label for move and command actions in sorting-related UI. Legacy configs that still omit it may load, but settings save must reject them until the alias is filled.
 
 ## Verification
 
@@ -109,6 +111,8 @@ Track the next round of UX and reliability work after the initial browse/preview
 - Manually verify target folders trigger the review toast before session start and the review state inside slideshow.
 - Confirm any UI work still keeps action buttons usable without keyboard shortcuts.
 - Manually verify `command` opens an interactive full-screen terminal, starts in the sort-starting folder even from review mode, and returns cleanly to sorting after manual close.
+- Verify move and command actions with aliases show the alias itself in the sorting footer and help-modal action list, and command actions also use the alias in the terminal title, without prefixing `Move to / 移动到` or `Run Command / 执行命令`.
+- Verify legacy move and command actions without aliases still load, fall back to the old target-based or generic command labels, and fail settings save until an alias is added.
 
 ## Next update trigger
 

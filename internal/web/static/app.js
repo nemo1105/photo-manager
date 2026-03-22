@@ -19,7 +19,7 @@ function createCommandTerminalState() {
     return {
         open: false,
         sessionId: "",
-        command: "",
+        title: "",
         workingDir: "",
         status: "idle",
         exitCode: null,
@@ -780,7 +780,7 @@ function openCommandTerminal(result, currentPath, preferredIndex) {
         ...createCommandTerminalState(),
         open: true,
         sessionId: result.commandSessionId || "",
-        command: result.command || t("command.title"),
+        title: result.title || t("command.title"),
         workingDir: result.workingDir || "",
         status: "connecting",
         currentPath: currentPath || "",
@@ -1047,6 +1047,7 @@ function addAction(type) {
         action: type,
         target: "",
         command: "",
+        alias: "",
     });
     sortSettingsActions(state.settingsDraft.actions);
     render();

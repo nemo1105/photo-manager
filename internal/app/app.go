@@ -59,6 +59,7 @@ type ActionButton struct {
 	Action  string `json:"action"`
 	Target  string `json:"target,omitempty"`
 	Command string `json:"command,omitempty"`
+	Alias   string `json:"alias,omitempty"`
 	Label   string `json:"label"`
 	Enabled bool   `json:"enabled"`
 }
@@ -106,6 +107,7 @@ type ActionResult struct {
 type CommandStartResult struct {
 	CommandSessionID string      `json:"commandSessionId"`
 	Command          string      `json:"command"`
+	Title            string      `json:"title"`
 	WorkingDir       string      `json:"workingDir"`
 	Session          SessionInfo `json:"session"`
 }
@@ -306,6 +308,7 @@ func (a *App) Slideshow(relPath string, locale localize.Locale) (*SlideshowData,
 			Action:  binding.Action,
 			Target:  binding.Target,
 			Command: binding.Command,
+			Alias:   binding.Alias,
 			Label:   actionLabel(locale, binding),
 			Enabled: enabled,
 		})
@@ -473,6 +476,7 @@ func (a *App) StartCommandAction(currentDirRel, imageRel, actionKey string, loca
 	return &CommandStartResult{
 		CommandSessionID: reservation.ID,
 		Command:          reservation.Command,
+		Title:            actionLabel(locale, binding),
 		WorkingDir:       reservation.WorkDirRel,
 		Session:          a.sessionInfoLocked(),
 	}, nil
@@ -605,7 +609,7 @@ func findAction(actions []config.ActionBinding, key string) (config.ActionBindin
 }
 
 func actionLabel(locale localize.Locale, binding config.ActionBinding) string {
-	return localize.ActionLabel(locale, binding.Action, binding.Target)
+	return localize.ActionLabel(locale, binding.Action, binding.Target, binding.Alias)
 }
 
 func buildBreadcrumbs(locale localize.Locale, relPath string) []Breadcrumb {

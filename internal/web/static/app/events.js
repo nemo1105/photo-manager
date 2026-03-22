@@ -51,7 +51,17 @@ export function createEventHandlers(deps) {
       saveSettings().catch((error) => showNotice(error.message, "error"));
     });
     previewModal.addEventListener("click", (event) => {
+      if (event.target.closest("[data-preview-action]")) {
+        return;
+      }
+      if (event.target.closest(".preview-meta")) {
+        return;
+      }
       if (event.target.dataset.closePreview === "true") {
+        closePreview();
+        return;
+      }
+      if (state.preview.open) {
         closePreview();
       }
     });
@@ -259,6 +269,9 @@ export function createEventHandlers(deps) {
           }
           if (event.target.value !== "command") {
             state.settingsDraft.actions[index].command = "";
+          }
+          if (event.target.value !== "move" && event.target.value !== "command") {
+            state.settingsDraft.actions[index].alias = "";
           }
           render();
         }

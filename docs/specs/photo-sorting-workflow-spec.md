@@ -26,6 +26,7 @@ Users need to start from an arbitrary directory, browse to a folder that contain
 - All configured keys are single keys; modifier combinations are not part of the current contract.
 - Relative `move.target` values are resolved from the active session root only.
 - `command.command` is raw command-line text; the product does not support placeholders or inject current-image or current-directory variables.
+- `alias` is the user-facing label for `move` and `command` actions. New saves require it for those action types, but legacy configs without it still load and fall back to the old target-based or generic command labels until edited.
 - Sorting state must not be created implicitly by image preview.
 - Browser mode and active work-session/slideshow mode are mutually exclusive. Entering browser mode ends any active session.
 - Starting a session from a configured relative move-target folder should treat that folder as a review view for already moved photos, while using its parent as `sessionRoot`.
@@ -61,6 +62,9 @@ Users need to start from an arbitrary directory, browse to a folder that contain
 - [x] `restore` only works inside configured move-target directories and returns the image to the session root.
 - [x] `command` opens a full-screen interactive terminal, starts in `sessionRoot`, and keeps the terminal visible until the user closes it after the process exits.
 - [x] Starting `command` from a review folder still uses the parent sort-starting folder as the working directory.
+- [x] When `alias` is present on `move` or `command`, sorting action buttons and help action shortcuts show the alias itself with no `Move to / 移动到` or `Run Command / 执行命令` prefix.
+- [x] When `alias` is present on `command`, the command terminal title also shows that alias.
+- [x] Legacy `move` and `command` actions without `alias` still load, fall back to the old target-based or generic command labels in those same surfaces, and must be given an alias before settings can be saved again.
 - [x] Moving outside the current sorting range ends sorting automatically and informs the user.
 - [x] Config edits in the browser are validated and saved back to `~/.photo-manager/config.yaml`.
 - [x] Outside preview and slideshow, configurable browser tree keys move through the visible directory list with Up / Down and expand or collapse the current directory with Right / Left.
@@ -102,7 +106,9 @@ Users need to start from an arbitrary directory, browse to a folder that contain
   - `delete` sends the photo to the recycle bin / Trash.
   - `arrowdown` moves the image to relative target `0`.
   - `arrowup` restores the image to `sessionRoot`.
-  - The default template does not add a command action; users opt into it by editing settings.
+- The default template does not add a command action; users opt into it by editing settings.
+- Move actions in settings require both an alias and target folder.
+- Command actions in settings require both an alias and command text.
 
 ## Open questions
 

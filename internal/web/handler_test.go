@@ -164,6 +164,39 @@ func TestHandleConfigReturnsLocalizedValidationError(t *testing.T) {
 	}
 }
 
+func TestHandleConfigRequiresLocalizedMoveAlias(t *testing.T) {
+	root := t.TempDir()
+	cfg := config.Default()
+	handler := NewHandler(app.New(root, filepath.Join(root, "config.yaml"), cfg, stubTrash{}))
+
+	reqCfg := config.Default()
+	reqCfg.Actions[1].Alias = ""
+
+	body, err := json.Marshal(reqCfg)
+	if err != nil {
+		t.Fatalf("marshal config: %v", err)
+	}
+
+	req := httptest.NewRequest(http.MethodPost, "/api/config", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-Photo-Manager-Locale", "zh-CN")
+
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400, got %d", rec.Code)
+	}
+
+	var payload map[string]string
+	if err := json.Unmarshal(rec.Body.Bytes(), &payload); err != nil {
+		t.Fatalf("decode payload: %v", err)
+	}
+	if payload["error"] != "动作 2 的别名不能为空。" {
+		t.Fatalf("unexpected localized alias error: %q", payload["error"])
+	}
+}
+
 func TestHandleSessionStartUsesAcceptLanguageFallback(t *testing.T) {
 	root := t.TempDir()
 	cfg := config.Default()
@@ -225,6 +258,7 @@ func TestHandleCommandStartReturnsReservation(t *testing.T) {
 		Key:     "c",
 		Action:  "command",
 		Command: "python script.py",
+		Alias:   "Python",
 	})
 	manager := &fakeHandlerTerminalManager{}
 	photoApp := app.NewWithTerminal(root, filepath.Join(root, "config.yaml"), cfg, stubTrash{}, manager)
@@ -246,6 +280,7 @@ func TestHandleCommandStartReturnsReservation(t *testing.T) {
 	var payload struct {
 		CommandSessionID string `json:"commandSessionId"`
 		Command          string `json:"command"`
+		Title            string `json:"title"`
 		WorkingDir       string `json:"workingDir"`
 	}
 	if err := json.Unmarshal(rec.Body.Bytes(), &payload); err != nil {
@@ -256,6 +291,9 @@ func TestHandleCommandStartReturnsReservation(t *testing.T) {
 	}
 	if payload.WorkingDir != "work" {
 		t.Fatalf("expected working dir work, got %q", payload.WorkingDir)
+	}
+	if payload.Title != "Python" {
+		t.Fatalf("expected title Python, got %q", payload.Title)
 	}
 	if len(manager.reserved) != 1 || manager.reserved[0].WorkDirRel != "work" {
 		t.Fatalf("unexpected reserved specs: %+v", manager.reserved)
@@ -271,6 +309,7 @@ func TestHandleCommandWSStreamsOutputAndExit(t *testing.T) {
 		Key:     "c",
 		Action:  "command",
 		Command: "python script.py",
+		Alias:   "Python",
 	})
 	session := newFakeHandlerTerminalSession("hello\r\n")
 	manager := &fakeHandlerTerminalManager{session: session}

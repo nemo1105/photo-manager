@@ -78,6 +78,9 @@ func TestDefaultUsesUpdatedSlideshowAndActionKeys(t *testing.T) {
 	if cfg.Actions[1].Key != "arrowdown" || cfg.Actions[1].Target != "0" {
 		t.Fatalf("unexpected default move action: %+v", cfg.Actions[1])
 	}
+	if cfg.Actions[1].Alias != "0" {
+		t.Fatalf("expected default move alias to be 0, got %+v", cfg.Actions[1])
+	}
 	if cfg.Actions[2].Key != "arrowup" || cfg.Actions[2].Action != "restore" {
 		t.Fatalf("unexpected default restore action: %+v", cfg.Actions[2])
 	}
@@ -98,6 +101,7 @@ func TestValidateAndNormalizeAllowsCommandActions(t *testing.T) {
 		Key:     "c",
 		Action:  "command",
 		Command: "python script.py",
+		Alias:   "Python",
 	})
 
 	if err := cfg.ValidateAndNormalize(); err != nil {
@@ -107,6 +111,9 @@ func TestValidateAndNormalizeAllowsCommandActions(t *testing.T) {
 	if cfg.Actions[3].Command != "python script.py" {
 		t.Fatalf("expected command text to remain, got %q", cfg.Actions[3].Command)
 	}
+	if cfg.Actions[3].Alias != "Python" {
+		t.Fatalf("expected alias to remain, got %q", cfg.Actions[3].Alias)
+	}
 }
 
 func TestValidateAndNormalizeRejectsCommandWithoutText(t *testing.T) {
@@ -114,6 +121,7 @@ func TestValidateAndNormalizeRejectsCommandWithoutText(t *testing.T) {
 	cfg.Actions = append(cfg.Actions, ActionBinding{
 		Key:    "c",
 		Action: "command",
+		Alias:  "Python",
 	})
 
 	if err := cfg.ValidateAndNormalize(); err == nil {
@@ -128,10 +136,42 @@ func TestValidateAndNormalizeRejectsCommandActionWithTarget(t *testing.T) {
 		Action:  "command",
 		Target:  "0",
 		Command: "python script.py",
+		Alias:   "Python",
 	})
 
 	if err := cfg.ValidateAndNormalize(); err == nil {
 		t.Fatal("expected command target error")
+	}
+}
+
+func TestValidateAndNormalizeRejectsCommandWithoutAlias(t *testing.T) {
+	cfg := Default()
+	cfg.Actions = append(cfg.Actions, ActionBinding{
+		Key:     "c",
+		Action:  "command",
+		Command: "python script.py",
+	})
+
+	if err := cfg.ValidateAndNormalize(); err == nil {
+		t.Fatal("expected missing alias error")
+	}
+}
+
+func TestValidateAndNormalizeRejectsMoveWithoutAlias(t *testing.T) {
+	cfg := Default()
+	cfg.Actions[1].Alias = ""
+
+	if err := cfg.ValidateAndNormalize(); err == nil {
+		t.Fatal("expected move alias to be required")
+	}
+}
+
+func TestValidateAndNormalizeRejectsAliasOnDeleteAction(t *testing.T) {
+	cfg := Default()
+	cfg.Actions[0].Alias = "Delete"
+
+	if err := cfg.ValidateAndNormalize(); err == nil {
+		t.Fatal("expected alias to be rejected on delete action")
 	}
 }
 
@@ -166,6 +206,9 @@ actions:
     target: 0
   - key: arrowup
     action: restore
+  - key: c
+    action: command
+    command: python script.py
 `)
 	if err := os.WriteFile(path, data, 0o644); err != nil {
 		t.Fatalf("write config: %v", err)
@@ -185,6 +228,66 @@ actions:
 	if cfg.Actions[0].Key != "delete" {
 		t.Fatalf("expected actions to load, got %+v", cfg.Actions)
 	}
+	if len(cfg.Actions) != 4 {
+		t.Fatalf("expected legacy command action to load, got %+v", cfg.Actions)
+	}
+	if cfg.Actions[1].Alias != "" {
+		t.Fatalf("expected legacy move alias to stay empty on load, got %q", cfg.Actions[1].Alias)
+	}
+	if cfg.Actions[3].Alias != "" {
+		t.Fatalf("expected legacy command alias to stay empty on load, got %q", cfg.Actions[3].Alias)
+	}
+
+	if err := Save(path, cfg); err == nil {
+		t.Fatal("expected save to reject legacy move/command actions without alias")
+	}
+}
+
+func TestSaveDropsLegacyFieldsAfterAddingAlias(t *testing.T) {
+	root := t.TempDir()
+	path := filepath.Join(root, "config.yaml")
+	data := []byte(`
+keys:
+  browser:
+    start_session: space
+    end_session: q
+    tree_up: arrowup
+    tree_down: arrowdown
+    expand_dir: arrowright
+    collapse_dir: arrowleft
+    up_dir: backspace
+    open_settings: s
+  preview:
+    close: escape
+    next: arrowright
+    prev: arrowleft
+  slideshow:
+    next: arrowright
+    prev: arrowleft
+    back_to_browser: escape
+    end_session: space
+actions:
+  - key: delete
+    action: delete
+  - key: arrowdown
+    action: move
+    target: 0
+  - key: arrowup
+    action: restore
+  - key: c
+    action: command
+    command: python script.py
+`)
+	if err := os.WriteFile(path, data, 0o644); err != nil {
+		t.Fatalf("write config: %v", err)
+	}
+
+	cfg, err := Load(path)
+	if err != nil {
+		t.Fatalf("load config: %v", err)
+	}
+	cfg.Actions[1].Alias = "Inbox"
+	cfg.Actions[3].Alias = "Python"
 
 	if err := Save(path, cfg); err != nil {
 		t.Fatalf("save config: %v", err)
@@ -205,5 +308,11 @@ actions:
 	}
 	if strings.Contains(string(saved), "open_settings:") {
 		t.Fatalf("expected legacy browser open-settings field to be dropped, got:\n%s", string(saved))
+	}
+	if !strings.Contains(string(saved), "alias: Python") {
+		t.Fatalf("expected alias to be saved, got:\n%s", string(saved))
+	}
+	if !strings.Contains(string(saved), "alias: Inbox") {
+		t.Fatalf("expected move alias to be saved, got:\n%s", string(saved))
 	}
 }

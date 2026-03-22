@@ -24,6 +24,10 @@ export function createViewHelpers({
       return t("settings.actionType.restore");
     }
     if (action.action === "move") {
+      const alias = String(action.alias || "").trim();
+      if (alias) {
+        return alias;
+      }
       const target = String(action.target || "").replaceAll("\\", "/").split("/").filter(Boolean).pop();
       if (!target) {
         return t("settings.actionType.move");
@@ -31,6 +35,10 @@ export function createViewHelpers({
       return target.length > 14 ? t("settings.actionType.move") : target;
     }
     if (action.action === "command") {
+      const alias = String(action.alias || "").trim();
+      if (alias) {
+        return alias;
+      }
       return t("settings.actionType.command");
     }
     return action.label || action.action;
@@ -226,6 +234,7 @@ export function createViewHelpers({
     const isCapturing = isCaptureAction(index);
     const showTarget = action.action === "move";
     const showCommand = action.action === "command";
+    const showAlias = action.action === "move" || action.action === "command";
     return `
       <div class="settings-row settings-row--action ${isCapturing ? "capturing" : ""} ${showTarget || showCommand ? "settings-row--with-target" : "settings-row--without-target"}">
         <div class="settings-action-inline">
@@ -241,6 +250,10 @@ export function createViewHelpers({
           ${showTarget ? `
             <span class="settings-action-separator">${escapeHtml(t("settings.toFolder"))}</span>
             <input data-action-field="target" data-action-index="${index}" value="${escapeHtml(action.target || "")}" placeholder="${escapeHtml(t("settings.targetPlaceholder"))}">
+          ` : ""}
+          ${showAlias ? `
+            <span class="settings-action-separator">${escapeHtml(t("settings.commandAlias"))}</span>
+            <input data-action-field="alias" data-action-index="${index}" value="${escapeHtml(action.alias || "")}" placeholder="${escapeHtml(t("settings.commandAliasPlaceholder"))}">
           ` : ""}
           ${showCommand ? `
             <span class="settings-action-separator">${escapeHtml(t("settings.commandLine"))}</span>

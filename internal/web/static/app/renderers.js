@@ -334,15 +334,21 @@ export function createRenderers(deps) {
     previewModal.hidden = false;
     const canMovePrev = state.preview.index > 0;
     const canMoveNext = state.preview.index < images.length - 1;
+    const prevLabel = escapeHtml(t("slideshow.prev"));
+    const nextLabel = escapeHtml(t("slideshow.next"));
     document.getElementById("previewBody").innerHTML = `
       <div class="preview-stage">
         <button
           class="preview-hotspot preview-hotspot--prev"
           type="button"
           data-preview-action="preview-prev"
-          aria-label="${escapeHtml(t("slideshow.prev"))}"
+          aria-label="${prevLabel}"
           ${canMovePrev ? "" : "disabled"}
-        ></button>
+        >
+          <svg class="preview-zone-icon" viewBox="0 0 96 96" aria-hidden="true">
+            <path d="M58 18 30 48l28 30"></path>
+          </svg>
+        </button>
         <div class="preview-image-wrap">
           <img class="preview-image" src="${escapeHtml(current.url)}" alt="${escapeHtml(current.name)}">
         </div>
@@ -350,9 +356,13 @@ export function createRenderers(deps) {
           class="preview-hotspot preview-hotspot--next"
           type="button"
           data-preview-action="preview-next"
-          aria-label="${escapeHtml(t("slideshow.next"))}"
+          aria-label="${nextLabel}"
           ${canMoveNext ? "" : "disabled"}
-        ></button>
+        >
+          <svg class="preview-zone-icon" viewBox="0 0 96 96" aria-hidden="true">
+            <path d="m38 18 28 30-28 30"></path>
+          </svg>
+        </button>
         <div class="preview-meta" aria-live="polite">
           <strong title="${escapeHtml(current.name)}">${escapeHtml(current.name)}</strong>
           <span>${state.preview.index + 1} / ${images.length}</span>
@@ -500,7 +510,7 @@ export function createRenderers(deps) {
     const workingDir = pathLabel(state.commandTerminal.workingDir, t("common.root"));
 
     document.getElementById("commandTerminalKicker").textContent = t("command.title");
-    document.getElementById("commandTerminalTitle").textContent = state.commandTerminal.command || t("command.title");
+    document.getElementById("commandTerminalTitle").textContent = state.commandTerminal.title || t("command.title");
     document.getElementById("commandTerminalMeta").textContent = t("command.workingDir", { path: workingDir });
     document.getElementById("commandTerminalStatus").className = `command-terminal-status ${state.commandTerminal.status === "error" ? "is-error" : ""}`;
     document.getElementById("commandTerminalStatus").innerHTML = `

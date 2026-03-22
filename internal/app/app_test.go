@@ -149,6 +149,7 @@ func TestMoveAndRestoreUseSessionRoot(t *testing.T) {
 		Key:     "c",
 		Action:  "command",
 		Command: "python script.py",
+		Alias:   "Python",
 	})
 	app := New(root, filepath.Join(root, "config.yaml"), cfg, &fakeTrash{})
 
@@ -183,6 +184,7 @@ func TestStartCommandActionUsesSessionRoot(t *testing.T) {
 		Key:     "c",
 		Action:  "command",
 		Command: "python script.py",
+		Alias:   "Python",
 	})
 	manager := &fakeTerminalManager{}
 	app := NewWithTerminal(root, filepath.Join(root, "config.yaml"), cfg, &fakeTrash{}, manager)
@@ -219,6 +221,7 @@ func TestStartCommandActionFromReviewFolderUsesParentSessionRoot(t *testing.T) {
 		Key:     "c",
 		Action:  "command",
 		Command: "python script.py",
+		Alias:   "Python",
 	})
 	manager := &fakeTerminalManager{}
 	app := NewWithTerminal(root, filepath.Join(root, "config.yaml"), cfg, &fakeTrash{}, manager)
@@ -677,6 +680,7 @@ func TestLocalizedBreadcrumbsActionLabelsAndNotices(t *testing.T) {
 		Key:     "c",
 		Action:  "command",
 		Command: "python script.py",
+		Alias:   "Python",
 	})
 	app := New(root, filepath.Join(root, "config.yaml"), cfg, &fakeTrash{})
 
@@ -703,13 +707,13 @@ func TestLocalizedBreadcrumbsActionLabelsAndNotices(t *testing.T) {
 	if labels["delete"] != "删除" {
 		t.Fatalf("expected localized delete label, got %q", labels["delete"])
 	}
-	if labels["arrowdown"] != "移动到 0" {
+	if labels["arrowdown"] != "0" {
 		t.Fatalf("expected localized move label, got %q", labels["arrowdown"])
 	}
 	if labels["arrowup"] != "恢复" {
 		t.Fatalf("expected localized restore label, got %q", labels["arrowup"])
 	}
-	if labels["c"] != "执行命令" {
+	if labels["c"] != "Python" {
 		t.Fatalf("expected localized command label, got %q", labels["c"])
 	}
 
@@ -727,6 +731,70 @@ func TestLocalizedBreadcrumbsActionLabelsAndNotices(t *testing.T) {
 	}
 	if autoEndData.Notice != "已离开当前整理范围，整理已自动结束。" {
 		t.Fatalf("expected localized auto-end notice, got %q", autoEndData.Notice)
+	}
+}
+
+func TestMoveLabelFallsBackWithoutAliasForLegacyConfig(t *testing.T) {
+	root := t.TempDir()
+	mustWriteFile(t, filepath.Join(root, "work", "photo.jpg"))
+
+	cfg := config.Default()
+	cfg.Actions[1].Alias = ""
+	app := New(root, filepath.Join(root, "config.yaml"), cfg, &fakeTrash{})
+
+	if _, err := app.OpenSession("work"); err != nil {
+		t.Fatalf("open session: %v", err)
+	}
+
+	slideshowData, err := app.Slideshow("work", localize.ZHCN)
+	if err != nil {
+		t.Fatalf("load slideshow: %v", err)
+	}
+
+	labels := map[string]string{}
+	for _, action := range slideshowData.ActionButtons {
+		labels[action.Key] = action.Label
+	}
+	if labels["arrowdown"] != "移动到 0" {
+		t.Fatalf("expected legacy move label fallback, got %q", labels["arrowdown"])
+	}
+}
+
+func TestCommandLabelFallsBackWithoutAliasForLegacyConfig(t *testing.T) {
+	root := t.TempDir()
+	mustWriteFile(t, filepath.Join(root, "work", "photo.jpg"))
+
+	cfg := config.Default()
+	cfg.Actions = append(cfg.Actions, config.ActionBinding{
+		Key:     "c",
+		Action:  "command",
+		Command: "python script.py",
+	})
+	app := New(root, filepath.Join(root, "config.yaml"), cfg, &fakeTrash{})
+
+	if _, err := app.OpenSession("work"); err != nil {
+		t.Fatalf("open session: %v", err)
+	}
+
+	slideshowData, err := app.Slideshow("work", localize.ZHCN)
+	if err != nil {
+		t.Fatalf("load slideshow: %v", err)
+	}
+
+	labels := map[string]string{}
+	for _, action := range slideshowData.ActionButtons {
+		labels[action.Key] = action.Label
+	}
+	if labels["c"] != "执行命令" {
+		t.Fatalf("expected legacy command label fallback, got %q", labels["c"])
+	}
+
+	startResult, err := app.StartCommandAction("work", "work/photo.jpg", "c", localize.ZHCN)
+	if err != nil {
+		t.Fatalf("start command action: %v", err)
+	}
+	if startResult.Title != "执行命令" {
+		t.Fatalf("expected legacy command title fallback, got %q", startResult.Title)
 	}
 }
 

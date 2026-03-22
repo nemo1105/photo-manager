@@ -150,6 +150,7 @@
 }
 
 .preview-stage {
+  --preview-nav-icon-size: clamp(88px, 12vw, 176px);
   position: relative;
   min-height: 100vh;
   padding: 24px 88px 104px;
@@ -172,13 +173,15 @@
   top: 24px;
   bottom: 104px;
   width: 50vw;
-  max-width: none;
   border: 0;
   padding: 0;
   background: transparent;
   cursor: pointer;
   z-index: 2;
   pointer-events: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   transition: background-color 180ms ease, opacity 180ms ease;
 }
 
@@ -187,7 +190,7 @@
 }
 
 .preview-hotspot--next {
-  left: 50%;
+  right: 0;
 }
 
 .preview-hotspot--prev:hover:not(:disabled),
@@ -203,6 +206,30 @@
 .preview-hotspot:disabled {
   opacity: 0;
   cursor: default;
+}
+
+.preview-zone-icon {
+  width: var(--preview-nav-icon-size);
+  height: auto;
+  color: rgba(255, 255, 255, 0.2);
+  transition: color 180ms ease, transform 180ms ease, opacity 180ms ease;
+}
+
+.preview-zone-icon path {
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 5;
+}
+
+.preview-hotspot:hover:not(:disabled) .preview-zone-icon,
+.preview-hotspot:focus-visible:not(:disabled) .preview-zone-icon {
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.preview-hotspot:disabled .preview-zone-icon {
+  opacity: 0;
 }
 
 .preview-image {
@@ -228,6 +255,7 @@
   gap: 4px;
   z-index: 3;
   pointer-events: auto;
+  user-select: text;
 }
 
 .preview-meta strong {
@@ -258,6 +286,7 @@
   }
 
   .preview-stage {
+    --preview-nav-icon-size: clamp(64px, 14vw, 104px);
     padding: 18px 52px 92px;
   }
 

@@ -49,6 +49,7 @@ type ActionBinding struct {
 	Action  string `yaml:"action" json:"action"`
 	Target  string `yaml:"target,omitempty" json:"target,omitempty"`
 	Command string `yaml:"command,omitempty" json:"command,omitempty"`
+	Alias   string `yaml:"alias,omitempty" json:"alias,omitempty"`
 }
 
 type ValidationCode string
@@ -154,6 +155,16 @@ func (e *ValidationError) UserMessage(locale localize.Locale) string {
 			return fmt.Sprintf("%s只适用于执行命令动作。", label)
 		}
 		return fmt.Sprintf("%s is only used by command actions.", label)
+	case errors.Is(e.Err, errMissingAlias):
+		if locale == localize.ZHCN {
+			return fmt.Sprintf("%s不能为空。", label)
+		}
+		return fmt.Sprintf("%s cannot be empty.", label)
+	case errors.Is(e.Err, errUnexpectedAlias):
+		if locale == localize.ZHCN {
+			return fmt.Sprintf("%s只适用于移动或执行命令动作。", label)
+		}
+		return fmt.Sprintf("%s is only used by move or command actions.", label)
 	default:
 		if locale == localize.ZHCN {
 			return "配置无效。"
@@ -168,9 +179,15 @@ var (
 	errInvalidAction     = localize.NewStaticError("action must be move, delete, restore, or command", "动作必须是 move、delete、restore 或 command")
 	errMissingTarget     = localize.NewStaticError("move action requires target", "move 动作需要目标路径")
 	errMissingCommand    = localize.NewStaticError("command action requires command text", "command 动作需要命令行")
+	errMissingAlias      = localize.NewStaticError("move or command action requires alias", "move 或 command 动作需要别名")
 	errUnexpectedTarget  = localize.NewStaticError("only move actions can have target", "只有 move 动作可以包含目标路径")
 	errUnexpectedCommand = localize.NewStaticError("only command actions can have command text", "只有 command 动作可以包含命令行")
+	errUnexpectedAlias   = localize.NewStaticError("only move or command actions can have alias", "只有 move 或 command 动作可以包含别名")
 )
+
+type validationOptions struct {
+	allowLegacyMissingAlias bool
+}
 
 var namedKeys = map[string]struct{}{
 	"space":      {},
@@ -216,7 +233,7 @@ func Default() *Config {
 		},
 		Actions: []ActionBinding{
 			{Key: "delete", Action: "delete"},
-			{Key: "arrowdown", Action: "move", Target: "0"},
+			{Key: "arrowdown", Action: "move", Target: "0", Alias: "0"},
 			{Key: "arrowup", Action: "restore"},
 		},
 	}
@@ -246,7 +263,7 @@ func Load(path string) (*Config, error) {
 	if err := yaml.Unmarshal(data, &cfg); err != nil {
 		return nil, fmt.Errorf("parse yaml: %w", err)
 	}
-	if err := cfg.ValidateAndNormalize(); err != nil {
+	if err := cfg.validateAndNormalize(validationOptions{allowLegacyMissingAlias: true}); err != nil {
 		return nil, err
 	}
 	return &cfg, nil
@@ -285,6 +302,10 @@ func (c *Config) Clone() *Config {
 }
 
 func (c *Config) ValidateAndNormalize() error {
+	return c.validateAndNormalize(validationOptions{})
+}
+
+func (c *Config) validateAndNormalize(options validationOptions) error {
 	if c == nil {
 		return errors.New("config is nil")
 	}
@@ -356,6 +377,7 @@ func (c *Config) ValidateAndNormalize() error {
 		c.Actions[i].Action = strings.ToLower(strings.TrimSpace(c.Actions[i].Action))
 		c.Actions[i].Target = strings.TrimSpace(c.Actions[i].Target)
 		c.Actions[i].Command = strings.TrimSpace(c.Actions[i].Command)
+		c.Actions[i].Alias = strings.TrimSpace(c.Actions[i].Alias)
 
 		if _, exists := actionKeys[key]; exists {
 			return &ValidationError{
@@ -373,6 +395,12 @@ func (c *Config) ValidateAndNormalize() error {
 					Err:  errMissingTarget,
 				}
 			}
+			if c.Actions[i].Alias == "" && !options.allowLegacyMissingAlias {
+				return &ValidationError{
+					Path: actionValidationPath(i, "alias"),
+					Err:  errMissingAlias,
+				}
+			}
 			if c.Actions[i].Command != "" {
 				return &ValidationError{
 					Path: actionValidationPath(i, "command"),
@@ -384,6 +412,12 @@ func (c *Config) ValidateAndNormalize() error {
 				return &ValidationError{
 					Path: actionValidationPath(i, "command"),
 					Err:  errMissingCommand,
+				}
+			}
+			if c.Actions[i].Alias == "" && !options.allowLegacyMissingAlias {
+				return &ValidationError{
+					Path: actionValidationPath(i, "alias"),
+					Err:  errMissingAlias,
 				}
 			}
 			if c.Actions[i].Target != "" {
@@ -403,6 +437,12 @@ func (c *Config) ValidateAndNormalize() error {
 				return &ValidationError{
 					Path: actionValidationPath(i, "command"),
 					Err:  errUnexpectedCommand,
+				}
+			}
+			if c.Actions[i].Alias != "" {
+				return &ValidationError{
+					Path: actionValidationPath(i, "alias"),
+					Err:  errUnexpectedAlias,
 				}
 			}
 		default:
@@ -497,6 +537,8 @@ func validationFieldLabel(locale localize.Locale, path string) string {
 					return localizedActionLabel(locale, index, "target")
 				case "command":
 					return localizedActionLabel(locale, index, "command")
+				case "alias":
+					return localizedActionLabel(locale, index, "alias")
 				}
 			}
 		}
@@ -528,6 +570,11 @@ func localizedActionLabel(locale localize.Locale, index int, field string) strin
 			return fmt.Sprintf("动作 %d 的命令行", number)
 		}
 		return fmt.Sprintf("Action %d command text", number)
+	case "alias":
+		if locale == localize.ZHCN {
+			return fmt.Sprintf("动作 %d 的别名", number)
+		}
+		return fmt.Sprintf("Action %d alias", number)
 	default:
 		return fmt.Sprintf("actions[%d].%s", index, field)
 	}

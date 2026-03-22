@@ -29,6 +29,7 @@ Status: active
 - Keep user-facing language centered on sorting and reviewing photos, not on internal implementation concepts like session, workspace, browser, slideshow, or capture.
 - Keep `command` actions anchored to the current sort-starting folder, even when they are launched from a review subfolder.
 - Keep the interactive command terminal modal, so keyboard input does not leak through to slideshow navigation or file actions.
+- Keep move and command aliases readable and consistent across sorting-facing surfaces, while still tolerating legacy configs that have not added aliases yet.
 
 ## Known issues
 
@@ -54,10 +55,13 @@ Status: active
   - Request-locale parsing for `X-Photo-Manager-Locale` and `Accept-Language`.
   - Localized breadcrumbs, action labels, notices, and validation-error responses in `zh-CN`.
   - Command-action config validation, reservation start path, and WebSocket output/exit streaming.
+  - Move/command alias validation, including strict save-time requirement, legacy load compatibility, and alias rejection on delete/restore actions.
+  - Alias-based move and command labels in slideshow data, plus alias-based terminal titles in command-start responses.
   - Task-first user terminology across UI dictionaries, backend notices, and settings validation labels.
   - Windows PowerShell path quoting for recycle-bin deletion.
 - Missing coverage:
   - Browser-side UI flows in `internal/web/static/app.js`.
+  - Automated browser verification that move and command aliases render in the sorting footer and help modal, and that command aliases render in the command terminal title.
   - Layout verification that browser mode keeps the tree and image list inside the viewport without a large header shell.
   - Layout verification that slideshow mode stays scrollbar-free at runtime.
   - Manual verification that the regrouped help modal keeps its two-column shortcut layout and header actions readable across browser widths.
@@ -72,4 +76,5 @@ Status: active
 ## Debt and follow-ups
 
 - The frontend currently lives in one large `app.js` file with no automated UI tests.
+- Legacy configs that still omit `alias` on move or command actions can load but will be blocked on the next settings save until the alias is added.
 - `todo.md` still exists as a scratch pad, so future changes should continue moving durable truth into `docs/` instead of expanding that file.
