@@ -31,7 +31,7 @@ This application is a single-binary Go tool that starts from an explicit launch 
 - `command.command` is raw shell text only. The product does not expand placeholders or inject current-image or current-directory variables.
 - Only one interactive command-terminal session may exist at a time, and while it is open the sorting UI must not also react to keyboard shortcuts.
 - Directory listing is shallow: only direct child folders and direct child images of the current directory are returned.
-- `GET /api/browser/stats` is side-effect free: it must not start or end sessions, and it reports direct child counts plus recursive visible-image totals for the current subtree.
+- Each visible directory row carries a bounded subtree image count computed from that folder's direct images plus at most 3 levels of visible descendants. If visible subfolders continue deeper, the count is marked as estimated instead of walking unboundedly.
 - Returned directory lists use natural numeric ordering, so names like `1`, `2`, and `10` sort in human order.
 - Hidden entries are ignored. Supported image formats are `.jpg`, `.jpeg`, `.png`, `.gif`, `.webp`, and `.bmp`.
 - Name conflicts for `move` and `restore` are resolved by creating `name (N).ext` variants.
@@ -54,8 +54,8 @@ This application is a single-binary Go tool that starts from an explicit launch 
   - `command.command` stores the raw command-line text to run via the platform shell.
   - The default template maps `space` to browser session start and slideshow session end, `arrowup` / `arrowdown` / `arrowright` / `arrowleft` to browser-tree navigation, `arrowleft` and `arrowright` to slide navigation, `delete` to delete, `arrowdown` to move into `0`, and `arrowup` to restore.
 - HTTP API:
-  - `GET /api/browser`: current directory listing, localized breadcrumbs, config, and whether starting here should be framed as reviewing moved photos. Calling it also clears any active session so browser mode never renders with an active session. The payload intentionally omits legacy parent-navigation fields such as `parentPath` and `canGoUp`.
-  - `GET /api/browser/stats`: current directory path plus direct visible folder count, direct visible image count, and recursive visible image count for help-modal summary stats.
+- `GET /api/browser`: current directory listing, localized breadcrumbs, config, whether starting here should be framed as reviewing moved photos, current-directory bounded image-count metadata, and per-directory bounded image counts for each visible child folder. Calling it also clears any active session so browser mode never renders with an active session. The payload intentionally omits legacy parent-navigation fields such as `parentPath` and `canGoUp`.
+- `GET /api/tree`: current directory path, current-directory bounded image-count metadata, and visible child directories with per-directory bounded image counts.
   - `POST /api/session/start`: creates or reuses a session for the current directory.
   - `POST /api/session/end`: clears the active session.
 - `GET /api/slideshow`: current directory image list plus localized action labels and action availability.
@@ -86,7 +86,7 @@ This application is a single-binary Go tool that starts from an explicit launch 
 - Keyboard-driven browser navigation keeps a transient tree focus separate from the last loaded browser directory, preserves the existing expansion state, and debounces browser reloads by `100 ms` to reduce image-list churn during rapid scans.
 - Parent navigation intentionally lives inside `collapse_dir`; the product no longer exposes a separate browser `up_dir` shortcut because it duplicated the same navigation outcome.
 - The browser payload also drops the old `parentPath` / `canGoUp` fields so the transport contract does not preserve an obsolete parent-navigation model.
-- Recursive help stats are fetched lazily through `/api/browser/stats` when the help modal opens, so normal browser navigation stays shallow and avoids subtree walks on every directory change.
+- Directory counts now travel with the existing browser and tree payloads, so the help modal no longer needs its own subtree-stats request path.
 - Relative target directories intentionally use `sessionRoot` so any configured review folder, including the default `0`, still restores back to the original work root.
 - `command` actions intentionally follow that same `sessionRoot` rule, even when the slideshow is currently inside a review folder.
 - Command-terminal UX is modal and fullscreen. The process keeps the terminal surface until exit, then the user closes that surface manually to return to sorting.
@@ -98,7 +98,7 @@ This application is a single-binary Go tool that starts from an explicit launch 
 - `keys.browser.end_session` is intentionally removed from the product contract; old YAML that still contains it is ignored on load and dropped on the next save.
 - `keys.browser.up_dir` is intentionally removed from the product contract; old YAML that still contains it is ignored on load and dropped on the next save.
 - `keys.browser.open_settings` is intentionally removed from the product contract so folder-browsing keys stay focused on navigation plus sorting start; settings now opens only from the help modal header button, and old YAML that still contains `browser.open_settings` is ignored on load and dropped on the next save.
-- Localization stays dependency-light: frontend strings live in the static app bundle, backend request parsing and user-visible server messages live in `internal/localize/`, and the help modal reuses that locale for stats and shortcut copy.
+- Localization stays dependency-light: frontend strings live in the static app bundle, backend request parsing and user-visible server messages live in `internal/localize/`, and the help modal plus directory-count tooltip reuse the same locale.
 - User-facing language is task-first rather than implementation-first: the UI talks about sorting, reviewing, folders, preview, and sorting view, while internal API and code symbols may still use `session`.
 - The manual language switch lives in the browser toolbar immediately to the left of the help icon, while slideshow and preview reuse the current locale instead of introducing separate locale controls.
 

@@ -47,13 +47,6 @@ const state = {
     settingsDraft: null,
     captureTarget: null,
     browserHelpOpen: false,
-    helpStats: {
-        path: "",
-        directoryCount: 0,
-        imageCount: 0,
-        recursiveImageCount: null,
-        loading: false,
-    },
     commandTerminal: createCommandTerminalState(),
     busy: false,
     busyLabel: "",
@@ -102,7 +95,6 @@ const {
     keyLabel,
     normalizeBreadcrumbs,
     normalizeBrowserData,
-    normalizeBrowserStatsData,
     normalizeDirectories,
     normalizeImages,
     normalizeSlideshowData,
@@ -117,7 +109,6 @@ const {
     browserMiniBreadcrumbHtml,
     browserToolButtonHtml,
     compactKeyText,
-    helpRecursiveImageCountText,
     imageCardHtml,
     languageSwitcherHtml,
     metaChipHtml,
@@ -128,7 +119,6 @@ const {
     shortActionLabel,
     slideBarActionHtml,
     slideBarButtonHtml,
-    statPillHtml,
     utilityButtonHtml,
 } = createViewHelpers({
     state,
@@ -171,7 +161,6 @@ const eventHandlers = createEventHandlers({
     endSession,
     openSettings,
     setLocale,
-    ensureHelpStats,
     handleTreePathClick,
     toggleTree,
     openPreview,
@@ -236,8 +225,6 @@ bindCommandTerminalEvents = eventHandlers.bindCommandTerminalEvents;
     browserInfoKeyHtml,
     shortcutGroupHtml,
     shortActionLabel,
-    statPillHtml,
-    helpRecursiveImageCountText,
     bindShellEvents,
     bindBrowserEvents,
     bindSlideshowEvents,
@@ -578,17 +565,14 @@ async function performBrowserLoad(path, options) {
     state.config = data.config || state.config;
     state.launchRoot = data.launchRoot || state.launchRoot;
     state.mode = "browser";
-    syncHelpStatsToBrowser(data);
     browserView.hidden = false;
     slideshowView.hidden = true;
+    await refreshVisibleTreeNodes(data.currentPath);
     await syncTreeToCurrentPath(data, {expandTree});
     if (requestToken !== browserLoadToken) {
         return;
     }
     state.tree.focusPath = "";
-    if (state.browserHelpOpen) {
-        ensureHelpStats().catch((error) => showNotice(error.message, "error"));
-    }
     if (data.notice) {
         showNotice(data.notice, "info");
         return;
@@ -636,9 +620,10 @@ async function loadSlideshow(path, preferredIndex) {
     render();
 }
 
-async function loadTreeNode(path) {
+async function loadTreeNode(path, options) {
     const key = path || "";
-    if (state.tree.nodes[key]) {
+    const forceRefresh = !!options?.forceRefresh;
+    if (!forceRefresh && state.tree.nodes[key]) {
         return state.tree.nodes[key];
     }
     if (state.tree.loading[key]) {
@@ -648,11 +633,22 @@ async function loadTreeNode(path) {
     render();
     try {
         const data = normalizeTreeData(await apiGet(`/api/tree?path=${encodeURIComponent(key)}`));
-        cacheTreeNode(data.currentPath, data.currentName, data.directories);
+        cacheTreeNode(data.currentPath, data.currentName, data.directories, data.currentImageCount, data.currentImageCountEstimated);
         return state.tree.nodes[key];
     } finally {
         delete state.tree.loading[key];
         render();
+    }
+}
+
+async function refreshVisibleTreeNodes(currentPath) {
+    const paths = new Set([""]);
+    pathChain(currentPath || "").forEach((path) => paths.add(path));
+    Object.keys(state.tree.expanded || {}).forEach((path) => {
+        paths.add(path || "");
+    });
+    for (const path of paths) {
+        await loadTreeNode(path, {forceRefresh: true});
     }
 }
 
@@ -661,7 +657,13 @@ async function syncTreeToCurrentPath(browserData, options) {
         expandTree: true,
         ...options,
     };
-    cacheTreeNode(browserData.currentPath, browserData.currentName, browserData.directories);
+    cacheTreeNode(
+        browserData.currentPath,
+        browserData.currentName,
+        browserData.directories,
+        browserData.currentImageCount,
+        browserData.currentImageCountEstimated,
+    );
     if (!settings.expandTree) {
         return;
     }
@@ -676,81 +678,14 @@ async function syncTreeToCurrentPath(browserData, options) {
     }
 }
 
-function cacheTreeNode(path, name, directories) {
+function cacheTreeNode(path, name, directories, imageCount, imageCountEstimated) {
     state.tree.nodes[path || ""] = {
         path: path || "",
         name: name || pathLabel(path, t("common.root")),
+        imageCount: Number.isFinite(Number(imageCount)) ? Number(imageCount) : 0,
+        imageCountEstimated: !!imageCountEstimated,
         directories: normalizeDirectories(directories),
     };
-}
-
-function syncHelpStatsToBrowser(browserData) {
-    const nextPath = browserData?.currentPath || "";
-    const directoryCount = browserData?.directories?.length || 0;
-    const imageCount = browserData?.images?.length || 0;
-    const previous = state.helpStats || {};
-    if (
-        previous.path !== nextPath ||
-        previous.directoryCount !== directoryCount ||
-        previous.imageCount !== imageCount
-    ) {
-        state.helpStats = {
-            path: nextPath,
-            directoryCount,
-            imageCount,
-            recursiveImageCount: null,
-            loading: false,
-        };
-        return;
-    }
-    state.helpStats = {
-        ...previous,
-        path: nextPath,
-        directoryCount,
-        imageCount,
-    };
-}
-
-async function ensureHelpStats() {
-    if (!state.browser) {
-        return;
-    }
-
-    const currentPath = state.browser.currentPath || "";
-    syncHelpStatsToBrowser(state.browser);
-    if (state.helpStats.loading || state.helpStats.recursiveImageCount !== null) {
-        return;
-    }
-
-    state.helpStats = {
-        ...state.helpStats,
-        loading: true,
-    };
-    render();
-
-    try {
-        const data = normalizeBrowserStatsData(await apiGet(`/api/browser/stats?path=${encodeURIComponent(currentPath)}`));
-        if (!state.browser || data.currentPath !== (state.browser.currentPath || "")) {
-            return;
-        }
-        state.helpStats = {
-            path: data.currentPath,
-            directoryCount: data.directoryCount,
-            imageCount: data.imageCount,
-            recursiveImageCount: data.recursiveImageCount,
-            loading: false,
-        };
-        render();
-    } catch (error) {
-        if (state.helpStats.path === currentPath) {
-            state.helpStats = {
-                ...state.helpStats,
-                loading: false,
-            };
-            render();
-        }
-        throw error;
-    }
 }
 
 async function changeDirectory(path) {
@@ -973,6 +908,8 @@ function rootTreeNode() {
     return state.tree.nodes[""] || {
         name: state.browser ? state.browser.breadcrumbs[0]?.name || state.browser.currentName || t("common.root") : t("common.root"),
         path: "",
+        imageCount: 0,
+        imageCountEstimated: false,
         directories: [],
     };
 }

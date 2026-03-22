@@ -18,7 +18,6 @@ export function createEventHandlers(deps) {
     endSession,
     openSettings,
     setLocale,
-    ensureHelpStats,
     handleTreePathClick,
     toggleTree,
     openPreview,
@@ -124,12 +123,8 @@ export function createEventHandlers(deps) {
       }
       button.dataset.boundHelpToggle = "true";
       button.addEventListener("click", () => {
-        const opening = !state.browserHelpOpen;
-        state.browserHelpOpen = opening;
+        state.browserHelpOpen = !state.browserHelpOpen;
         render();
-        if (opening) {
-          ensureHelpStats().catch((error) => showNotice(error.message, "error"));
-        }
       });
     });
     browserView.querySelectorAll("[data-tree-path]").forEach((button) => {

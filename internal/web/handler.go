@@ -61,7 +61,6 @@ func NewHandler(photoApp *app.App) http.Handler {
 	mux.Handle("/styles.css", h.staticFS)
 	mux.Handle("/styles/", h.staticFS)
 	mux.HandleFunc("/api/browser", h.handleBrowser)
-	mux.HandleFunc("/api/browser/stats", h.handleBrowserStats)
 	mux.HandleFunc("/api/tree", h.handleTree)
 	mux.HandleFunc("/api/session/start", h.handleSessionStart)
 	mux.HandleFunc("/api/session/end", h.handleSessionEnd)
@@ -90,19 +89,6 @@ func (h *Handler) handleBrowser(w http.ResponseWriter, r *http.Request) {
 	}
 	locale := localize.FromRequest(r)
 	data, err := h.app.Browser(r.URL.Query().Get("path"), locale)
-	if err != nil {
-		writeError(w, r, err)
-		return
-	}
-	writeJSON(w, http.StatusOK, data)
-}
-
-func (h *Handler) handleBrowserStats(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
-		methodNotAllowed(w)
-		return
-	}
-	data, err := h.app.BrowserStats(r.URL.Query().Get("path"))
 	if err != nil {
 		writeError(w, r, err)
 		return

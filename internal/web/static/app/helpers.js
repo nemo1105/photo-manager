@@ -62,12 +62,22 @@ export function canonicalKey(event) {
 }
 
 export function createAppHelpers({ state, t }) {
+  function numberOrZero(value) {
+    const numeric = Number(value);
+    if (!Number.isFinite(numeric) || numeric < 0) {
+      return 0;
+    }
+    return Math.trunc(numeric);
+  }
+
   function normalizeDirectories(value) {
     return Array.isArray(value)
       ? value.map((entry) => ({
           name: entry.name || "",
           path: entry.path || "",
           hasChildren: !!entry.hasChildren,
+          imageCount: numberOrZero(entry.imageCount),
+          imageCountEstimated: !!entry.imageCountEstimated,
         }))
       : [];
   }
@@ -95,6 +105,8 @@ export function createAppHelpers({ state, t }) {
   function normalizeBrowserData(data) {
     return {
       ...data,
+      currentImageCount: numberOrZero(data.currentImageCount),
+      currentImageCountEstimated: !!data.currentImageCountEstimated,
       directories: normalizeDirectories(data.directories),
       images: normalizeImages(data.images),
       breadcrumbs: normalizeBreadcrumbs(data.breadcrumbs),
@@ -117,23 +129,9 @@ export function createAppHelpers({ state, t }) {
   function normalizeTreeData(data) {
     return {
       ...data,
+      currentImageCount: numberOrZero(data.currentImageCount),
+      currentImageCountEstimated: !!data.currentImageCountEstimated,
       directories: normalizeDirectories(data.directories),
-    };
-  }
-
-  function normalizeBrowserStatsData(data) {
-    const numberOrZero = (value) => {
-      const numeric = Number(value);
-      if (!Number.isFinite(numeric) || numeric < 0) {
-        return 0;
-      }
-      return Math.trunc(numeric);
-    };
-    return {
-      currentPath: data?.currentPath || "",
-      directoryCount: numberOrZero(data?.directoryCount),
-      imageCount: numberOrZero(data?.imageCount),
-      recursiveImageCount: numberOrZero(data?.recursiveImageCount),
     };
   }
 
@@ -300,7 +298,6 @@ export function createAppHelpers({ state, t }) {
     keyLabel,
     normalizeBreadcrumbs,
     normalizeBrowserData,
-    normalizeBrowserStatsData,
     normalizeDirectories,
     normalizeImages,
     normalizeSlideshowData,

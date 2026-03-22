@@ -230,33 +230,18 @@ body.browser-mode .browser-icon-svg {
   stroke-linejoin: round;
 }
 
-body.browser-mode .browser-info-section,
 body.browser-mode .browser-shortcut-column,
 body.browser-mode .browser-shortcut-list {
   display: grid;
 }
 
-body.browser-mode .browser-info-section {
-  gap: 4px;
-  min-width: 0;
-}
-
-body.browser-mode .browser-info-section strong,
 body.browser-mode .browser-info-key strong,
-body.browser-mode .browser-shortcut-group h4,
-body.browser-mode .browser-help-stats .stat-pill strong {
+body.browser-mode .browser-shortcut-group h4 {
   font-size: 0.72rem;
   color: #8edcff;
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-}
-
-body.browser-mode .browser-info-section span,
-body.browser-mode .browser-help-stats .stat-pill span {
-  color: rgba(230, 238, 252, 0.86);
-  font-size: 0.8rem;
-  word-break: break-word;
 }
 
 body.browser-mode .browser-help-list {
@@ -345,50 +330,6 @@ body.browser-mode .browser-shortcut-group {
   align-self: start;
 }
 
-body.browser-mode .help-section--stats {
-  gap: 10px;
-}
-
-body.browser-mode .browser-help-meta-grid {
-  display: flex;
-  align-items: flex-start;
-  flex-wrap: nowrap;
-  gap: 10px;
-  min-width: 0;
-}
-
-body.browser-mode .browser-info-section--launch-root {
-  flex: 1 1 auto;
-}
-
-body.browser-mode .browser-info-section--current-folder {
-  flex: 0 1 260px;
-  min-width: 180px;
-}
-
-body.browser-mode .browser-info-section--launch-root span,
-body.browser-mode .browser-info-section--current-folder span {
-  display: block;
-  min-width: 0;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-body.browser-mode .browser-help-stats {
-  display: grid;
-  gap: 8px;
-  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-}
-
-body.browser-mode .browser-help-stats .stat-pill {
-  min-width: 0;
-  border-color: rgba(125, 211, 252, 0.1);
-  background: rgba(255, 255, 255, 0.03);
-  color: #e6eefc;
-  justify-content: flex-start;
-}
-
 @media (max-width: 1200px) {
   body.browser-mode .browser-layout {
     grid-template-columns: minmax(240px, 280px) minmax(0, 1fr);
@@ -416,8 +357,7 @@ body.browser-mode .browser-help-stats .stat-pill {
     height: auto;
   }
 
-  body.browser-mode .browser-layout,
-  body.browser-mode .browser-help-meta-grid {
+  body.browser-mode .browser-layout {
     grid-template-columns: 1fr;
     display: grid;
   }
@@ -426,10 +366,6 @@ body.browser-mode .browser-help-stats .stat-pill {
 @media (max-width: 720px) {
   body.browser-mode .browser-shortcut-groups {
     grid-template-columns: 1fr;
-  }
-
-  body.browser-mode .browser-info-section--current-folder {
-    min-width: 0;
   }
 
   body.browser-mode .browser-sidebar,

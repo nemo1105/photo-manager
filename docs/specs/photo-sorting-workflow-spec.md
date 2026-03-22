@@ -35,7 +35,8 @@ Users need to start from an arbitrary directory, browse to a folder that contain
 - Browser and tree directory lists should sort naturally by numeric segments instead of pure lexicographic order.
 - Browser UI localization supports only `zh-CN` and `en`; any browser locale starting with `zh` maps to `zh-CN`, and other browser locales fall back to `en`.
 - Manual language switching is browser-local only, takes precedence over browser-language detection, and must not require a config-file change.
-- The help modal should group shortcuts by mode, name arrow keys explicitly as arrow keys, show `Space` as the default slideshow exit, summarize the current subtree without showing session state, and use a two-column shortcut grid at common desktop widths.
+- The help modal should group shortcuts by mode, name arrow keys explicitly as arrow keys, show `Space` as the default slideshow exit, and use a two-column shortcut grid at common desktop widths.
+- The directory tree should show right-aligned image counts for the browse root and each visible folder row, counting the folder itself plus at most 3 visible descendant levels and marking deeper visible subtrees as estimated.
 
 ## User-Facing Terminology
 
@@ -74,7 +75,7 @@ Users need to start from an arbitrary directory, browse to a folder that contain
 - [x] The help modal groups browser, preview, slideshow, and action shortcuts separately; it documents arrow keys as `Left/Right/Up/Down Arrow` and shows `Space` as the default slideshow exit without documenting any browser-side session-ending shortcut.
 - [x] Settings stays available from the help modal header button, while folder browsing no longer reserves a dedicated settings shortcut.
 - [x] Browser parent navigation is exposed only through `collapse_dir`; the product does not keep a second `up_dir` shortcut, UI affordance, or browser response field for the same step.
-- [x] The help modal footer stays compact, omits session status, and shows direct child folder count, direct child image count, and recursive visible image count for the current subtree.
+- [x] The directory tree shows right-aligned image counts for the browse root and each visible folder row, using a 3-level descendant scan cap and a visible estimate marker when deeper visible subfolders are omitted.
 - [x] At common desktop widths, the help modal shows shortcuts in two columns with folder browsing plus preview on the first row and sorting view plus sorting actions on the second row.
 - [x] Preview and sorting-view footer buttons use the same compact chrome height as the other small controls.
 - [x] User-facing copy consistently speaks in terms of sorting/reviewing photos and folder browsing, without exposing internal `session/workspace/browser/slideshow/capture` language.

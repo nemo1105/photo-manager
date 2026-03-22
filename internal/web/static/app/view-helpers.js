@@ -170,16 +170,6 @@ export function createViewHelpers({
     `;
   }
 
-  function helpRecursiveImageCountText() {
-    if (state.helpStats.loading) {
-      return t("help.loadingRecursiveImages");
-    }
-    if (state.helpStats.recursiveImageCount === null || state.helpStats.recursiveImageCount === undefined) {
-      return t("common.unknown");
-    }
-    return String(state.helpStats.recursiveImageCount);
-  }
-
   function browserMiniBreadcrumbHtml() {
     const crumbs = normalizeBreadcrumbs(state.browser?.breadcrumbs);
     return crumbs.map((crumb) => {
@@ -194,17 +184,6 @@ export function createViewHelpers({
     return `
       <span class="meta-chip ${tone || ""}">
         <span class="meta-chip-copy">
-          <strong>${escapeHtml(label)}</strong>
-          <span>${escapeHtml(value)}</span>
-        </span>
-      </span>
-    `;
-  }
-
-  function statPillHtml(label, value, tone) {
-    return `
-      <span class="stat-pill ${tone || ""}">
-        <span class="stat-copy">
           <strong>${escapeHtml(label)}</strong>
           <span>${escapeHtml(value)}</span>
         </span>
@@ -291,7 +270,6 @@ export function createViewHelpers({
     browserMiniBreadcrumbHtml,
     browserToolButtonHtml,
     compactKeyText,
-    helpRecursiveImageCountText,
     imageCardHtml,
     languageSwitcherHtml,
     metaChipHtml,
@@ -302,7 +280,6 @@ export function createViewHelpers({
     shortActionLabel,
     slideBarActionHtml,
     slideBarButtonHtml,
-    statPillHtml,
     utilityButtonHtml,
   };
 }

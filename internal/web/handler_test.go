@@ -412,21 +412,17 @@ func TestHandleBrowserOmitsLegacyParentNavigationFields(t *testing.T) {
 	}
 }
 
-func TestHandleBrowserStatsReturnsRecursiveCountsWithoutEndingSession(t *testing.T) {
+func TestHandleBrowserReturnsDirectoryCounts(t *testing.T) {
 	root := t.TempDir()
 	mustWriteHandlerFile(t, filepath.Join(root, "work", "a.jpg"))
-	mustWriteHandlerFile(t, filepath.Join(root, "other", "nested", "b.jpg"))
-	mustWriteHandlerFile(t, filepath.Join(root, "other", ".hidden", "skip.jpg"))
-	mustWriteHandlerFile(t, filepath.Join(root, "other", "notes.txt"))
+	mustWriteHandlerFile(t, filepath.Join(root, "work", "nested", "b.jpg"))
+	mustWriteHandlerFile(t, filepath.Join(root, "work", "nested", "deep", "c.jpg"))
+	mustWriteHandlerFile(t, filepath.Join(root, "skip.txt"))
 
 	cfg := config.Default()
-	photoApp := app.New(root, filepath.Join(root, "config.yaml"), cfg, stubTrash{})
-	if _, err := photoApp.OpenSession("work"); err != nil {
-		t.Fatalf("open session: %v", err)
-	}
-	handler := NewHandler(photoApp)
+	handler := NewHandler(app.New(root, filepath.Join(root, "config.yaml"), cfg, stubTrash{}))
 
-	req := httptest.NewRequest(http.MethodGet, "/api/browser/stats?path=other", nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/browser?path=", nil)
 	rec := httptest.NewRecorder()
 	handler.ServeHTTP(rec, req)
 
@@ -435,31 +431,60 @@ func TestHandleBrowserStatsReturnsRecursiveCountsWithoutEndingSession(t *testing
 	}
 
 	var payload struct {
-		CurrentPath         string `json:"currentPath"`
-		DirectoryCount      int    `json:"directoryCount"`
-		ImageCount          int    `json:"imageCount"`
-		RecursiveImageCount int    `json:"recursiveImageCount"`
+		Directories []struct {
+			Name                string `json:"name"`
+			ImageCount          int    `json:"imageCount"`
+			ImageCountEstimated bool   `json:"imageCountEstimated"`
+		} `json:"directories"`
 	}
 	if err := json.Unmarshal(rec.Body.Bytes(), &payload); err != nil {
 		t.Fatalf("decode payload: %v", err)
 	}
-	if payload.CurrentPath != "other" {
-		t.Fatalf("expected currentPath other, got %q", payload.CurrentPath)
-	}
-	if payload.DirectoryCount != 1 || payload.ImageCount != 0 || payload.RecursiveImageCount != 1 {
-		t.Fatalf("unexpected stats payload: %+v", payload)
-	}
 
-	slideshow, err := photoApp.Slideshow("work", localize.EN)
-	if err != nil {
-		t.Fatalf("slideshow after stats: %v", err)
+	if len(payload.Directories) != 1 {
+		t.Fatalf("expected one directory, got %+v", payload.Directories)
 	}
-	if !slideshow.Session.Active {
-		t.Fatal("expected stats lookup not to end the session")
+	if payload.Directories[0].Name != "work" {
+		t.Fatalf("expected directory work, got %+v", payload.Directories[0])
+	}
+	if payload.Directories[0].ImageCount != 3 || payload.Directories[0].ImageCountEstimated {
+		t.Fatalf("unexpected directory count payload: %+v", payload.Directories[0])
 	}
 }
 
-func TestHandleBrowserStatsRejectsEscapingPaths(t *testing.T) {
+func TestHandleTreeReturnsCurrentNodeCounts(t *testing.T) {
+	root := t.TempDir()
+	mustWriteHandlerFile(t, filepath.Join(root, "work", "a.jpg"))
+	mustWriteHandlerFile(t, filepath.Join(root, "work", "nested", "b.jpg"))
+
+	cfg := config.Default()
+	handler := NewHandler(app.New(root, filepath.Join(root, "config.yaml"), cfg, stubTrash{}))
+
+	req := httptest.NewRequest(http.MethodGet, "/api/tree?path=work", nil)
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", rec.Code)
+	}
+
+	var payload struct {
+		CurrentPath                string `json:"currentPath"`
+		CurrentImageCount          int    `json:"currentImageCount"`
+		CurrentImageCountEstimated bool   `json:"currentImageCountEstimated"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &payload); err != nil {
+		t.Fatalf("decode payload: %v", err)
+	}
+	if payload.CurrentPath != "work" {
+		t.Fatalf("expected currentPath work, got %q", payload.CurrentPath)
+	}
+	if payload.CurrentImageCount != 2 || payload.CurrentImageCountEstimated {
+		t.Fatalf("unexpected tree count payload: %+v", payload)
+	}
+}
+
+func TestHandleBrowserStatsRouteIsRemoved(t *testing.T) {
 	root := t.TempDir()
 	cfg := config.Default()
 	handler := NewHandler(app.New(root, filepath.Join(root, "config.yaml"), cfg, stubTrash{}))
@@ -468,8 +493,8 @@ func TestHandleBrowserStatsRejectsEscapingPaths(t *testing.T) {
 	rec := httptest.NewRecorder()
 	handler.ServeHTTP(rec, req)
 
-	if rec.Code != http.StatusBadRequest {
-		t.Fatalf("expected 400, got %d", rec.Code)
+	if rec.Code != http.StatusNotFound {
+		t.Fatalf("expected 404, got %d", rec.Code)
 	}
 }
 

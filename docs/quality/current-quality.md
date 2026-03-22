@@ -24,7 +24,7 @@ Status: active
 - Keep browser directory ordering human-readable, especially for numbered folders and dated folder names.
 - Keep browser-mode tree navigation usable by keyboard alone, with directional keys and visible-button behavior staying aligned.
 - Keep rapid keyboard directory scans responsive by avoiding unintended auto-expansion and by debouncing browser reloads before image-heavy panes redraw.
-- Keep help-modal summary stats compact while still exposing direct and recursive image counts without mutating session state.
+- Keep directory-tree image counts readable and bounded by the 3-level scan cap, while marking deeper visible subtrees as estimated instead of doing unbounded recursion.
 - Keep browser-visible copy consistent within the selected locale so static UI, server notices, and validation errors do not mix English and Chinese in the same flow.
 - Keep user-facing language centered on sorting and reviewing photos, not on internal implementation concepts like session, workspace, browser, slideshow, or capture.
 - Keep `command` actions anchored to the current sort-starting folder, even when they are launched from a review subfolder.
@@ -46,7 +46,7 @@ Status: active
   - Session-root-based `command` working directory selection.
   - Review-folder slideshow filtering that hides the current target move action while keeping restore and other actions available.
   - Ending sessions when browser mode is loaded, and auto-ending sessions when slideshow/action requests leave the session subtree.
-  - Side-effect-free browser help stats counts, including recursive image totals that ignore hidden entries and unsupported files.
+  - Directory and current-node image counts in browser/tree payloads, including the 3-level scan cap, hidden-entry filtering, unsupported-file filtering, and estimate marking for deeper visible branches.
   - Auto-renaming on target conflicts.
   - Silent loading and save-time cleanup of legacy `browser.end_session`, `browser.up_dir`, `browser.open_settings`, and `slideshow.back_to_browser` config fields.
   - Browser handler responses omitting legacy `parentPath` and `canGoUp` fields after the parent-navigation simplification.
@@ -60,7 +60,8 @@ Status: active
   - Browser-side UI flows in `internal/web/static/app.js`.
   - Layout verification that browser mode keeps the tree and image list inside the viewport without a large header shell.
   - Layout verification that slideshow mode stays scrollbar-free at runtime.
-  - Manual verification that the regrouped help modal keeps its two-column shortcut layout, header actions, and compact stats readable across browser widths.
+  - Manual verification that the regrouped help modal keeps its two-column shortcut layout and header actions readable across browser widths.
+  - Manual verification that directory-tree count badges stay aligned and refresh after sorting actions.
   - Manual verification that refreshing during slideshow ends the session and reopens browser mode without browser-side active-session controls.
   - End-to-end verification of delete-to-recycle-bin behavior.
   - Browser-storage persistence and no-reload locale switching in the live UI.

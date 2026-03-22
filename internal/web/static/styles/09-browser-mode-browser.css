@@ -63,6 +63,11 @@ body.browser-mode .tree-link {
   background: transparent;
   color: #e6eefc;
   box-shadow: none;
+  width: 100%;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
 }
 
 body.browser-mode .tree-link:hover:not(:disabled) {
@@ -94,7 +99,43 @@ body.browser-mode .tree-link strong {
   font-weight: 500;
 }
 
-body.browser-mode .tree-link span,
+body.browser-mode .tree-link-copy,
+body.browser-mode .tree-count {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+}
+
+body.browser-mode .tree-link-copy {
+  min-width: 0;
+}
+
+body.browser-mode .tree-count {
+  justify-content: flex-end;
+  gap: 6px;
+  font-variant-numeric: tabular-nums;
+}
+
+body.browser-mode .tree-count-value {
+  color: rgba(186, 230, 253, 0.9);
+  font-size: 0.74rem;
+  line-height: 1;
+}
+
+body.browser-mode .tree-count-estimate {
+  width: 14px;
+  height: 14px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(250, 204, 21, 0.18);
+  color: #fde047;
+  font-size: 0.65rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
 body.browser-mode .tree-empty,
 body.browser-mode .entry-meta,
 body.browser-mode .image-meta .muted-text {

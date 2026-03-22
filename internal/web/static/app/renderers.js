@@ -37,8 +37,6 @@ export function createRenderers(deps) {
     browserInfoKeyHtml,
     shortcutGroupHtml,
     shortActionLabel,
-    statPillHtml,
-    helpRecursiveImageCountText,
     bindShellEvents,
     bindBrowserEvents,
     bindSlideshowEvents,
@@ -57,6 +55,19 @@ export function createRenderers(deps) {
     renderSettings();
     renderHelp();
     renderCommandTerminal();
+  }
+
+  function treeLabelHtml(label, imageCount, estimated) {
+    const estimateText = t("browser.estimatedCountTooltip");
+    return `
+      <span class="tree-link-copy">
+        <strong>${escapeHtml(label)}</strong>
+      </span>
+      <span class="tree-count" aria-label="${escapeHtml(t("browser.imageCountAria", { count: imageCount }))}">
+        <span class="tree-count-value">${escapeHtml(String(imageCount))}</span>
+        ${estimated ? `<span class="tree-count-estimate" title="${escapeHtml(estimateText)}" aria-label="${escapeHtml(estimateText)}">!</span>` : ""}
+      </span>
+    `;
   }
 
   function renderShell() {
@@ -197,7 +208,7 @@ export function createRenderers(deps) {
           <div class="tree-row tree-row--root" style="--depth:0">
             <span class="tree-spacer" aria-hidden="true"></span>
             <button class="tree-link ${rootClass}" data-tree-path="" data-tree-has-children="${rootHasChildren}">
-              <strong>${escapeHtml(rootNode.name || t("common.root"))}</strong>
+              ${treeLabelHtml(rootNode.name || t("common.root"), rootNode.imageCount || 0, !!rootNode.imageCountEstimated)}
             </button>
           </div>
         </div>
@@ -248,7 +259,7 @@ export function createRenderers(deps) {
             data-tree-path="${escapeHtml(path)}"
             data-tree-has-children="${hasChildren}"
           >
-            <strong>${escapeHtml(entry.name)}</strong>
+            ${treeLabelHtml(entry.name, entry.imageCount || 0, !!entry.imageCountEstimated)}
           </button>
         </div>
         ${childMarkup}
@@ -451,23 +462,6 @@ export function createRenderers(deps) {
             ])}
             ${shortcutGroupHtml(t("help.actionShortcuts"), (state.config?.actions || []).map((action) => browserInfoKeyHtml(shortActionLabel(action), action.key)))}
           </div>
-        </div>
-      </section>
-      <section class="settings-section help-section help-section--stats">
-        <div class="browser-help-meta-grid">
-          <div class="browser-info-section browser-info-section--launch-root">
-            <strong>${escapeHtml(t("help.launchRoot"))}</strong>
-            <span>${escapeHtml(state.launchRoot || t("common.unknown"))}</span>
-          </div>
-          <div class="browser-info-section browser-info-section--current-folder">
-            <strong>${escapeHtml(t("help.currentFolder"))}</strong>
-            <span>${escapeHtml(currentPath)}</span>
-          </div>
-        </div>
-        <div class="browser-help-stats">
-          ${statPillHtml(t("help.folders"), String(state.helpStats.directoryCount))}
-          ${statPillHtml(t("help.images"), String(state.helpStats.imageCount))}
-          ${statPillHtml(t("help.recursiveImages"), helpRecursiveImageCountText())}
         </div>
       </section>
     `;

@@ -469,7 +469,7 @@ func TestTreeLookupOutsideSessionDoesNotEndSession(t *testing.T) {
 	}
 }
 
-func TestBrowserStatsCountsVisibleRecursiveImages(t *testing.T) {
+func TestBrowserCountsVisibleImagesWithinThreeLevels(t *testing.T) {
 	root := t.TempDir()
 	mustWriteFile(t, filepath.Join(root, "work", "cover.jpg"))
 	mustWriteFile(t, filepath.Join(root, "work", "keep.png"))
@@ -478,52 +478,108 @@ func TestBrowserStatsCountsVisibleRecursiveImages(t *testing.T) {
 	mustWriteFile(t, filepath.Join(root, "work", "nested", "inside.webp"))
 	mustWriteFile(t, filepath.Join(root, "work", "nested", ".ignored.bmp"))
 	mustWriteFile(t, filepath.Join(root, "work", "nested", "deeper", "last.bmp"))
+	mustWriteFile(t, filepath.Join(root, "work", "nested", "deeper", "deepest", "cap.jpg"))
 	mustWriteFile(t, filepath.Join(root, "work", ".secret", "skip.jpg"))
 	mustMkdir(t, filepath.Join(root, "work", "empty"))
 
 	cfg := config.Default()
 	app := New(root, filepath.Join(root, "config.yaml"), cfg, &fakeTrash{})
 
-	stats, err := app.BrowserStats("work")
+	data, err := app.Browser("work", localize.EN)
 	if err != nil {
-		t.Fatalf("browser stats: %v", err)
+		t.Fatalf("browser: %v", err)
 	}
 
-	if stats.CurrentPath != "work" {
-		t.Fatalf("expected current path work, got %q", stats.CurrentPath)
+	if data.CurrentPath != "work" {
+		t.Fatalf("expected current path work, got %q", data.CurrentPath)
 	}
-	if stats.DirectoryCount != 2 {
-		t.Fatalf("expected 2 visible child directories, got %d", stats.DirectoryCount)
+	if data.CurrentImageCount != 5 {
+		t.Fatalf("expected current image count 5, got %d", data.CurrentImageCount)
 	}
-	if stats.ImageCount != 2 {
-		t.Fatalf("expected 2 visible direct images, got %d", stats.ImageCount)
+	if data.CurrentImageCountEstimated {
+		t.Fatal("expected current image count to remain exact within three levels")
 	}
-	if stats.RecursiveImageCount != 4 {
-		t.Fatalf("expected 4 visible recursive images, got %d", stats.RecursiveImageCount)
+	if got := dirEntryByName(data.Directories, "nested"); got == nil {
+		t.Fatal("expected nested directory entry")
+	} else {
+		if got.ImageCount != 3 {
+			t.Fatalf("expected nested image count 3, got %d", got.ImageCount)
+		}
+		if got.ImageCountEstimated {
+			t.Fatal("expected nested image count to remain exact within three levels")
+		}
+	}
+	if got := dirEntryByName(data.Directories, "empty"); got == nil {
+		t.Fatal("expected empty directory entry")
+	} else {
+		if got.ImageCount != 0 || got.ImageCountEstimated {
+			t.Fatalf("expected empty directory count 0 exact, got %+v", *got)
+		}
 	}
 }
 
-func TestBrowserStatsOutsideSessionDoesNotEndSession(t *testing.T) {
+func TestBrowserCountsMarkEstimatedWhenVisibleTreeGoesDeeperThanThreeLevels(t *testing.T) {
 	root := t.TempDir()
-	mustWriteFile(t, filepath.Join(root, "work", "a.jpg"))
-	mustWriteFile(t, filepath.Join(root, "other", "nested", "b.jpg"))
+	mustWriteFile(t, filepath.Join(root, "root", "a.jpg"))
+	mustWriteFile(t, filepath.Join(root, "root", "level1", "b.jpg"))
+	mustWriteFile(t, filepath.Join(root, "root", "level1", "level2", "c.jpg"))
+	mustWriteFile(t, filepath.Join(root, "root", "level1", "level2", "level3", "d.jpg"))
+	mustWriteFile(t, filepath.Join(root, "root", "level1", "level2", "level3", "level4", "e.jpg"))
 
 	cfg := config.Default()
 	app := New(root, filepath.Join(root, "config.yaml"), cfg, &fakeTrash{})
 
-	if _, err := app.OpenSession("work"); err != nil {
-		t.Fatalf("open session: %v", err)
+	data, err := app.Browser("", localize.EN)
+	if err != nil {
+		t.Fatalf("browser root: %v", err)
 	}
 
-	stats, err := app.BrowserStats("other")
+	rootEntry := dirEntryByName(data.Directories, "root")
+	if rootEntry == nil {
+		t.Fatal("expected root directory entry")
+	}
+	if rootEntry.ImageCount != 4 {
+		t.Fatalf("expected depth-limited count 4, got %d", rootEntry.ImageCount)
+	}
+	if !rootEntry.ImageCountEstimated {
+		t.Fatal("expected root directory count to be marked estimated")
+	}
+
+	tree, err := app.Tree("root")
 	if err != nil {
-		t.Fatalf("browser stats: %v", err)
+		t.Fatalf("tree root: %v", err)
 	}
-	if stats.RecursiveImageCount != 1 {
-		t.Fatalf("expected recursive image count 1, got %d", stats.RecursiveImageCount)
+	if tree.CurrentImageCount != 4 {
+		t.Fatalf("expected current tree count 4, got %d", tree.CurrentImageCount)
 	}
-	if !app.sessionInfoLocked().Active {
-		t.Fatal("expected browser stats lookup to keep the session active")
+	if !tree.CurrentImageCountEstimated {
+		t.Fatal("expected current tree count to be marked estimated")
+	}
+}
+
+func TestBrowserCountsIgnoreHiddenDeepBranchesForEstimate(t *testing.T) {
+	root := t.TempDir()
+	mustWriteFile(t, filepath.Join(root, "root", "cover.jpg"))
+	mustWriteFile(t, filepath.Join(root, "root", "level1", "inside.jpg"))
+	mustWriteFile(t, filepath.Join(root, "root", ".hidden", "level2", "level3", "level4", "deep.jpg"))
+
+	cfg := config.Default()
+	app := New(root, filepath.Join(root, "config.yaml"), cfg, &fakeTrash{})
+
+	data, err := app.Browser("", localize.EN)
+	if err != nil {
+		t.Fatalf("browser root: %v", err)
+	}
+
+	rootEntry := dirEntryByName(data.Directories, "root")
+	if rootEntry == nil {
+		t.Fatal("expected root directory entry")
+	}
+	if rootEntry.ImageCount != 2 {
+		t.Fatalf("expected hidden branch to be ignored, got count %d", rootEntry.ImageCount)
+	}
+	if rootEntry.ImageCountEstimated {
+		t.Fatal("expected hidden deep branch not to mark estimate")
 	}
 }
 
@@ -697,6 +753,15 @@ func dirNames(entries []DirEntry) []string {
 		names = append(names, entry.Name)
 	}
 	return names
+}
+
+func dirEntryByName(entries []DirEntry, want string) *DirEntry {
+	for i := range entries {
+		if entries[i].Name == want {
+			return &entries[i]
+		}
+	}
+	return nil
 }
 
 func contains(items []string, want string) bool {

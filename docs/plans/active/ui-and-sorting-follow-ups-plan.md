@@ -51,6 +51,7 @@ Track the next round of UX and reliability work after the initial browse/preview
   Current correction focus on 2026-03-22: widen the settings key chip by roughly two Latin characters so labels like `arrow-down` stay on one line.
   Current correction focus on 2026-03-22: rebalance the help-footer metadata so `浏览范围 / Browse range` gets a wider adaptive column, while `当前文件夹 / Current folder` truncates earlier instead of taking equal width.
   Current correction focus on 2026-03-22: unify visible scrollbar styling across the app with shared thumb/track tokens while keeping intentionally hidden crumb and toolbar scrollers hidden.
+  Current execution focus on 2026-03-22: show each directory row's image count on the right, cap subtree counting at 3 levels with an estimate marker for deeper visible branches, and remove the help-modal stats block plus its dedicated API path.
 - [x] Add zh-CN / en localization with default language chosen from the browser locale.
   Current execution focus on 2026-03-21: detect locale from browser language on first load, let the browser toolbar switch between `zh-CN` and `en`, persist manual choice in browser storage, and localize backend notices / errors through the same request locale.
   Current execution focus on 2026-03-21: replace implementation-heavy user copy with task language centered on `整理 / Sort`, `复查 / Review`, `文件夹浏览 / Folder browsing`, and `整理界面 / Sorting view`.
@@ -67,7 +68,7 @@ Track the next round of UX and reliability work after the initial browse/preview
 - Fixing repeated actions may require both frontend debouncing and backend state validation.
 - Localization will increase UI text surface area and can make button layouts unstable if not tested on smaller screens.
 - Reworking terminology touches nearly every visible label and notice, so inconsistent fallback strings can easily leak old `session/workspace/slideshow` wording back into the product.
-- The dedicated help stats lookup walks the current subtree recursively, so large folders still need manual runtime verification for latency inside the modal.
+- Directory-row image counts now recurse up to 3 levels for every visible folder row, so large expanded trees still need manual runtime verification for browse responsiveness.
 - Removing `browser.end_session` changes both config shape and browser/session semantics, so refresh and old-config save paths need explicit regression coverage.
 - Removing `browser.up_dir` changes the config shape again, so old YAML cleanup and browser shortcut/help coverage need to stay aligned.
 - Removing `browser.open_settings` changes the config shape again, so old YAML cleanup and help/settings-entry coverage need to stay aligned.
@@ -83,7 +84,8 @@ Track the next round of UX and reliability work after the initial browse/preview
 - User-facing language now follows a task-first glossary: `整理 / Sort`, `复查 / Review`, `文件夹浏览 / Folder browsing`, and `整理界面 / Sorting view`; internal implementation terms like `session` remain code-level only.
 - Browser mode and active work sessions are now mutually exclusive. Loading browser mode, including refresh, silently ends any active session instead of preserving a browser-side active-session state.
 - `keys.browser.end_session` is removed from the product contract. `Space` starts work from browser mode, `Space` ends work from slideshow mode, and old YAML with `browser.end_session` is ignored and dropped on the next save.
-- Help-modal shortcut guidance is now grouped into browser, preview, slideshow, and action sections; it explicitly names arrow keys, documents only browser start plus slideshow end semantics, and uses a dedicated stats request so recursive image totals do not slow normal browser navigation.
+- Help-modal shortcut guidance is now grouped into browser, preview, slideshow, and action sections; it explicitly names arrow keys and documents only browser start plus slideshow end semantics.
+- Directory rows now show right-aligned image counts using the existing browser/tree payloads, recurse at most 3 levels below each folder, and mark the count as estimated when deeper visible subfolders are omitted.
 - `keys.browser.up_dir` is removed from the product contract because `collapse_dir` already covers both collapsing the current node and stepping to the parent when appropriate. Old YAML with `browser.up_dir` is ignored and dropped on the next save.
 - `keys.browser.open_settings` is removed from the product contract so folder-browsing keys stay focused on navigation plus sorting start. Settings now opens only from the help modal header button, and old YAML with `browser.open_settings` is ignored and dropped on the next save.
 - The browser payload no longer carries legacy `parentPath` / `canGoUp` fields, and the frontend no longer keeps an unused `up-dir` toolbar action branch.
@@ -94,7 +96,8 @@ Track the next round of UX and reliability work after the initial browse/preview
 - Run `go test ./...` and `go build ./...`.
 - Verify `zh-CN` and `en` both localize browser chrome, help, settings, preview, slideshow copy, and backend toast / error responses.
 - Verify user-facing UI/help/toast/error copy no longer exposes `会话 / session`, `工作区 / workspace`, `浏览器 / browser`, `幻灯片 / slideshow`, or `捕获 / capture` as product concepts.
-- Verify the help modal header places `Settings` immediately left of `Close`, removes session status, and shows direct folder count, direct image count, and recursive image count for the current subtree.
+- Verify the help modal header places `Settings` immediately left of `Close`, removes the old summary/stats block, and keeps only usage plus shortcut guidance.
+- Verify the directory tree shows right-aligned image counts for the browse root and every visible folder row, with a yellow estimate marker plus tooltip when deeper visible subfolders exceed the 3-level scan cap.
 - Verify the help modal shortcut cards use two columns at common desktop widths, with folder browsing plus preview on the first row and sorting view plus sorting actions on the second row.
 - Verify refreshing or directly reopening browser mode during an active slideshow ends the session silently and does not surface browser-side active-session controls.
 - Verify browser help and settings no longer show a separate "go up a folder" shortcut, and left-arrow collapse / parent remains the only parent-navigation path.

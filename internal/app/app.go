@@ -41,9 +41,11 @@ type Breadcrumb struct {
 }
 
 type DirEntry struct {
-	Name        string `json:"name"`
-	Path        string `json:"path"`
-	HasChildren bool   `json:"hasChildren"`
+	Name                string `json:"name"`
+	Path                string `json:"path"`
+	HasChildren         bool   `json:"hasChildren"`
+	ImageCount          int    `json:"imageCount"`
+	ImageCountEstimated bool   `json:"imageCountEstimated"`
 }
 
 type ImageEntry struct {
@@ -62,29 +64,26 @@ type ActionButton struct {
 }
 
 type BrowserData struct {
-	LaunchRoot               string         `json:"launchRoot"`
-	CurrentPath              string         `json:"currentPath"`
-	CurrentName              string         `json:"currentName"`
-	Breadcrumbs              []Breadcrumb   `json:"breadcrumbs"`
-	Directories              []DirEntry     `json:"directories"`
-	Images                   []ImageEntry   `json:"images"`
-	Session                  SessionInfo    `json:"session"`
-	Config                   *config.Config `json:"config"`
-	CurrentDirStartsAsReview bool           `json:"currentDirStartsAsReview"`
-	Notice                   string         `json:"notice,omitempty"`
-}
-
-type BrowserStatsData struct {
-	CurrentPath         string `json:"currentPath"`
-	DirectoryCount      int    `json:"directoryCount"`
-	ImageCount          int    `json:"imageCount"`
-	RecursiveImageCount int    `json:"recursiveImageCount"`
+	LaunchRoot                 string         `json:"launchRoot"`
+	CurrentPath                string         `json:"currentPath"`
+	CurrentName                string         `json:"currentName"`
+	CurrentImageCount          int            `json:"currentImageCount"`
+	CurrentImageCountEstimated bool           `json:"currentImageCountEstimated"`
+	Breadcrumbs                []Breadcrumb   `json:"breadcrumbs"`
+	Directories                []DirEntry     `json:"directories"`
+	Images                     []ImageEntry   `json:"images"`
+	Session                    SessionInfo    `json:"session"`
+	Config                     *config.Config `json:"config"`
+	CurrentDirStartsAsReview   bool           `json:"currentDirStartsAsReview"`
+	Notice                     string         `json:"notice,omitempty"`
 }
 
 type TreeData struct {
-	CurrentPath string     `json:"currentPath"`
-	CurrentName string     `json:"currentName"`
-	Directories []DirEntry `json:"directories"`
+	CurrentPath                string     `json:"currentPath"`
+	CurrentName                string     `json:"currentName"`
+	CurrentImageCount          int        `json:"currentImageCount"`
+	CurrentImageCountEstimated bool       `json:"currentImageCountEstimated"`
+	Directories                []DirEntry `json:"directories"`
 }
 
 type SlideshowData struct {
@@ -185,45 +184,24 @@ func (a *App) Browser(relPath string, locale localize.Locale) (*BrowserData, err
 	if err != nil {
 		return nil, err
 	}
+	currentCount, err := countVisibleImagesWithinDepth(absPath, 3)
+	if err != nil {
+		return nil, err
+	}
 
 	_, startsAsReview := a.sessionStartRootLocked(absPath)
 	return &BrowserData{
-		LaunchRoot:               a.launchRoot,
-		CurrentPath:              relPath,
-		CurrentName:              displayName(absPath),
-		Breadcrumbs:              buildBreadcrumbs(locale, relPath),
-		Directories:              dirs,
-		Images:                   images,
-		Session:                  a.sessionInfoLocked(),
-		Config:                   a.cfg.Clone(),
-		CurrentDirStartsAsReview: startsAsReview,
-	}, nil
-}
-
-func (a *App) BrowserStats(relPath string) (*BrowserStatsData, error) {
-	a.mu.Lock()
-	defer a.mu.Unlock()
-
-	relPath, absPath, err := a.resolveDir(relPath)
-	if err != nil {
-		return nil, err
-	}
-
-	dirs, images, err := listDirectory(absPath, a.launchRoot)
-	if err != nil {
-		return nil, err
-	}
-
-	recursiveImages, err := countVisibleImagesRecursive(absPath)
-	if err != nil {
-		return nil, err
-	}
-
-	return &BrowserStatsData{
-		CurrentPath:         relPath,
-		DirectoryCount:      len(dirs),
-		ImageCount:          len(images),
-		RecursiveImageCount: recursiveImages,
+		LaunchRoot:                 a.launchRoot,
+		CurrentPath:                relPath,
+		CurrentName:                displayName(absPath),
+		CurrentImageCount:          currentCount.Total,
+		CurrentImageCountEstimated: currentCount.Estimated,
+		Breadcrumbs:                buildBreadcrumbs(locale, relPath),
+		Directories:                dirs,
+		Images:                     images,
+		Session:                    a.sessionInfoLocked(),
+		Config:                     a.cfg.Clone(),
+		CurrentDirStartsAsReview:   startsAsReview,
 	}, nil
 }
 
@@ -240,11 +218,17 @@ func (a *App) Tree(relPath string) (*TreeData, error) {
 	if err != nil {
 		return nil, err
 	}
+	currentCount, err := countVisibleImagesWithinDepth(absPath, 3)
+	if err != nil {
+		return nil, err
+	}
 
 	return &TreeData{
-		CurrentPath: relPath,
-		CurrentName: displayName(absPath),
-		Directories: dirs,
+		CurrentPath:                relPath,
+		CurrentName:                displayName(absPath),
+		CurrentImageCount:          currentCount.Total,
+		CurrentImageCountEstimated: currentCount.Estimated,
+		Directories:                dirs,
 	}, nil
 }
 
@@ -735,10 +719,16 @@ func listDirectory(absPath, launchRoot string) ([]DirEntry, []ImageEntry, error)
 			if err != nil {
 				continue
 			}
+			imageCount, err := countVisibleImagesWithinDepth(entryPath, 3)
+			if err != nil {
+				return nil, nil, err
+			}
 			dirs = append(dirs, DirEntry{
-				Name:        entry.Name(),
-				Path:        filepath.ToSlash(rel),
-				HasChildren: hasVisibleChildDirectory(entryPath),
+				Name:                entry.Name(),
+				Path:                filepath.ToSlash(rel),
+				HasChildren:         hasVisibleChildDirectory(entryPath),
+				ImageCount:          imageCount.Total,
+				ImageCountEstimated: imageCount.Estimated,
 			})
 			continue
 		}
@@ -868,13 +858,18 @@ func hasVisibleChildDirectory(absPath string) bool {
 	return false
 }
 
-func countVisibleImagesRecursive(absPath string) (int, error) {
+type visibleImageCount struct {
+	Total     int
+	Estimated bool
+}
+
+func countVisibleImagesWithinDepth(absPath string, remainingDepth int) (visibleImageCount, error) {
 	entries, err := os.ReadDir(absPath)
 	if err != nil {
-		return 0, err
+		return visibleImageCount{}, err
 	}
 
-	total := 0
+	result := visibleImageCount{}
 	for _, entry := range entries {
 		entryPath := filepath.Join(absPath, entry.Name())
 		hidden, err := isHidden(entryPath, entry)
@@ -883,18 +878,23 @@ func countVisibleImagesRecursive(absPath string) (int, error) {
 		}
 
 		if entry.IsDir() {
-			nestedTotal, err := countVisibleImagesRecursive(entryPath)
-			if err != nil {
-				return 0, err
+			if remainingDepth == 0 {
+				result.Estimated = true
+				continue
 			}
-			total += nestedTotal
+			nested, err := countVisibleImagesWithinDepth(entryPath, remainingDepth-1)
+			if err != nil {
+				return visibleImageCount{}, err
+			}
+			result.Total += nested.Total
+			result.Estimated = result.Estimated || nested.Estimated
 			continue
 		}
 		if isSupportedImage(entry.Name()) {
-			total += 1
+			result.Total += 1
 		}
 	}
-	return total, nil
+	return result, nil
 }
 
 func isSupportedImage(name string) bool {
