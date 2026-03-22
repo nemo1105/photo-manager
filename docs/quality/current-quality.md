@@ -5,31 +5,13 @@ Status: active
 
 ## Quality goals
 
-- Keep browser-supplied paths and built-in file operations contained inside the launch root unless the user explicitly configured an absolute move target.
-- Make session-root-based sorting predictable enough that review and restore never depend on the current image's parent folder.
-- Make review-folder entry explicit from the user's point of view, so moved-photo checks do not expose session-root internals.
-- Prevent review folders from surfacing a redundant self-target move action in slideshow.
-- Keep transient feedback in a single animated bottom-right toast pattern instead of mixing inline hints with overlays.
-- Keep image actions available both by keyboard and by visible buttons.
-- Preserve platform-native recycle-bin / Trash behavior for deletes.
-- Keep slideshow mode visually immersive, chrome-light, and free of browser-level scrollbars in common desktop window sizes.
-- Keep browser mode compact enough that the tree and image list own the viewport instead of a persistent header shell.
-- Keep browser-mode chrome reduced to a single primary sort action plus a help affordance, with low-frequency details moved behind the help panel.
-- Keep settings access explicit through the help panel button instead of a dedicated folder-browsing shortcut.
-- Keep browser mode and active slideshow sessions mutually exclusive so refresh or direct browser entry cannot strand the UI in a half-active session state.
-- Keep help-modal guidance unambiguous by naming arrow keys explicitly, separating shortcuts by mode, and treating `Space` as browser start plus slideshow exit rather than documenting a browser-side end-session key.
-- Keep help-modal shortcuts readable in a stable two-column layout on desktop widths while falling back cleanly on smaller screens.
-- Keep browser parent navigation singular and predictable by using only collapse / parent behavior instead of a redundant second "go up" shortcut.
-- Keep the browser transport contract aligned with that model, so `/api/browser` does not keep shipping stale parent-navigation fields that the UI no longer uses.
-- Keep browser directory ordering human-readable, especially for numbered folders and dated folder names.
-- Keep browser-mode tree navigation usable by keyboard alone, with directional keys and visible-button behavior staying aligned.
-- Keep rapid keyboard directory scans responsive by avoiding unintended auto-expansion and by debouncing browser reloads before image-heavy panes redraw.
-- Keep directory-tree image counts readable and bounded by the 3-level scan cap, while marking deeper visible subtrees as estimated instead of doing unbounded recursion.
-- Keep browser-visible copy consistent within the selected locale so static UI, server notices, and validation errors do not mix English and Chinese in the same flow.
-- Keep user-facing language centered on sorting and reviewing photos, not on internal implementation concepts like session, workspace, browser, slideshow, or capture.
-- Keep `command` actions anchored to the current sort-starting folder, even when they are launched from a review subfolder.
-- Keep the interactive command terminal modal, so keyboard input does not leak through to slideshow navigation or file actions.
-- Keep move and command aliases readable and consistent across sorting-facing surfaces, while still tolerating legacy configs that have not added aliases yet.
+- Keep path handling and file operations contained inside `launchRoot`, except when the user explicitly configured an absolute move target.
+- Keep sorting semantics anchored to `sessionRoot`, including review-folder entry, restore behavior, and command working-directory selection.
+- Keep browser and sorting states unambiguous: browser mode must not preserve an active session, and sorting actions must stay available by both keyboard and visible buttons.
+- Keep the browser tree predictable and bounded: natural directory ordering, keyboard/tree behavior alignment, and image counts capped at 3 descendant levels with explicit estimate marking.
+- Keep user-facing copy consistent within the selected locale and centered on sorting/review terminology rather than internal implementation terms.
+- Keep the command-terminal flow modal and ordered so terminal input does not leak back to sorting and fast-exiting commands still show their final output before exit.
+- Keep move and command aliases consistent across sorting-facing UI while still tolerating legacy configs until the next save.
 
 ## Known issues
 
@@ -54,13 +36,13 @@ Status: active
   - Legacy config loading after removing the slideshow back-to-browser binding.
   - Request-locale parsing for `X-Photo-Manager-Locale` and `Accept-Language`.
   - Localized breadcrumbs, action labels, notices, and validation-error responses in `zh-CN`.
-  - Command-action config validation, reservation start path, and WebSocket output/exit streaming.
+  - Command-action config validation, reservation start path, and WebSocket output/exit streaming, including the fast-exit case where trailing output must arrive before the exit frame and the Windows-style PTY close path where `The pipe has been ended.` must not be surfaced as a terminal failure after a normal exit.
   - Move/command alias validation, including strict save-time requirement, legacy load compatibility, and alias rejection on delete/restore actions.
   - Alias-based move and command labels in slideshow data, plus alias-based terminal titles in command-start responses.
   - Task-first user terminology across UI dictionaries, backend notices, and settings validation labels.
   - Windows PowerShell path quoting for recycle-bin deletion.
 - Missing coverage:
-  - Browser-side UI flows in `internal/web/static/app.js`.
+  - Browser-side UI flows in the static frontend bundle under `internal/web/static/app.js` and `internal/web/static/app/`.
   - Automated browser verification that move and command aliases render in the sorting footer and help modal, and that command aliases render in the command terminal title.
   - Layout verification that browser mode keeps the tree and image list inside the viewport without a large header shell.
   - Layout verification that slideshow mode stays scrollbar-free at runtime.
@@ -75,6 +57,6 @@ Status: active
 
 ## Debt and follow-ups
 
-- The frontend currently lives in one large `app.js` file with no automated UI tests.
+- The frontend now uses split static JS/CSS modules, but it still has no automated UI test harness.
 - Legacy configs that still omit `alias` on move or command actions can load but will be blocked on the next settings save until the alias is added.
 - `todo.md` still exists as a scratch pad, so future changes should continue moving durable truth into `docs/` instead of expanding that file.

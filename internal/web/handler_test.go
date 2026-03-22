@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -129,6 +130,170 @@ func (f *fakeHandlerTerminalSession) markReadDone() {
 	f.readDoneOnce.Do(func() {
 		close(f.readDone)
 	})
+}
+
+type stagedHandlerTerminalSession struct {
+	resizes         [][2]int
+	waitReady       chan struct{}
+	waitReadyOnce   sync.Once
+	secondChunk     chan struct{}
+	secondChunkOnce sync.Once
+	readIndex       int
+}
+
+func newStagedHandlerTerminalSession() *stagedHandlerTerminalSession {
+	return &stagedHandlerTerminalSession{
+		waitReady:   make(chan struct{}),
+		secondChunk: make(chan struct{}),
+	}
+}
+
+func (s *stagedHandlerTerminalSession) ID() string {
+	return "cmd-1"
+}
+
+func (s *stagedHandlerTerminalSession) Command() string {
+	return "python script.py"
+}
+
+func (s *stagedHandlerTerminalSession) WorkDirRel() string {
+	return "work"
+}
+
+func (s *stagedHandlerTerminalSession) Read(p []byte) (int, error) {
+	switch s.readIndex {
+	case 0:
+		s.readIndex += 1
+		s.waitReadyOnce.Do(func() {
+			close(s.waitReady)
+		})
+		chunk := []byte("hello ")
+		copy(p, chunk)
+		return len(chunk), nil
+	case 1:
+		<-s.secondChunk
+		s.readIndex += 1
+		chunk := []byte("world\r\n")
+		copy(p, chunk)
+		return len(chunk), nil
+	default:
+		return 0, io.EOF
+	}
+}
+
+func (s *stagedHandlerTerminalSession) Write(p []byte) (int, error) {
+	return len(p), nil
+}
+
+func (s *stagedHandlerTerminalSession) Resize(cols, rows int) error {
+	s.resizes = append(s.resizes, [2]int{cols, rows})
+	return nil
+}
+
+func (s *stagedHandlerTerminalSession) Terminate() error {
+	s.releaseSecondChunk()
+	return nil
+}
+
+func (s *stagedHandlerTerminalSession) Wait(ctx context.Context) (int, error) {
+	select {
+	case <-s.waitReady:
+		return 0, nil
+	case <-ctx.Done():
+		return 0, ctx.Err()
+	}
+}
+
+func (s *stagedHandlerTerminalSession) Close() error {
+	s.releaseSecondChunk()
+	return nil
+}
+
+func (s *stagedHandlerTerminalSession) releaseSecondChunk() {
+	s.secondChunkOnce.Do(func() {
+		close(s.secondChunk)
+	})
+}
+
+type closeDrivenHandlerTerminalSession struct {
+	readIndex     int
+	waitReady     chan struct{}
+	waitReadyOnce sync.Once
+	closed        chan struct{}
+	closeOnce     sync.Once
+	closeReadErr  error
+}
+
+func newCloseDrivenHandlerTerminalSession() *closeDrivenHandlerTerminalSession {
+	return newCloseDrivenHandlerTerminalSessionWithReadError(nil)
+}
+
+func newCloseDrivenHandlerTerminalSessionWithReadError(closeReadErr error) *closeDrivenHandlerTerminalSession {
+	return &closeDrivenHandlerTerminalSession{
+		waitReady:    make(chan struct{}),
+		closed:       make(chan struct{}),
+		closeReadErr: closeReadErr,
+	}
+}
+
+func (s *closeDrivenHandlerTerminalSession) ID() string {
+	return "cmd-1"
+}
+
+func (s *closeDrivenHandlerTerminalSession) Command() string {
+	return "python script.py"
+}
+
+func (s *closeDrivenHandlerTerminalSession) WorkDirRel() string {
+	return "work"
+}
+
+func (s *closeDrivenHandlerTerminalSession) Read(p []byte) (int, error) {
+	switch s.readIndex {
+	case 0:
+		s.readIndex += 1
+		s.waitReadyOnce.Do(func() {
+			close(s.waitReady)
+		})
+		chunk := []byte("done\r\n")
+		copy(p, chunk)
+		return len(chunk), nil
+	default:
+		<-s.closed
+		if s.closeReadErr != nil {
+			return 0, s.closeReadErr
+		}
+		return 0, io.EOF
+	}
+}
+
+func (s *closeDrivenHandlerTerminalSession) Write(p []byte) (int, error) {
+	return len(p), nil
+}
+
+func (s *closeDrivenHandlerTerminalSession) Resize(cols, rows int) error {
+	return nil
+}
+
+func (s *closeDrivenHandlerTerminalSession) Terminate() error {
+	s.Close()
+	return nil
+}
+
+func (s *closeDrivenHandlerTerminalSession) Wait(ctx context.Context) (int, error) {
+	select {
+	case <-s.waitReady:
+		return 0, nil
+	case <-ctx.Done():
+		return 0, ctx.Err()
+	}
+}
+
+func (s *closeDrivenHandlerTerminalSession) Close() error {
+	s.closeOnce.Do(func() {
+		close(s.closed)
+	})
+	return nil
 }
 
 func TestHandleConfigReturnsLocalizedValidationError(t *testing.T) {
@@ -385,6 +550,236 @@ func TestHandleCommandWSStreamsOutputAndExit(t *testing.T) {
 	}
 	if len(session.resizes) == 0 || session.resizes[0] != [2]int{100, 40} {
 		t.Fatalf("expected resize 100x40, got %+v", session.resizes)
+	}
+}
+
+func TestHandleCommandWSWaitsForOutputDrainBeforeExit(t *testing.T) {
+	root := t.TempDir()
+	mustWriteHandlerFile(t, filepath.Join(root, "work", "a.jpg"))
+
+	cfg := config.Default()
+	cfg.Actions = append(cfg.Actions, config.ActionBinding{
+		Key:     "c",
+		Action:  "command",
+		Command: "python script.py",
+		Alias:   "Python",
+	})
+	session := newStagedHandlerTerminalSession()
+	manager := &fakeHandlerTerminalManager{session: session}
+	photoApp := app.NewWithTerminal(root, filepath.Join(root, "config.yaml"), cfg, stubTrash{}, manager)
+	if _, err := photoApp.OpenSession("work"); err != nil {
+		t.Fatalf("open session: %v", err)
+	}
+	if _, err := photoApp.StartCommandAction("work", "work/a.jpg", "c", localize.EN); err != nil {
+		t.Fatalf("start command action: %v", err)
+	}
+
+	server := httptest.NewServer(NewHandler(photoApp))
+	defer server.Close()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	wsURL := "ws" + strings.TrimPrefix(server.URL, "http") + "/api/command/ws?id=cmd-1"
+	conn, _, err := websocket.Dial(ctx, wsURL, nil)
+	if err != nil {
+		t.Fatalf("dial websocket: %v", err)
+	}
+	defer conn.Close(websocket.StatusNormalClosure, "")
+
+	var started map[string]any
+	if err := wsjson.Read(ctx, conn, &started); err != nil {
+		t.Fatalf("read started frame: %v", err)
+	}
+	if started["type"] != "started" {
+		t.Fatalf("expected started frame, got %+v", started)
+	}
+
+	var first struct {
+		Type string `json:"type"`
+		Data string `json:"data"`
+	}
+	if err := wsjson.Read(ctx, conn, &first); err != nil {
+		t.Fatalf("read first output frame: %v", err)
+	}
+	if first.Type != "output" {
+		t.Fatalf("expected first output frame, got %+v", first)
+	}
+	firstBytes, err := base64.StdEncoding.DecodeString(first.Data)
+	if err != nil {
+		t.Fatalf("decode first output: %v", err)
+	}
+	if string(firstBytes) != "hello " {
+		t.Fatalf("unexpected first output payload: %q", string(firstBytes))
+	}
+
+	time.Sleep(150 * time.Millisecond)
+	session.releaseSecondChunk()
+
+	var second struct {
+		Type string `json:"type"`
+		Data string `json:"data"`
+	}
+	if err := wsjson.Read(ctx, conn, &second); err != nil {
+		t.Fatalf("read second output frame: %v", err)
+	}
+	if second.Type != "output" {
+		t.Fatalf("expected second output frame, got %+v", second)
+	}
+	secondBytes, err := base64.StdEncoding.DecodeString(second.Data)
+	if err != nil {
+		t.Fatalf("decode second output: %v", err)
+	}
+	if string(secondBytes) != "world\r\n" {
+		t.Fatalf("unexpected second output payload: %q", string(secondBytes))
+	}
+
+	var exit struct {
+		Type string `json:"type"`
+		Code int    `json:"code"`
+	}
+	if err := wsjson.Read(ctx, conn, &exit); err != nil {
+		t.Fatalf("read exit frame: %v", err)
+	}
+	if exit.Type != "exit" || exit.Code != 0 {
+		t.Fatalf("unexpected exit frame: %+v", exit)
+	}
+}
+
+func TestHandleCommandWSSendsExitWhenCloseUnblocksRead(t *testing.T) {
+	root := t.TempDir()
+	mustWriteHandlerFile(t, filepath.Join(root, "work", "a.jpg"))
+
+	cfg := config.Default()
+	cfg.Actions = append(cfg.Actions, config.ActionBinding{
+		Key:     "c",
+		Action:  "command",
+		Command: "python script.py",
+		Alias:   "Python",
+	})
+	session := newCloseDrivenHandlerTerminalSession()
+	manager := &fakeHandlerTerminalManager{session: session}
+	photoApp := app.NewWithTerminal(root, filepath.Join(root, "config.yaml"), cfg, stubTrash{}, manager)
+	if _, err := photoApp.OpenSession("work"); err != nil {
+		t.Fatalf("open session: %v", err)
+	}
+	if _, err := photoApp.StartCommandAction("work", "work/a.jpg", "c", localize.EN); err != nil {
+		t.Fatalf("start command action: %v", err)
+	}
+
+	server := httptest.NewServer(NewHandler(photoApp))
+	defer server.Close()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	wsURL := "ws" + strings.TrimPrefix(server.URL, "http") + "/api/command/ws?id=cmd-1"
+	conn, _, err := websocket.Dial(ctx, wsURL, nil)
+	if err != nil {
+		t.Fatalf("dial websocket: %v", err)
+	}
+	defer conn.Close(websocket.StatusNormalClosure, "")
+
+	var started map[string]any
+	if err := wsjson.Read(ctx, conn, &started); err != nil {
+		t.Fatalf("read started frame: %v", err)
+	}
+	if started["type"] != "started" {
+		t.Fatalf("expected started frame, got %+v", started)
+	}
+
+	var output struct {
+		Type string `json:"type"`
+		Data string `json:"data"`
+	}
+	if err := wsjson.Read(ctx, conn, &output); err != nil {
+		t.Fatalf("read output frame: %v", err)
+	}
+	if output.Type != "output" {
+		t.Fatalf("expected output frame, got %+v", output)
+	}
+	data, err := base64.StdEncoding.DecodeString(output.Data)
+	if err != nil {
+		t.Fatalf("decode output: %v", err)
+	}
+	if string(data) != "done\r\n" {
+		t.Fatalf("unexpected output payload: %q", string(data))
+	}
+
+	var exit struct {
+		Type string `json:"type"`
+		Code int    `json:"code"`
+	}
+	if err := wsjson.Read(ctx, conn, &exit); err != nil {
+		t.Fatalf("read exit frame: %v", err)
+	}
+	if exit.Type != "exit" || exit.Code != 0 {
+		t.Fatalf("unexpected exit frame: %+v", exit)
+	}
+}
+
+func TestHandleCommandWSSuppressesBenignPipeEndedCloseError(t *testing.T) {
+	root := t.TempDir()
+	mustWriteHandlerFile(t, filepath.Join(root, "work", "a.jpg"))
+
+	cfg := config.Default()
+	cfg.Actions = append(cfg.Actions, config.ActionBinding{
+		Key:     "c",
+		Action:  "command",
+		Command: "python script.py",
+		Alias:   "Python",
+	})
+	session := newCloseDrivenHandlerTerminalSessionWithReadError(errors.New("The pipe has been ended."))
+	manager := &fakeHandlerTerminalManager{session: session}
+	photoApp := app.NewWithTerminal(root, filepath.Join(root, "config.yaml"), cfg, stubTrash{}, manager)
+	if _, err := photoApp.OpenSession("work"); err != nil {
+		t.Fatalf("open session: %v", err)
+	}
+	if _, err := photoApp.StartCommandAction("work", "work/a.jpg", "c", localize.EN); err != nil {
+		t.Fatalf("start command action: %v", err)
+	}
+
+	server := httptest.NewServer(NewHandler(photoApp))
+	defer server.Close()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	wsURL := "ws" + strings.TrimPrefix(server.URL, "http") + "/api/command/ws?id=cmd-1"
+	conn, _, err := websocket.Dial(ctx, wsURL, nil)
+	if err != nil {
+		t.Fatalf("dial websocket: %v", err)
+	}
+	defer conn.Close(websocket.StatusNormalClosure, "")
+
+	var started map[string]any
+	if err := wsjson.Read(ctx, conn, &started); err != nil {
+		t.Fatalf("read started frame: %v", err)
+	}
+	if started["type"] != "started" {
+		t.Fatalf("expected started frame, got %+v", started)
+	}
+
+	var output struct {
+		Type string `json:"type"`
+		Data string `json:"data"`
+	}
+	if err := wsjson.Read(ctx, conn, &output); err != nil {
+		t.Fatalf("read output frame: %v", err)
+	}
+	if output.Type != "output" {
+		t.Fatalf("expected output frame, got %+v", output)
+	}
+
+	var exit struct {
+		Type string `json:"type"`
+		Code int    `json:"code"`
+	}
+	if err := wsjson.Read(ctx, conn, &exit); err != nil {
+		t.Fatalf("read exit frame: %v", err)
+	}
+	if exit.Type != "exit" || exit.Code != 0 {
+		t.Fatalf("unexpected exit frame: %+v", exit)
 	}
 }
 

@@ -32,6 +32,7 @@ Users need to start from an arbitrary directory, browse to a folder that contain
 - Starting a session from a configured relative move-target folder should treat that folder as a review view for already moved photos, while using its parent as `sessionRoot`.
 - Deletion must go to the platform recycle bin / Trash, not permanent removal.
 - `command` actions run in a full-screen interactive terminal, through the platform shell, with the initial working directory fixed to `sessionRoot`.
+- Command-terminal transport must not surface process exit before already-written terminal output has been delivered to the browser.
 - Slideshow mode is an immersive full-viewport viewer and must not introduce browser-level scrollbars during normal desktop use.
 - Browser and tree directory lists should sort naturally by numeric segments instead of pure lexicographic order.
 - Browser UI localization supports only `zh-CN` and `en`; any browser locale starting with `zh` maps to `zh-CN`, and other browser locales fall back to `en`.
@@ -62,6 +63,7 @@ Users need to start from an arbitrary directory, browse to a folder that contain
 - [x] `restore` is shown only inside configured move-target directories and returns the image to the session root.
 - [x] `command` opens a full-screen interactive terminal, starts in `sessionRoot`, and keeps the terminal visible until the user closes it after the process exits.
 - [x] Starting `command` from a review folder still uses the parent sort-starting folder as the working directory.
+- [x] When a `command` writes output and then exits immediately, the terminal still renders that trailing output before showing the exited state.
 - [x] When `alias` is present on `move` or `command`, sorting action buttons and help action shortcuts show the alias itself with no `Move to / 移动到` or `Run Command / 执行命令` prefix.
 - [x] When `alias` is present on `command`, the command terminal title also shows that alias.
 - [x] Legacy `move` and `command` actions without `alias` still load, fall back to the old target-based or generic command labels in those same surfaces, and must be given an alias before settings can be saved again.
@@ -112,5 +114,5 @@ Users need to start from an arbitrary directory, browse to a folder that contain
 
 ## Open questions
 
-- The browser layout needs a more compact, tree-like folder presentation and clearer separation between navigation controls and work-session controls.
-- The same-image double-action path still needs a guarded UX and test coverage so stale UI state cannot trigger a second invalid request.
+- The same-image double-action path still needs guarded UX and test coverage so stale UI state cannot trigger a second invalid request.
+- The settings key-capture flow still needs a more obvious waiting state while the UI is listening for the next key.

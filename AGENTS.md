@@ -1,6 +1,6 @@
 # Photo Manager Agents Guide
 
-Last updated: 2026-03-20
+Last updated: 2026-03-22
 
 ## Canonical docs
 
@@ -18,6 +18,7 @@ Last updated: 2026-03-20
 - UI or session-flow work: update the active plan under `docs/plans/active/` before or during execution.
 - Recurring operator steps: update the runbook instead of leaving the procedure in chat.
 - New bugs or risky edge cases: record them in `docs/quality/` even if they are not fixed yet.
+- Keep canonical docs factual: architecture, spec, runbook, and quality pages describe the current codebase; chronology belongs in plans or commit history.
 
 ## Local rules
 

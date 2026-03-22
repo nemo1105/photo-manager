@@ -229,8 +229,12 @@ func (h *Handler) handleCommandWS(w http.ResponseWriter, r *http.Request) {
 
 	_ = writer.Write(commandWSMessage{Type: "started"})
 
-	go streamCommandOutput(r.Context(), writer, session)
-	go waitCommandExit(writer, session)
+	outputDone := make(chan struct{})
+	go func() {
+		streamCommandOutput(r.Context(), writer, session)
+		close(outputDone)
+	}()
+	go waitCommandExit(writer, session, outputDone)
 
 	if err := readCommandControl(r.Context(), conn, session); err != nil {
 		status := websocket.CloseStatus(err)
@@ -362,7 +366,7 @@ func streamCommandOutput(ctx context.Context, writer *commandFrameWriter, sessio
 			}
 		}
 		if err != nil {
-			if !errors.Is(err, io.EOF) && !errors.Is(err, context.Canceled) && !strings.Contains(strings.ToLower(err.Error()), "file has already been closed") {
+			if !isBenignCommandStreamError(err) {
 				_ = writer.Write(commandWSMessage{
 					Type:    "error",
 					Message: err.Error(),
@@ -378,8 +382,22 @@ func streamCommandOutput(ctx context.Context, writer *commandFrameWriter, sessio
 	}
 }
 
-func waitCommandExit(writer *commandFrameWriter, session terminal.Session) {
+func isBenignCommandStreamError(err error) bool {
+	if err == nil || errors.Is(err, io.EOF) || errors.Is(err, context.Canceled) {
+		return true
+	}
+
+	message := strings.ToLower(err.Error())
+	return strings.Contains(message, "file has already been closed") ||
+		strings.Contains(message, "pipe has been ended") ||
+		strings.Contains(message, "broken pipe") ||
+		strings.Contains(message, "handle is invalid")
+}
+
+func waitCommandExit(writer *commandFrameWriter, session terminal.Session, outputDone <-chan struct{}) {
 	code, err := session.Wait(context.Background())
+	_ = session.Close()
+	<-outputDone
 	if err != nil {
 		_ = writer.Write(commandWSMessage{
 			Type:    "error",

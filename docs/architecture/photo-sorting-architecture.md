@@ -31,6 +31,7 @@ This application is a single-binary Go tool that starts from an explicit launch 
 - `command.command` is raw shell text only. The product does not expand placeholders or inject current-image or current-directory variables.
 - `alias` is the user-facing label for `move` and `command` actions. Sorting buttons and help action labels prefer it; command-terminal titles also prefer it for `command` actions. Legacy configs without it fall back to the old target-based or generic command labels until the user saves a fixed config.
 - Only one interactive command-terminal session may exist at a time, and while it is open the sorting UI must not also react to keyboard shortcuts.
+- Command-terminal transport ordering must preserve trailing PTY output before exit state: WebSocket `output` frames drain first, and the `exit` frame is emitted only after output streaming finishes.
 - Directory listing is shallow: only direct child folders and direct child images of the current directory are returned.
 - Each visible directory row carries a bounded subtree image count computed from that folder's direct images plus at most 3 levels of visible descendants. If visible subfolders continue deeper, the count is marked as estimated instead of walking unboundedly.
 - Returned directory lists use natural numeric ordering, so names like `1`, `2`, and `10` sort in human order.
@@ -63,7 +64,7 @@ This application is a single-binary Go tool that starts from an explicit launch 
 - `GET /api/slideshow`: current directory image list plus localized action labels and action availability.
   - `POST /api/action`: executes `move`, `delete`, or `restore` for one image using the configured key.
   - `POST /api/command/start`: validates a `command` action against the current slideshow state, reserves one interactive terminal session, and returns both the raw command text plus the alias-based terminal title.
-  - `GET /api/command/ws?id=...`: upgrades to WebSocket, attaches the reserved terminal session, streams output, accepts input/resize/terminate messages, and emits exit state.
+  - `GET /api/command/ws?id=...`: upgrades to WebSocket, attaches the reserved terminal session, streams output, accepts input/resize/terminate messages, and emits exit state only after the output stream has drained.
   - `GET /api/config` and `POST /api/config`: load and save validated config.
   - `GET /image`: streams the original image file.
   - `X-Photo-Manager-Locale` is an optional request header. When present with `en` or `zh-CN`, it overrides `Accept-Language`; otherwise the handler falls back to `Accept-Language`, then `en`.

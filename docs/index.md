@@ -1,6 +1,6 @@
 # Docs Index
 
-Last updated: 2026-03-20
+Last updated: 2026-03-22
 
 ## Canonical map
 
@@ -18,10 +18,11 @@ Last updated: 2026-03-20
 
 ## Update rules
 
+- Keep canonical docs in present tense. Architecture, spec, runbook, and quality pages should describe what the code does now rather than replaying the sequence of edits.
 - Update `AGENTS.md` when canonical doc paths or local repo rules change.
 - Update the workflow spec before or while changing sorting/session behavior.
 - Update the architecture note when invariants, path rules, or API contracts change.
-- Update plans as work progresses, and move verified completed plans out of `docs/plans/active/`.
+- Update plans as work progresses, but keep them as execution state rather than a day-by-day diary. Move verified completed plans out of `docs/plans/active/`.
 - Update the quality doc whenever a new bug, regression risk, or missing test is discovered.
 - Keep `todo.md` as scratch only; do not treat it as canonical once the same topic exists in `docs/`.
 
