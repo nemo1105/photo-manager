@@ -117,7 +117,7 @@ body.browser-mode .tree-count {
 }
 
 body.browser-mode .tree-count-value {
-  color: rgba(186, 230, 253, 0.9);
+  color: rgba(148, 163, 184, 0.62);
   font-size: 0.74rem;
   line-height: 1;
 }
