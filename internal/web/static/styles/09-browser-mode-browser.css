@@ -241,7 +241,7 @@ body.browser-mode .image-card-preview {
   color: inherit;
   text-align: left;
   display: grid;
-  gap: 10px;
+  gap: 0;
 }
 
 body.browser-mode .image-card-preview:focus-visible {
@@ -277,8 +277,27 @@ body.browser-mode .thumb {
 }
 
 body.browser-mode .image-meta {
-  gap: 0;
-  padding-right: 52px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+}
+
+body.browser-mode .image-name-button {
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+}
+
+body.browser-mode .image-name-button:focus-visible {
+  outline: none;
+}
+
+body.browser-mode .image-name-button:focus-visible .image-name {
+  color: #f8fbff;
 }
 
 body.browser-mode .image-name {
@@ -287,12 +306,10 @@ body.browser-mode .image-name {
 }
 
 body.browser-mode .image-card-menu-wrap {
-  position: absolute;
-  right: 10px;
-  bottom: 10px;
+  position: relative;
   display: grid;
   justify-items: end;
-  gap: 8px;
+  flex: 0 0 auto;
 }
 
 body.browser-mode .image-card-menu-toggle,
@@ -325,12 +342,20 @@ body.browser-mode .image-card-menu-toggle .browser-icon-svg {
 }
 
 body.browser-mode .image-card-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 2;
   min-width: 116px;
   padding: 6px;
   border-radius: 14px;
   border: 1px solid rgba(103, 232, 249, 0.14);
   background: rgba(8, 12, 22, 0.96);
   box-shadow: 0 16px 36px rgba(3, 7, 18, 0.38);
+}
+
+body.browser-mode .image-card-menu[hidden] {
+  display: none;
 }
 
 body.browser-mode .image-card-menu-item {
@@ -377,3 +402,5 @@ body.browser-mode .browser-empty-state {
     gap: 12px;
   }
 }
+
+

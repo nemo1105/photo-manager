@@ -87,23 +87,23 @@ export function createViewHelpers({
           <div class="thumb-stage" data-gallery-stage>
             <img class="thumb" data-gallery-image src="${escapeHtml(image.url)}" alt="${escapeHtml(image.name)}" loading="lazy" decoding="async">
           </div>
-          <div class="image-meta">
-            <strong class="image-name">${escapeHtml(image.name)}</strong>
-          </div>
         </button>
-        <div class="image-card-menu-wrap" data-browser-image-menu>
-          <button
-            class="image-card-menu-toggle"
-            type="button"
-            aria-label="${escapeHtml(t("browser.moreActions"))}"
-            aria-haspopup="menu"
-            aria-expanded="${menuOpen ? "true" : "false"}"
-            data-browser-image-menu-toggle="${index}"
-          >
-            ${browserMoreIconHtml()}
+        <div class="image-meta">
+          <button class="image-name-button" type="button" data-preview-index="${index}">
+            <strong class="image-name">${escapeHtml(image.name)}</strong>
           </button>
-          ${menuOpen ? `
-            <div class="image-card-menu" role="menu" aria-label="${escapeHtml(t("browser.imageActions"))}">
+          <div class="image-card-menu-wrap" data-browser-image-menu>
+            <button
+              class="image-card-menu-toggle"
+              type="button"
+              aria-label="${escapeHtml(t("browser.moreActions"))}"
+              aria-haspopup="menu"
+              aria-expanded="${menuOpen ? "true" : "false"}"
+              data-browser-image-menu-toggle="${index}"
+            >
+              ${browserMoreIconHtml()}
+            </button>
+            <div class="image-card-menu" role="menu" aria-label="${escapeHtml(t("browser.imageActions"))}" ${menuOpen ? "" : "hidden"}>
               <button
                 class="image-card-menu-item image-card-menu-item--danger"
                 type="button"
@@ -114,7 +114,7 @@ export function createViewHelpers({
                 ${escapeHtml(t("browser.deleteImage"))}
               </button>
             </div>
-          ` : ""}
+          </div>
         </div>
       </article>
     `;

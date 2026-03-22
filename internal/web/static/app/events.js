@@ -175,7 +175,9 @@ export function createEventHandlers(deps) {
       button.dataset.boundBrowserImageMenuToggle = "true";
       button.addEventListener("click", (event) => {
         event.stopPropagation();
+        event.preventDefault();
         toggleBrowserImageMenu(Number(button.dataset.browserImageMenuToggle));
+        syncBrowserImageMenus();
       });
     });
     browserView.querySelectorAll("[data-browser-image-action]").forEach((button) => {
@@ -364,6 +366,7 @@ export function createEventHandlers(deps) {
     if (state.browserImageMenuIndex !== -1 && key === "escape") {
       event.preventDefault();
       closeBrowserImageMenu();
+      syncBrowserImageMenus();
       return;
     }
 
@@ -471,6 +474,24 @@ export function createEventHandlers(deps) {
       return;
     }
     closeBrowserImageMenu();
+    syncBrowserImageMenus();
+  }
+
+  function syncBrowserImageMenus() {
+    browserView.querySelectorAll("[data-browser-image-menu-toggle]").forEach((button) => {
+      const index = Number(button.dataset.browserImageMenuToggle);
+      const open = index === state.browserImageMenuIndex;
+      button.setAttribute("aria-expanded", open ? "true" : "false");
+      const card = button.closest("[data-gallery-card]");
+      if (card) {
+        card.classList.toggle("is-menu-open", open);
+      }
+      const menuWrap = button.closest("[data-browser-image-menu]");
+      const menu = menuWrap ? menuWrap.querySelector(".image-card-menu") : null;
+      if (menu) {
+        menu.hidden = !open;
+      }
+    });
   }
 
   return {

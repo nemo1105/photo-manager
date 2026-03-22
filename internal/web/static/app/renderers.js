@@ -162,6 +162,11 @@ export function createRenderers(deps) {
 
     const isReviewStart = state.browser.currentDirStartsAsReview;
     const startLabel = isReviewStart ? t("browser.reviewHere") : t("browser.sortHere");
+    const previousGallery = browserView.querySelector(".browser-gallery");
+    const galleryScrollTop = previousGallery ? previousGallery.scrollTop : 0;
+    const galleryScrollLeft = previousGallery ? previousGallery.scrollLeft : 0;
+    const viewportScrollX = window.scrollX;
+    const viewportScrollY = window.scrollY;
 
     browserView.innerHTML = `
       <div class="browser-layout">
@@ -194,6 +199,15 @@ export function createRenderers(deps) {
         </section>
       </div>
     `;
+
+    const nextGallery = browserView.querySelector(".browser-gallery");
+    if (nextGallery) {
+      nextGallery.scrollTop = galleryScrollTop;
+      nextGallery.scrollLeft = galleryScrollLeft;
+    }
+    if (window.scrollX !== viewportScrollX || window.scrollY !== viewportScrollY) {
+      window.scrollTo(viewportScrollX, viewportScrollY);
+    }
 
     bindShellEvents();
     bindBrowserEvents();

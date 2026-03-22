@@ -301,11 +301,7 @@ function applyStaticTranslations() {
 }
 
 function closeBrowserImageMenu() {
-    if (state.browserImageMenuIndex === -1) {
-        return;
-    }
     state.browserImageMenuIndex = -1;
-    render();
 }
 
 function toggleBrowserImageMenu(index) {
@@ -315,7 +311,6 @@ function toggleBrowserImageMenu(index) {
     }
     state.browserHelpOpen = false;
     state.browserImageMenuIndex = state.browserImageMenuIndex === nextIndex ? -1 : nextIndex;
-    render();
 }
 
 async function apiGet(path) {
