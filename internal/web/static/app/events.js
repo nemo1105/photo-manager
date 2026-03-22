@@ -38,7 +38,6 @@ export function createEventHandlers(deps) {
 
   function bindStaticEvents() {
     document.addEventListener("keydown", onKeyDown);
-    document.getElementById("previewCloseButton").addEventListener("click", closePreview);
     document.getElementById("settingsCloseButton").addEventListener("click", closeSettings);
     document.getElementById("helpCloseButton").addEventListener("click", closeHelp);
     document.getElementById("commandTerminalActionButton").addEventListener("click", () => {
@@ -196,8 +195,6 @@ export function createEventHandlers(deps) {
           movePreview(-1);
         } else if (action === "preview-next") {
           movePreview(1);
-        } else if (action === "preview-close") {
-          closePreview();
         }
       });
     });

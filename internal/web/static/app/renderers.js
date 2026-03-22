@@ -332,18 +332,32 @@ export function createRenderers(deps) {
     }
 
     previewModal.hidden = false;
+    const canMovePrev = state.preview.index > 0;
+    const canMoveNext = state.preview.index < images.length - 1;
     document.getElementById("previewBody").innerHTML = `
       <div class="preview-stage">
-        <img class="preview-image" src="${escapeHtml(current.url)}" alt="${escapeHtml(current.name)}">
+        <button
+          class="preview-hotspot preview-hotspot--prev"
+          type="button"
+          data-preview-action="preview-prev"
+          aria-label="${escapeHtml(t("slideshow.prev"))}"
+          ${canMovePrev ? "" : "disabled"}
+        ></button>
+        <div class="preview-image-wrap">
+          <img class="preview-image" src="${escapeHtml(current.url)}" alt="${escapeHtml(current.name)}">
+        </div>
+        <button
+          class="preview-hotspot preview-hotspot--next"
+          type="button"
+          data-preview-action="preview-next"
+          aria-label="${escapeHtml(t("slideshow.next"))}"
+          ${canMoveNext ? "" : "disabled"}
+        ></button>
+        <div class="preview-meta" aria-live="polite">
+          <strong title="${escapeHtml(current.name)}">${escapeHtml(current.name)}</strong>
+          <span>${state.preview.index + 1} / ${images.length}</span>
+        </div>
       </div>
-      <div class="preview-meta">
-        <strong>${escapeHtml(current.name)}</strong>
-        <span class="muted-text">${state.preview.index + 1} / ${images.length}</span>
-      </div>
-    `;
-    document.getElementById("previewControls").innerHTML = `
-      ${slideBarButtonHtml(t("slideshow.prev"), keyLabel(getConfig(["keys", "preview", "prev"])), "preview-prev", state.preview.index > 0, "data-preview-action")}
-      ${slideBarButtonHtml(t("slideshow.next"), keyLabel(getConfig(["keys", "preview", "next"])), "preview-next", state.preview.index < images.length - 1, "data-preview-action")}
     `;
     bindPreviewEvents();
   }

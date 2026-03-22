@@ -77,7 +77,8 @@ Users need to start from an arbitrary directory, browse to a folder that contain
 - [x] Browser parent navigation is exposed only through `collapse_dir`; the product does not keep a second `up_dir` shortcut, UI affordance, or browser response field for the same step.
 - [x] The directory tree shows right-aligned image counts for the browse root and each visible folder row, using a 3-level descendant scan cap and a visible estimate marker when deeper visible subfolders are omitted.
 - [x] At common desktop widths, the help modal shows shortcuts in two columns with folder browsing plus preview on the first row and sorting view plus sorting actions on the second row.
-- [x] Preview and sorting-view footer buttons use the same compact chrome height as the other small controls.
+- [x] Preview uses a minimalist overlay with no visible title, close button, or footer controls, and keeps only the image plus centered filename and progress.
+- [x] Sorting-view footer buttons use the same compact chrome height as the other small controls.
 - [x] User-facing copy consistently speaks in terms of sorting/reviewing photos and folder browsing, without exposing internal `session/workspace/browser/slideshow/capture` language.
 
 ## Default shortcut template
@@ -93,6 +94,7 @@ Users need to start from an arbitrary directory, browse to a folder that contain
 - Preview:
   - `escape` closes preview.
   - `arrowleft` and `arrowright` (`Left Arrow` and `Right Arrow`) browse preview images.
+  - Mouse or touch navigation uses left and right edge hotspots inside the preview stage; clicking the surrounding backdrop closes preview.
 - Sorting view:
   - `arrowleft` and `arrowright` (`Left Arrow` and `Right Arrow`) browse images.
   - `space` exits sorting and returns to folder browsing.

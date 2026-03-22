@@ -52,6 +52,7 @@ Track the next round of UX and reliability work after the initial browse/preview
   Current correction focus on 2026-03-22: rebalance the help-footer metadata so `浏览范围 / Browse range` gets a wider adaptive column, while `当前文件夹 / Current folder` truncates earlier instead of taking equal width.
   Current correction focus on 2026-03-22: unify visible scrollbar styling across the app with shared thumb/track tokens while keeping intentionally hidden crumb and toolbar scrollers hidden.
   Current execution focus on 2026-03-22: show each directory row's image count on the right, cap subtree counting at 3 levels with an estimate marker for deeper visible branches, and remove the help-modal stats block plus its dedicated API path.
+  Current execution focus on 2026-03-22: replace preview modal chrome with a minimalist overlay that drops visible title, close, and footer controls, keeps only centered filename plus progress, and uses left/right hotspot navigation inside the image stage.
 - [x] Add zh-CN / en localization with default language chosen from the browser locale.
   Current execution focus on 2026-03-21: detect locale from browser language on first load, let the browser toolbar switch between `zh-CN` and `en`, persist manual choice in browser storage, and localize backend notices / errors through the same request locale.
   Current execution focus on 2026-03-21: replace implementation-heavy user copy with task language centered on `整理 / Sort`, `复查 / Review`, `文件夹浏览 / Folder browsing`, and `整理界面 / Sorting view`.

@@ -276,9 +276,7 @@ function applyStaticTranslations() {
     document.title = t("common.appTitle");
     document.getElementById("skipLink").textContent = t("common.skipLink");
     document.getElementById("breadcrumbs").setAttribute("aria-label", t("browser.currentDirectoryAria"));
-    document.getElementById("previewKicker").textContent = t("common.preview");
     document.getElementById("previewTitle").textContent = t("preview.imagePreview");
-    document.getElementById("previewCloseButton").setAttribute("aria-label", t("preview.close"));
     document.getElementById("settingsKicker").textContent = t("settings.configuration");
     document.getElementById("settingsTitle").textContent = t("settings.keysAndActions");
     document.getElementById("settingsCloseButton").textContent = t("common.close");

@@ -73,16 +73,9 @@
 
   <div id="previewModal" class="modal" hidden>
     <div class="modal-backdrop" data-close-preview="true"></div>
-    <div class="modal-card preview-card" role="dialog" aria-modal="true" aria-labelledby="previewTitle">
-      <div class="modal-header">
-        <div>
-          <p id="previewKicker" class="modal-kicker">Preview</p>
-          <h2 id="previewTitle" class="modal-title">Image Preview</h2>
-        </div>
-        <button id="previewCloseButton" class="preview-close-button" type="button" aria-label="Close preview">X</button>
-      </div>
+    <div class="preview-shell" role="dialog" aria-modal="true" aria-labelledby="previewTitle">
+      <h2 id="previewTitle" class="visually-hidden">Image Preview</h2>
       <div id="previewBody" class="preview-body"></div>
-      <div id="previewControls" class="modal-footer preview-controls"></div>
     </div>
   </div>
 

@@ -69,7 +69,6 @@ body.browser-mode .capture-hint {
   color: rgba(148, 163, 184, 0.82);
 }
 
-body.browser-mode .preview-stage,
 body.browser-mode .settings-section {
   border-color: rgba(103, 232, 249, 0.12);
   background: linear-gradient(180deg, rgba(12, 18, 32, 0.94) 0%, rgba(8, 13, 24, 0.92) 100%);
@@ -98,34 +97,6 @@ body.browser-mode .settings-footer {
 body.browser-mode .settings-field label,
 body.browser-mode .capture-inline-text {
   color: rgba(148, 163, 184, 0.82);
-}
-
-body.browser-mode .preview-controls .slide-bar-button {
-  border-color: rgba(125, 211, 252, 0.12);
-  background: rgba(255, 255, 255, 0.05);
-}
-
-body.browser-mode .preview-controls .slide-bar-button:hover:not(:disabled) {
-  background: rgba(255, 255, 255, 0.11);
-  border-color: rgba(255, 255, 255, 0.18);
-  box-shadow: none;
-}
-
-body.browser-mode .preview-controls .slide-bar-key {
-  background: rgba(255, 255, 255, 0.08);
-  color: rgba(226, 232, 240, 0.78);
-}
-
-body.browser-mode .preview-close-button {
-  border-color: rgba(125, 211, 252, 0.12);
-  background: rgba(255, 255, 255, 0.04);
-  color: rgba(226, 232, 240, 0.72);
-}
-
-body.browser-mode .preview-close-button:hover:not(:disabled) {
-  background: rgba(255, 255, 255, 0.1);
-  border-color: rgba(255, 255, 255, 0.18);
-  color: #f8fafc;
 }
 
 body.browser-mode input,
