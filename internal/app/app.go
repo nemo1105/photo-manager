@@ -23,6 +23,7 @@ type App struct {
 	cfg        *config.Config
 	trash      Trasher
 	terminal   terminal.Manager
+	decorators []DirectoryDecorator
 	session    *Session
 }
 
@@ -41,11 +42,12 @@ type Breadcrumb struct {
 }
 
 type DirEntry struct {
-	Name                string `json:"name"`
-	Path                string `json:"path"`
-	HasChildren         bool   `json:"hasChildren"`
-	ImageCount          int    `json:"imageCount"`
-	ImageCountEstimated bool   `json:"imageCountEstimated"`
+	Name                string          `json:"name"`
+	Path                string          `json:"path"`
+	HasChildren         bool            `json:"hasChildren"`
+	ImageCount          int             `json:"imageCount"`
+	ImageCountEstimated bool            `json:"imageCountEstimated"`
+	Decorations         []DirDecoration `json:"decorations,omitempty"`
 }
 
 type ImageEntry struct {
@@ -65,26 +67,28 @@ type ActionButton struct {
 }
 
 type BrowserData struct {
-	LaunchRoot                 string         `json:"launchRoot"`
-	CurrentPath                string         `json:"currentPath"`
-	CurrentName                string         `json:"currentName"`
-	CurrentImageCount          int            `json:"currentImageCount"`
-	CurrentImageCountEstimated bool           `json:"currentImageCountEstimated"`
-	Breadcrumbs                []Breadcrumb   `json:"breadcrumbs"`
-	Directories                []DirEntry     `json:"directories"`
-	Images                     []ImageEntry   `json:"images"`
-	Session                    SessionInfo    `json:"session"`
-	Config                     *config.Config `json:"config"`
-	CurrentDirStartsAsReview   bool           `json:"currentDirStartsAsReview"`
-	Notice                     string         `json:"notice,omitempty"`
+	LaunchRoot                 string          `json:"launchRoot"`
+	CurrentPath                string          `json:"currentPath"`
+	CurrentName                string          `json:"currentName"`
+	CurrentImageCount          int             `json:"currentImageCount"`
+	CurrentImageCountEstimated bool            `json:"currentImageCountEstimated"`
+	CurrentDecorations         []DirDecoration `json:"currentDecorations,omitempty"`
+	Breadcrumbs                []Breadcrumb    `json:"breadcrumbs"`
+	Directories                []DirEntry      `json:"directories"`
+	Images                     []ImageEntry    `json:"images"`
+	Session                    SessionInfo     `json:"session"`
+	Config                     *config.Config  `json:"config"`
+	CurrentDirStartsAsReview   bool            `json:"currentDirStartsAsReview"`
+	Notice                     string          `json:"notice,omitempty"`
 }
 
 type TreeData struct {
-	CurrentPath                string     `json:"currentPath"`
-	CurrentName                string     `json:"currentName"`
-	CurrentImageCount          int        `json:"currentImageCount"`
-	CurrentImageCountEstimated bool       `json:"currentImageCountEstimated"`
-	Directories                []DirEntry `json:"directories"`
+	CurrentPath                string          `json:"currentPath"`
+	CurrentName                string          `json:"currentName"`
+	CurrentImageCount          int             `json:"currentImageCount"`
+	CurrentImageCountEstimated bool            `json:"currentImageCountEstimated"`
+	CurrentDecorations         []DirDecoration `json:"currentDecorations,omitempty"`
+	Directories                []DirEntry      `json:"directories"`
 }
 
 type SlideshowData struct {
@@ -145,8 +149,15 @@ func New(launchRoot, configPath string, cfg *config.Config, trash Trasher) *App 
 }
 
 func NewWithTerminal(launchRoot, configPath string, cfg *config.Config, trash Trasher, terminalManager terminal.Manager) *App {
+	return NewWithDependencies(launchRoot, configPath, cfg, trash, terminalManager, nil)
+}
+
+func NewWithDependencies(launchRoot, configPath string, cfg *config.Config, trash Trasher, terminalManager terminal.Manager, decorators []DirectoryDecorator) *App {
 	if terminalManager == nil {
 		terminalManager = terminal.NewSystemManager()
+	}
+	if decorators == nil {
+		decorators = defaultDirectoryDecorators()
 	}
 	return &App{
 		launchRoot: filepath.Clean(launchRoot),
@@ -154,6 +165,7 @@ func NewWithTerminal(launchRoot, configPath string, cfg *config.Config, trash Tr
 		cfg:        cfg.Clone(),
 		trash:      trash,
 		terminal:   terminalManager,
+		decorators: append([]DirectoryDecorator(nil), decorators...),
 	}
 }
 
@@ -186,7 +198,7 @@ func (a *App) Browser(relPath string, locale localize.Locale) (*BrowserData, err
 
 	a.session = nil
 
-	dirs, images, err := listDirectory(absPath, a.launchRoot)
+	dirs, images, err := listDirectory(absPath, a.launchRoot, locale, a.decorators)
 	if err != nil {
 		return nil, err
 	}
@@ -194,6 +206,7 @@ func (a *App) Browser(relPath string, locale localize.Locale) (*BrowserData, err
 	if err != nil {
 		return nil, err
 	}
+	currentDecorations := evaluateDirectoryDecorations(absPath, relPath, displayName(absPath), locale, a.decorators)
 
 	_, startsAsReview := a.sessionStartRootLocked(absPath)
 	return &BrowserData{
@@ -202,6 +215,7 @@ func (a *App) Browser(relPath string, locale localize.Locale) (*BrowserData, err
 		CurrentName:                displayName(absPath),
 		CurrentImageCount:          currentCount.Total,
 		CurrentImageCountEstimated: currentCount.Estimated,
+		CurrentDecorations:         currentDecorations,
 		Breadcrumbs:                buildBreadcrumbs(locale, relPath),
 		Directories:                dirs,
 		Images:                     images,
@@ -211,7 +225,7 @@ func (a *App) Browser(relPath string, locale localize.Locale) (*BrowserData, err
 	}, nil
 }
 
-func (a *App) Tree(relPath string) (*TreeData, error) {
+func (a *App) Tree(relPath string, locale localize.Locale) (*TreeData, error) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 
@@ -220,7 +234,7 @@ func (a *App) Tree(relPath string) (*TreeData, error) {
 		return nil, err
 	}
 
-	dirs, _, err := listDirectory(absPath, a.launchRoot)
+	dirs, _, err := listDirectory(absPath, a.launchRoot, locale, a.decorators)
 	if err != nil {
 		return nil, err
 	}
@@ -234,6 +248,7 @@ func (a *App) Tree(relPath string) (*TreeData, error) {
 		CurrentName:                displayName(absPath),
 		CurrentImageCount:          currentCount.Total,
 		CurrentImageCountEstimated: currentCount.Estimated,
+		CurrentDecorations:         evaluateDirectoryDecorations(absPath, relPath, displayName(absPath), locale, a.decorators),
 		Directories:                dirs,
 	}, nil
 }
@@ -254,7 +269,7 @@ func (a *App) OpenSession(relPath string) (*OpenSessionResult, error) {
 		}, nil
 	}
 
-	_, images, err := listDirectory(absPath, a.launchRoot)
+	_, images, err := listDirectory(absPath, a.launchRoot, localize.EN, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -287,7 +302,7 @@ func (a *App) Slideshow(relPath string, locale localize.Locale) (*SlideshowData,
 	}
 
 	notice := a.maybeAutoEndSessionLocked(locale, absPath)
-	dirs, images, err := listDirectory(absPath, a.launchRoot)
+	dirs, images, err := listDirectory(absPath, a.launchRoot, locale, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -738,7 +753,7 @@ func isWithinDir(path, root string) bool {
 	return rel == "." || (rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator)))
 }
 
-func listDirectory(absPath, launchRoot string) ([]DirEntry, []ImageEntry, error) {
+func listDirectory(absPath, launchRoot string, locale localize.Locale, decorators []DirectoryDecorator) ([]DirEntry, []ImageEntry, error) {
 	entries, err := os.ReadDir(absPath)
 	if err != nil {
 		return nil, nil, err
@@ -758,16 +773,18 @@ func listDirectory(absPath, launchRoot string) ([]DirEntry, []ImageEntry, error)
 			if err != nil {
 				continue
 			}
+			relPath := filepath.ToSlash(rel)
 			imageCount, err := countVisibleImagesWithinDepth(entryPath, 3)
 			if err != nil {
 				return nil, nil, err
 			}
 			dirs = append(dirs, DirEntry{
 				Name:                entry.Name(),
-				Path:                filepath.ToSlash(rel),
+				Path:                relPath,
 				HasChildren:         hasVisibleChildDirectory(entryPath),
 				ImageCount:          imageCount.Total,
 				ImageCountEstimated: imageCount.Estimated,
+				Decorations:         evaluateDirectoryDecorations(entryPath, relPath, entry.Name(), locale, decorators),
 			})
 			continue
 		}

@@ -102,6 +102,10 @@ func ReviewStartNotice(locale Locale) string {
 	return choose(locale, "This folder already contains sorted photos. Review them here.", "这个文件夹里已经有整理过的图片，可以直接在这里复查。")
 }
 
+func DoneMarkerTooltip(locale Locale) string {
+	return choose(locale, "Marked done by done.txt", "已由 done.txt 标记为完成")
+}
+
 func SessionAutoEndedNotice(locale Locale) string {
 	return choose(locale, "You left the current sorting range. Sorting ended automatically.", "已离开当前整理范围，整理已自动结束。")
 }

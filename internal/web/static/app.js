@@ -653,7 +653,14 @@ async function loadTreeNode(path, options) {
     render();
     try {
         const data = normalizeTreeData(await apiGet(`/api/tree?path=${encodeURIComponent(key)}`));
-        cacheTreeNode(data.currentPath, data.currentName, data.directories, data.currentImageCount, data.currentImageCountEstimated);
+        cacheTreeNode(
+            data.currentPath,
+            data.currentName,
+            data.directories,
+            data.currentImageCount,
+            data.currentImageCountEstimated,
+            data.currentDecorations,
+        );
         return state.tree.nodes[key];
     } finally {
         delete state.tree.loading[key];
@@ -683,6 +690,7 @@ async function syncTreeToCurrentPath(browserData, options) {
         browserData.directories,
         browserData.currentImageCount,
         browserData.currentImageCountEstimated,
+        browserData.currentDecorations,
     );
     if (!settings.expandTree) {
         return;
@@ -698,12 +706,13 @@ async function syncTreeToCurrentPath(browserData, options) {
     }
 }
 
-function cacheTreeNode(path, name, directories, imageCount, imageCountEstimated) {
+function cacheTreeNode(path, name, directories, imageCount, imageCountEstimated, decorations) {
     state.tree.nodes[path || ""] = {
         path: path || "",
         name: name || pathLabel(path, t("common.root")),
         imageCount: Number.isFinite(Number(imageCount)) ? Number(imageCount) : 0,
         imageCountEstimated: !!imageCountEstimated,
+        decorations: Array.isArray(decorations) ? decorations : [],
         directories: normalizeDirectories(directories),
     };
 }
@@ -952,6 +961,7 @@ function rootTreeNode() {
         path: "",
         imageCount: 0,
         imageCountEstimated: false,
+        decorations: [],
         directories: [],
     };
 }

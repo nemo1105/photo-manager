@@ -19,6 +19,7 @@ Track the remaining UI and reliability work after the browse/preview/sorting flo
 - [x] Rework the folder-browsing gallery into an aspect-ratio-aware masonry layout that uses loaded image dimensions, keeps images uncropped, and treats `350 px` portrait-width / landscape-height targets as soft goals when space allows.
 - [x] Add a per-photo overflow menu on browse-gallery cards with browser-mode single-image delete routed through the recycle bin / Trash without starting sorting.
 - [x] Restore visible indentation progression for deeper levels in the browser tree so third-level folders no longer visually collapse onto second-level rows.
+- [x] Add an internal directory-decoration plugin path for browser-tree status icons, including a built-in `done.txt` green check marker with locale-aware tooltips.
 - [ ] Prevent repeated operations on stale slideshow state from surfacing as user-visible errors.
 - [ ] Make the settings key-capture state more obvious while waiting for the next key press.
 
@@ -30,6 +31,7 @@ Track the remaining UI and reliability work after the browse/preview/sorting flo
 - Interactive terminal behavior still depends on platform-specific PTY behavior, so Windows and macOS runtime verification remains necessary even when backend tests pass.
 - The browse gallery now measures layout from browser-decoded image dimensions at runtime, so mixed portrait/panorama folders still need manual verification across resize breakpoints.
 - The new browse-card overflow menu needs manual verification for click-away dismissal, mobile hit targets, and delete feedback after masonry relayout.
+- Tree decorations currently ship without automated browser UI coverage, so multi-icon alignment and selected-row readability still need live verification.
 
 ## Decisions
 
@@ -39,6 +41,7 @@ Track the remaining UI and reliability work after the browse/preview/sorting flo
 - User-facing language is task-first: `整理 / Sort`, `复查 / Review`, `文件夹浏览 / Folder browsing`, and `整理界面 / Sorting view`. Internal `session` terminology remains code-level only.
 - Browser settings entry is explicit through the help modal header button; folder browsing no longer reserves a dedicated settings shortcut.
 - Directory rows show bounded image counts from the existing browser/tree payloads, with a 3-level scan cap and an estimate marker for deeper visible subtrees.
+- Directory status icons now ride on the existing browser/tree payloads through an internal decorator registry; v1 uses a localized `done-marker` for folders that directly contain `done.txt`.
 - `command` actions run as raw shell text with no placeholder DSL or injected current-image/current-directory variables; the only guaranteed execution context is the initial `sessionRoot` working directory.
 - `alias` is the user-facing label for move and command actions. Legacy configs without it may load, but save remains blocked until the alias is filled.
 
@@ -51,6 +54,7 @@ Track the remaining UI and reliability work after the browse/preview/sorting flo
 - Verify refreshing or reopening browser mode during an active slideshow ends the session silently and does not surface browser-side active-session controls.
 - Verify the directory tree shows right-aligned image counts for the browse root and visible folder rows, with an estimate marker when deeper visible subfolders exceed the 3-level scan cap.
 - Verify second- and third-level folders in browser mode render with distinct indentation so nesting remains readable in deeper trees.
+- Verify adding or removing `done.txt` changes the tree decoration after the next browser or tree refresh, and verify the green check stays aligned with counts and selected-row styling.
 - Verify browser help and settings no longer surface `up_dir`, browser-side `end_session`, or browser-side `open_settings`, and `/api/browser` omits `parentPath` and `canGoUp`.
 - Verify `command` opens an interactive full-screen terminal, starts in the sort-starting folder even from review mode, and still delivers trailing output before the terminal reports exit.
 - Verify move and command aliases render directly in sorting-facing UI and the command terminal title, while legacy configs without aliases still fail save until corrected.

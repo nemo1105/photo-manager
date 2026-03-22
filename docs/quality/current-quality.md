@@ -10,6 +10,7 @@ Status: active
 - Keep browser and sorting states unambiguous: browser mode must not preserve an active session, and sorting actions must stay available by both keyboard and visible buttons.
 - Keep browser-mode single-image actions constrained and explicit: the browse-gallery overflow menu must not start sorting and delete must still use the recycle bin / Trash.
 - Keep the browser tree predictable and bounded: natural directory ordering, keyboard/tree behavior alignment, and image counts capped at 3 descendant levels with explicit estimate marking.
+- Keep directory decorations lightweight and isolated: browser/tree status icons should remain localized, should not bubble unexpectedly across folders, and must not break browsing when a decorator fails.
 - Keep folder-browsing image cards aligned to decoded image ratios so mixed portrait and landscape folders do not waste large thumbnail areas on empty frame space.
 - Keep user-facing copy consistent within the selected locale and centered on sorting/review terminology rather than internal implementation terms.
 - Keep the command-terminal flow modal and ordered so terminal input does not leak back to sorting and fast-exiting commands still show their final output before exit.
@@ -32,6 +33,7 @@ Status: active
   - Review-folder slideshow filtering that hides the current target move action while keeping restore and other actions available there, and hides restore entirely outside target folders.
   - Ending sessions when browser mode is loaded, and auto-ending sessions when slideshow/action requests leave the session subtree.
   - Directory and current-node image counts in browser/tree payloads, including the 3-level scan cap, hidden-entry filtering, unsupported-file filtering, and estimate marking for deeper visible branches.
+  - Built-in directory decorations in browser/tree payloads, including the `done.txt` marker, request-localized tooltips, per-directory-only scope, and failure isolation when one decorator errors.
   - Auto-renaming on target conflicts.
   - Silent loading and save-time cleanup of legacy `browser.end_session`, `browser.up_dir`, `browser.open_settings`, and `slideshow.back_to_browser` config fields.
   - Browser handler responses omitting legacy `parentPath` and `canGoUp` fields after the parent-navigation simplification.
@@ -48,12 +50,13 @@ Status: active
   - Browser-side UI flows in the static frontend bundle under `internal/web/static/app.js` and `internal/web/static/app/`.
   - Automated browser verification that the browse-gallery overflow menu opens from the bottom-right trigger, dismisses on outside click, and refreshes masonry layout after delete.
   - Automated browser verification that deeper browser-tree levels keep increasing indentation instead of visually collapsing onto the same column.
+  - Automated browser verification that tree decoration chips stay aligned with folder labels and counts across current, ancestor, and collapsed states.
   - Automated browser verification that move and command aliases render in the sorting footer and help modal, and that command aliases render in the command terminal title.
 - Layout verification that browser mode keeps the tree and image list inside the viewport without a large header shell.
 - Manual verification that browse-gallery masonry sizing stays stable across mixed orientations, lazy image loads, and window resizes without horizontal overflow.
 - Layout verification that slideshow mode stays scrollbar-free at runtime.
   - Manual verification that the regrouped help modal keeps its two-column shortcut layout and header actions readable across browser widths.
-  - Manual verification that directory-tree count badges stay aligned and refresh after sorting actions.
+  - Manual verification that directory-tree count badges and decoration chips stay aligned and refresh after sorting actions or `done.txt` marker changes.
   - Manual verification that refreshing during slideshow ends the session and reopens browser mode without browser-side active-session controls.
   - End-to-end verification of delete-to-recycle-bin behavior.
   - Browser-storage persistence and no-reload locale switching in the live UI.

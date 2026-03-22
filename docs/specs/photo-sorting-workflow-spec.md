@@ -40,6 +40,7 @@ Users need to start from an arbitrary directory, browse to a folder that contain
 - Manual language switching is browser-local only, takes precedence over browser-language detection, and must not require a config-file change.
 - The help modal should group shortcuts by mode, name arrow keys explicitly as arrow keys, show `Space` as the default slideshow exit, and use a two-column shortcut grid at common desktop widths.
 - The directory tree should show right-aligned image counts for the browse root and each visible folder row, counting the folder itself plus at most 3 visible descendant levels and marking deeper visible subtrees as estimated.
+- Folder-tree status decorations come from built-in directory rules in v1. They are not edited through settings, are not loaded from external scripts, and apply only to the directory being evaluated unless a future rule explicitly changes that contract.
 - Folder browsing should keep each image fully visible and size gallery cards from the browser-decoded image dimensions; portrait and square photos target about `350 px` stage width, landscape photos target about `350 px` stage height, and narrow widths may relax those targets to avoid horizontal overflow.
 
 ## User-Facing Terminology
@@ -86,6 +87,7 @@ Users need to start from an arbitrary directory, browse to a folder that contain
 - [x] Settings stays available from the help modal header button, while folder browsing no longer reserves a dedicated settings shortcut.
 - [x] Browser parent navigation is exposed only through `collapse_dir`; the product does not keep a second `up_dir` shortcut, UI affordance, or browser response field for the same step.
 - [x] The directory tree shows right-aligned image counts for the browse root and each visible folder row, using a 3-level descendant scan cap and a visible estimate marker when deeper visible subfolders are omitted.
+- [x] When a folder itself contains `done.txt`, the directory tree shows a green check decoration for that folder, exposes the same decoration on the current-node payload when browsing inside it, and does not mark parent folders that only contain matching descendants.
 - [x] The folder-browsing gallery keeps images uncropped, sizes cards from actual decoded image ratios, avoids large thumbnail whitespace for mixed orientations, and relaxes the `350 px` target on narrow widths instead of overflowing horizontally.
 - [x] At common desktop widths, the help modal shows shortcuts in two columns with folder browsing plus preview on the first row and sorting view plus sorting actions on the second row.
 - [x] Preview uses a minimalist overlay with no visible title, close button, or footer controls, and keeps only the image plus centered filename and progress.

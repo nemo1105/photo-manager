@@ -70,6 +70,20 @@ export function createAppHelpers({ state, t }) {
     return Math.trunc(numeric);
   }
 
+  function normalizeDecorations(value) {
+    return Array.isArray(value)
+      ? value
+          .map((entry) => ({
+            id: entry.id || "",
+            icon: entry.icon || "check",
+            tone: entry.tone || "neutral",
+            tooltip: entry.tooltip || "",
+            priority: Number.isFinite(Number(entry.priority)) ? Number(entry.priority) : 0,
+          }))
+          .filter((entry) => entry.id)
+      : [];
+  }
+
   function normalizeDirectories(value) {
     return Array.isArray(value)
       ? value.map((entry) => ({
@@ -78,6 +92,7 @@ export function createAppHelpers({ state, t }) {
           hasChildren: !!entry.hasChildren,
           imageCount: numberOrZero(entry.imageCount),
           imageCountEstimated: !!entry.imageCountEstimated,
+          decorations: normalizeDecorations(entry.decorations),
         }))
       : [];
   }
@@ -107,6 +122,7 @@ export function createAppHelpers({ state, t }) {
       ...data,
       currentImageCount: numberOrZero(data.currentImageCount),
       currentImageCountEstimated: !!data.currentImageCountEstimated,
+      currentDecorations: normalizeDecorations(data.currentDecorations),
       directories: normalizeDirectories(data.directories),
       images: normalizeImages(data.images),
       breadcrumbs: normalizeBreadcrumbs(data.breadcrumbs),
@@ -131,6 +147,7 @@ export function createAppHelpers({ state, t }) {
       ...data,
       currentImageCount: numberOrZero(data.currentImageCount),
       currentImageCountEstimated: !!data.currentImageCountEstimated,
+      currentDecorations: normalizeDecorations(data.currentDecorations),
       directories: normalizeDirectories(data.directories),
     };
   }

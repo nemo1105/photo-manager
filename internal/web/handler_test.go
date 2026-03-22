@@ -963,6 +963,67 @@ func TestHandleTreeReturnsCurrentNodeCounts(t *testing.T) {
 	}
 }
 
+func TestHandleBrowserAndTreeReturnDirectoryDecorations(t *testing.T) {
+	root := t.TempDir()
+	mustWriteHandlerFile(t, filepath.Join(root, "work", "done.txt"))
+
+	cfg := config.Default()
+	handler := NewHandler(app.New(root, filepath.Join(root, "config.yaml"), cfg, stubTrash{}))
+
+	browserReq := httptest.NewRequest(http.MethodGet, "/api/browser?path=", nil)
+	browserReq.Header.Set("X-Photo-Manager-Locale", string(localize.EN))
+	browserRec := httptest.NewRecorder()
+	handler.ServeHTTP(browserRec, browserReq)
+
+	if browserRec.Code != http.StatusOK {
+		t.Fatalf("expected browser 200, got %d", browserRec.Code)
+	}
+
+	var browserPayload struct {
+		Directories []struct {
+			Name        string `json:"name"`
+			Decorations []struct {
+				ID      string `json:"id"`
+				Tooltip string `json:"tooltip"`
+			} `json:"decorations"`
+		} `json:"directories"`
+	}
+	if err := json.Unmarshal(browserRec.Body.Bytes(), &browserPayload); err != nil {
+		t.Fatalf("decode browser payload: %v", err)
+	}
+	if len(browserPayload.Directories) != 1 {
+		t.Fatalf("expected one browser directory, got %+v", browserPayload.Directories)
+	}
+	if browserPayload.Directories[0].Name != "work" {
+		t.Fatalf("expected work directory, got %+v", browserPayload.Directories[0])
+	}
+	if got := browserPayload.Directories[0].Decorations; len(got) != 1 || got[0].ID != "done-marker" || got[0].Tooltip != "Marked done by done.txt" {
+		t.Fatalf("unexpected browser decorations: %+v", got)
+	}
+
+	treeReq := httptest.NewRequest(http.MethodGet, "/api/tree?path=work", nil)
+	treeReq.Header.Set("X-Photo-Manager-Locale", string(localize.ZHCN))
+	treeRec := httptest.NewRecorder()
+	handler.ServeHTTP(treeRec, treeReq)
+
+	if treeRec.Code != http.StatusOK {
+		t.Fatalf("expected tree 200, got %d", treeRec.Code)
+	}
+
+	var treePayload struct {
+		CurrentDecorations []struct {
+			ID      string `json:"id"`
+			Tooltip string `json:"tooltip"`
+		} `json:"currentDecorations"`
+	}
+	if err := json.Unmarshal(treeRec.Body.Bytes(), &treePayload); err != nil {
+		t.Fatalf("decode tree payload: %v", err)
+	}
+	if got := treePayload.CurrentDecorations; len(got) != 1 || got[0].ID != "done-marker" || got[0].Tooltip != "已由 done.txt 标记为完成" {
+		t.Fatalf("unexpected tree decorations: %+v", got)
+	}
+}
+
 func TestHandleBrowserStatsRouteIsRemoved(t *testing.T) {
 	root := t.TempDir()
 	cfg := config.Default()

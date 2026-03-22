@@ -519,7 +519,7 @@ func TestTreeLookupOutsideSessionDoesNotEndSession(t *testing.T) {
 		t.Fatalf("open session: %v", err)
 	}
 
-	data, err := app.Tree("other")
+	data, err := app.Tree("other", localize.EN)
 	if err != nil {
 		t.Fatalf("tree other: %v", err)
 	}
@@ -607,7 +607,7 @@ func TestBrowserCountsMarkEstimatedWhenVisibleTreeGoesDeeperThanThreeLevels(t *t
 		t.Fatal("expected root directory count to be marked estimated")
 	}
 
-	tree, err := app.Tree("root")
+	tree, err := app.Tree("root", localize.EN)
 	if err != nil {
 		t.Fatalf("tree root: %v", err)
 	}
@@ -720,12 +720,106 @@ func TestBrowserAndTreeUseNaturalDirectoryOrder(t *testing.T) {
 		t.Fatalf("unexpected browser directory order: %v", got)
 	}
 
-	treeData, err := app.Tree("tree")
+	treeData, err := app.Tree("tree", localize.EN)
 	if err != nil {
 		t.Fatalf("tree browse: %v", err)
 	}
 	if got := dirNames(treeData.Directories); !reflect.DeepEqual(got, []string{"1", "2", "10"}) {
 		t.Fatalf("unexpected tree directory order: %v", got)
+	}
+}
+
+func TestDirectoryDecorationsMarkDoneTextOnlyOnCurrentDirectory(t *testing.T) {
+	root := t.TempDir()
+	mustWriteFile(t, filepath.Join(root, "work", "done.txt"))
+	mustWriteFile(t, filepath.Join(root, "parent", "child", "done.txt"))
+
+	cfg := config.Default()
+	app := New(root, filepath.Join(root, "config.yaml"), cfg, &fakeTrash{})
+
+	browserData, err := app.Browser("", localize.EN)
+	if err != nil {
+		t.Fatalf("browse root: %v", err)
+	}
+
+	workEntry := dirEntryByName(browserData.Directories, "work")
+	if workEntry == nil {
+		t.Fatal("expected work entry")
+	}
+	if got := decorationIDs(workEntry.Decorations); !reflect.DeepEqual(got, []string{"done-marker"}) {
+		t.Fatalf("expected work done marker, got %v", got)
+	}
+
+	parentEntry := dirEntryByName(browserData.Directories, "parent")
+	if parentEntry == nil {
+		t.Fatal("expected parent entry")
+	}
+	if got := decorationIDs(parentEntry.Decorations); len(got) != 0 {
+		t.Fatalf("expected parent to stay undecorated, got %v", got)
+	}
+
+	treeData, err := app.Tree("work", localize.EN)
+	if err != nil {
+		t.Fatalf("tree work: %v", err)
+	}
+	if got := decorationIDs(treeData.CurrentDecorations); !reflect.DeepEqual(got, []string{"done-marker"}) {
+		t.Fatalf("expected current tree decorations to include done marker, got %v", got)
+	}
+}
+
+func TestDirectoryDecorationsKeepWorkingWhenOneDecoratorFails(t *testing.T) {
+	root := t.TempDir()
+	mustMkdir(t, filepath.Join(root, "work"))
+
+	cfg := config.Default()
+	app := NewWithDependencies(
+		root,
+		filepath.Join(root, "config.yaml"),
+		cfg,
+		&fakeTrash{},
+		nil,
+		[]DirectoryDecorator{
+			DirectoryDecoratorFunc(func(ctx DirectoryDecorationContext) ([]DirDecoration, error) {
+				return []DirDecoration{{
+					ID:       "low",
+					Icon:     DirDecorationIconCheck,
+					Tone:     DirDecorationToneInfo,
+					Priority: 10,
+				}}, nil
+			}),
+			DirectoryDecoratorFunc(func(ctx DirectoryDecorationContext) ([]DirDecoration, error) {
+				return nil, errors.New("boom")
+			}),
+			DirectoryDecoratorFunc(func(ctx DirectoryDecorationContext) ([]DirDecoration, error) {
+				return []DirDecoration{
+					{
+						ID:       "high",
+						Icon:     DirDecorationIconCheck,
+						Tone:     DirDecorationToneWarning,
+						Priority: 50,
+					},
+					{
+						ID:       "mid",
+						Icon:     DirDecorationIconCheck,
+						Tone:     DirDecorationToneNeutral,
+						Priority: 20,
+					},
+				}, nil
+			}),
+		},
+	)
+
+	data, err := app.Browser("", localize.EN)
+	if err != nil {
+		t.Fatalf("browse root: %v", err)
+	}
+
+	workEntry := dirEntryByName(data.Directories, "work")
+	if workEntry == nil {
+		t.Fatal("expected work entry")
+	}
+	if got := decorationIDs(workEntry.Decorations); !reflect.DeepEqual(got, []string{"high", "mid", "low"}) {
+		t.Fatalf("unexpected decoration order after error isolation: %v", got)
 	}
 }
 
@@ -880,6 +974,14 @@ func dirNames(entries []DirEntry) []string {
 		names = append(names, entry.Name)
 	}
 	return names
+}
+
+func decorationIDs(entries []DirDecoration) []string {
+	ids := make([]string, 0, len(entries))
+	for _, entry := range entries {
+		ids = append(ids, entry.ID)
+	}
+	return ids
 }
 
 func dirEntryByName(entries []DirEntry, want string) *DirEntry {

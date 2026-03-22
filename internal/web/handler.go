@@ -124,7 +124,7 @@ func (h *Handler) handleTree(w http.ResponseWriter, r *http.Request) {
 		methodNotAllowed(w)
 		return
 	}
-	data, err := h.app.Tree(r.URL.Query().Get("path"))
+	data, err := h.app.Tree(r.URL.Query().Get("path"), localize.FromRequest(r))
 	if err != nil {
 		writeError(w, r, err)
 		return

@@ -58,10 +58,50 @@ export function createRenderers(deps) {
     renderCommandTerminal();
   }
 
-  function treeLabelHtml(label, imageCount, estimated) {
+  function treeDecorationIconHtml(icon) {
+    switch (icon) {
+      case "check":
+      default:
+        return `
+          <svg class="tree-decoration-svg" viewBox="0 0 16 16" aria-hidden="true" focusable="false">
+            <path d="M3.25 8.5L6.4 11.55L12.75 4.9" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path>
+          </svg>
+        `;
+    }
+  }
+
+  function treeDecorationsHtml(decorations) {
+    if (!Array.isArray(decorations) || !decorations.length) {
+      return "";
+    }
+    const items = decorations
+      .map((decoration) => {
+        const icon = treeDecorationIconHtml(decoration.icon);
+        if (!icon) {
+          return "";
+        }
+        const tooltip = decoration.tooltip
+          ? ` title="${escapeHtml(decoration.tooltip)}"`
+          : "";
+        return `
+          <span class="tree-decoration tree-decoration--${escapeHtml(decoration.tone || "neutral")}"${tooltip} aria-hidden="true">
+            ${icon}
+          </span>
+        `;
+      })
+      .join("");
+    if (!items) {
+      return "";
+    }
+    return `<span class="tree-decoration-strip">${items}</span>`;
+  }
+
+  function treeLabelHtml(label, imageCount, estimated, decorations) {
     const estimateText = t("browser.estimatedCountTooltip");
+    const decorationMarkup = treeDecorationsHtml(decorations);
     return `
       <span class="tree-link-copy">
+        ${decorationMarkup}
         <strong>${escapeHtml(label)}</strong>
       </span>
       <span class="tree-count" aria-label="${escapeHtml(t("browser.imageCountAria", { count: imageCount }))}">
@@ -229,7 +269,7 @@ export function createRenderers(deps) {
           <div class="tree-row tree-row--root" style="--depth:0">
             <span class="tree-spacer" aria-hidden="true"></span>
             <button class="tree-link ${rootClass}" data-tree-path="" data-tree-has-children="${rootHasChildren}">
-              ${treeLabelHtml(rootNode.name || t("common.root"), rootNode.imageCount || 0, !!rootNode.imageCountEstimated)}
+              ${treeLabelHtml(rootNode.name || t("common.root"), rootNode.imageCount || 0, !!rootNode.imageCountEstimated, rootNode.decorations)}
             </button>
           </div>
         </div>
@@ -280,7 +320,7 @@ export function createRenderers(deps) {
             data-tree-path="${escapeHtml(path)}"
             data-tree-has-children="${hasChildren}"
           >
-            ${treeLabelHtml(entry.name, entry.imageCount || 0, !!entry.imageCountEstimated)}
+            ${treeLabelHtml(entry.name, entry.imageCount || 0, !!entry.imageCountEstimated, entry.decorations)}
           </button>
         </div>
         ${childMarkup}

@@ -35,6 +35,9 @@ This application is a single-binary Go tool that starts from an explicit launch 
 - Command-terminal transport ordering must preserve trailing PTY output before exit state: WebSocket `output` frames drain first, and the `exit` frame is emitted only after output streaming finishes.
 - Directory listing is shallow: only direct child folders and direct child images of the current directory are returned.
 - Each visible directory row carries a bounded subtree image count computed from that folder's direct images plus at most 3 levels of visible descendants. If visible subfolders continue deeper, the count is marked as estimated instead of walking unboundedly.
+- Browser and tree payloads may also carry localized directory decorations for the current node and each visible child directory. The current implementation uses an internal decorator registry and does not expose plugin editing in config or settings.
+- Directory decorations are local to the directory being evaluated. The built-in `done-marker` only checks for `done.txt` inside that exact folder; it does not bubble state up to parent folders.
+- Directory-decoration failures are isolated: a failed decorator is logged and skipped without failing the whole browser or tree request.
 - Returned directory lists use natural numeric ordering, so names like `1`, `2`, and `10` sort in human order.
 - Hidden entries are ignored. Supported image formats are `.jpg`, `.jpeg`, `.png`, `.gif`, `.webp`, and `.bmp`.
 - Browse-gallery card sizing is client-side only: the API still returns `name`, `path`, and `url`, while the browser measures decoded image dimensions after load and packs cards into a masonry grid without cropping the image.
@@ -54,14 +57,15 @@ This application is a single-binary Go tool that starts from an explicit launch 
   - `keys.browser` exposes session start plus tree up/down and tree expand/collapse keys.
   - `keys.slideshow` currently exposes `next`, `prev`, and `end_session`; slideshow no longer has a separate browser-return binding.
   - `actions[]` defines `move`, `delete`, `restore`, and `command` buttons/shortcuts.
+  - Directory decorations are not user-configurable in v1. The app registers them internally at startup.
   - `move.target` accepts relative or absolute paths.
   - `command.command` stores the raw command-line text to run via the platform shell.
   - `alias` stores the user-facing label for `move` and `command` actions. It is required on save for those action types and rejected on `delete` / `restore`.
   - The default template maps `space` to browser session start and slideshow session end, `arrowup` / `arrowdown` / `arrowright` / `arrowleft` to browser-tree navigation, `arrowleft` and `arrowright` to slide navigation, `delete` to delete, `arrowdown` to move into `0`, and `arrowup` to restore.
 - HTTP API:
-- `GET /api/browser`: current directory listing, localized breadcrumbs, config, whether starting here should be framed as reviewing moved photos, current-directory bounded image-count metadata, and per-directory bounded image counts for each visible child folder. Calling it also clears any active session so browser mode never renders with an active session. The payload intentionally omits legacy parent-navigation fields such as `parentPath` and `canGoUp`.
+- `GET /api/browser`: current directory listing, localized breadcrumbs, config, whether starting here should be framed as reviewing moved photos, current-directory bounded image-count metadata, localized current-directory decorations, and per-directory bounded image counts plus localized decorations for each visible child folder. Calling it also clears any active session so browser mode never renders with an active session. The payload intentionally omits legacy parent-navigation fields such as `parentPath` and `canGoUp`.
 - `POST /api/browser/action`: executes browser-mode single-image actions for the current directory without requiring a session. The current implementation supports `delete` only.
-- `GET /api/tree`: current directory path, current-directory bounded image-count metadata, and visible child directories with per-directory bounded image counts.
+- `GET /api/tree`: current directory path, request-localized current-directory decorations, current-directory bounded image-count metadata, and visible child directories with per-directory bounded image counts plus localized decorations.
   - `POST /api/session/start`: creates or reuses a session for the current directory.
   - `POST /api/session/end`: clears the active session.
 - `GET /api/slideshow`: current directory image list plus localized action labels and action availability.
@@ -93,6 +97,7 @@ This application is a single-binary Go tool that starts from an explicit launch 
 - Parent navigation intentionally lives inside `collapse_dir`; the product no longer exposes a separate browser `up_dir` shortcut because it duplicated the same navigation outcome.
 - The browser payload also drops the old `parentPath` / `canGoUp` fields so the transport contract does not preserve an obsolete parent-navigation model.
 - Directory counts now travel with the existing browser and tree payloads, so the help modal no longer needs its own subtree-stats request path.
+- Directory decorations also travel with the existing browser and tree payloads, so the tree UI does not need a separate status lookup route.
 - Relative target directories intentionally use `sessionRoot` so any configured review folder, including the default `0`, still restores back to the original work root.
 - `command` actions intentionally follow that same `sessionRoot` rule, even when the slideshow is currently inside a review folder.
 - Command-terminal UX is modal and fullscreen. The process keeps the terminal surface until exit, then the user closes that surface manually to return to sorting.
@@ -108,6 +113,7 @@ This application is a single-binary Go tool that starts from an explicit launch 
 - `keys.browser.up_dir` is intentionally removed from the product contract; old YAML that still contains it is ignored on load and dropped on the next save.
 - `keys.browser.open_settings` is intentionally removed from the product contract so folder-browsing keys stay focused on navigation plus sorting start; settings now opens only from the help modal header button, and old YAML that still contains `browser.open_settings` is ignored on load and dropped on the next save.
 - Localization stays dependency-light: frontend strings live in the static app bundle, backend request parsing and user-visible server messages live in `internal/localize/`, and the help modal plus directory-count tooltip reuse the same locale.
+- Directory decorations intentionally start as an internal, built-in registry rather than YAML-defined rules or external scripts, so the single-binary app keeps predictable performance and trust boundaries.
 - User-facing language is task-first rather than implementation-first: the UI talks about sorting, reviewing, folders, preview, and sorting view, while internal API and code symbols may still use `session`.
 - The manual language switch lives in the browser toolbar immediately to the left of the help icon, while slideshow and preview reuse the current locale instead of introducing separate locale controls.
 
