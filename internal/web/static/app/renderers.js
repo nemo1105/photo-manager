@@ -336,6 +336,7 @@ export function createRenderers(deps) {
     const canMoveNext = state.preview.index < images.length - 1;
     const prevLabel = escapeHtml(t("slideshow.prev"));
     const nextLabel = escapeHtml(t("slideshow.next"));
+    const closeLabel = escapeHtml(t("preview.close"));
     document.getElementById("previewBody").innerHTML = `
       <div class="preview-stage">
         <button
@@ -349,6 +350,12 @@ export function createRenderers(deps) {
             <path d="M58 18 30 48l28 30"></path>
           </svg>
         </button>
+        <button
+          class="preview-close-zone"
+          type="button"
+          data-preview-action="preview-close"
+          aria-label="${closeLabel}"
+        ></button>
         <div class="preview-image-wrap">
           <img class="preview-image" src="${escapeHtml(current.url)}" alt="${escapeHtml(current.name)}">
         </div>

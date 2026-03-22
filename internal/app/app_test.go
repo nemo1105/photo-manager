@@ -423,6 +423,31 @@ func TestSlideshowHidesCurrentReviewTargetAction(t *testing.T) {
 	}
 }
 
+func TestSlideshowHidesRestoreOutsideReviewTarget(t *testing.T) {
+	root := t.TempDir()
+	mustWriteFile(t, filepath.Join(root, "work", "photo.jpg"))
+
+	cfg := config.Default()
+	app := New(root, filepath.Join(root, "config.yaml"), cfg, &fakeTrash{})
+
+	if _, err := app.OpenSession("work"); err != nil {
+		t.Fatalf("open session: %v", err)
+	}
+
+	data, err := app.Slideshow("work", localize.EN)
+	if err != nil {
+		t.Fatalf("load slideshow from non-target folder: %v", err)
+	}
+	if data.CurrentDirIsTarget {
+		t.Fatal("expected non-target folder not to be marked as target")
+	}
+	for _, action := range data.ActionButtons {
+		if action.Action == "restore" || action.Key == "arrowup" {
+			t.Fatalf("expected restore to be hidden outside target folders, got %+v", data.ActionButtons)
+		}
+	}
+}
+
 func TestBrowserEntryAlwaysEndsSessionWithoutNotice(t *testing.T) {
 	root := t.TempDir()
 	mustWriteFile(t, filepath.Join(root, "work", "a.jpg"))
@@ -710,11 +735,11 @@ func TestLocalizedBreadcrumbsActionLabelsAndNotices(t *testing.T) {
 	if labels["arrowdown"] != "0" {
 		t.Fatalf("expected localized move label, got %q", labels["arrowdown"])
 	}
-	if labels["arrowup"] != "恢复" {
-		t.Fatalf("expected localized restore label, got %q", labels["arrowup"])
-	}
 	if labels["c"] != "Python" {
 		t.Fatalf("expected localized command label, got %q", labels["c"])
+	}
+	if _, exists := labels["arrowup"]; exists {
+		t.Fatalf("expected restore to be hidden outside target folders, got %q", labels["arrowup"])
 	}
 
 	result, err := app.PerformAction("work", "work/photo.jpg", "arrowdown", localize.ZHCN)

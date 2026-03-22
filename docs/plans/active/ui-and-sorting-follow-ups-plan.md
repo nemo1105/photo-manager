@@ -63,6 +63,7 @@ Track the next round of UX and reliability work after the initial browse/preview
 - [x] Add interactive `command` actions with a full-screen terminal overlay rooted at the current sort-starting folder.
   Current execution focus on 2026-03-22: add a `command` action type to the action library, open it in a full-screen in-page terminal, keep the shell working directory fixed to `sessionRoot`, and hold the terminal open until the user closes it after process exit.
   Current correction focus on 2026-03-22: add required `alias` values for move and command sorting-facing labels, show the alias itself in sorting/help/terminal titles, keep legacy configs loadable when alias is missing, and block saving until the alias is filled.
+  Current correction focus on 2026-03-22: hide `restore` entirely outside review / target folders instead of rendering it disabled.
 
 ## Risks
 
@@ -113,6 +114,7 @@ Track the next round of UX and reliability work after the initial browse/preview
 - Manually verify `command` opens an interactive full-screen terminal, starts in the sort-starting folder even from review mode, and returns cleanly to sorting after manual close.
 - Verify move and command actions with aliases show the alias itself in the sorting footer and help-modal action list, and command actions also use the alias in the terminal title, without prefixing `Move to / 移动到` or `Run Command / 执行命令`.
 - Verify legacy move and command actions without aliases still load, fall back to the old target-based or generic command labels, and fail settings save until an alias is added.
+- Verify non-target sorting folders do not render a disabled `restore` action at all, while review / target folders still render and enable `restore`.
 
 ## Next update trigger
 

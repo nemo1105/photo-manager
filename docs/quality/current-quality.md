@@ -45,7 +45,7 @@ Status: active
   - Session-root-based `move` and `restore` behavior.
   - Session-start fallback from target folders to the parent work root.
   - Session-root-based `command` working directory selection.
-  - Review-folder slideshow filtering that hides the current target move action while keeping restore and other actions available.
+  - Review-folder slideshow filtering that hides the current target move action while keeping restore and other actions available there, and hides restore entirely outside target folders.
   - Ending sessions when browser mode is loaded, and auto-ending sessions when slideshow/action requests leave the session subtree.
   - Directory and current-node image counts in browser/tree payloads, including the 3-level scan cap, hidden-entry filtering, unsupported-file filtering, and estimate marking for deeper visible branches.
   - Auto-renaming on target conflicts.

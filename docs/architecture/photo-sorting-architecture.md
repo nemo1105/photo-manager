@@ -26,7 +26,7 @@ This application is a single-binary Go tool that starts from an explicit launch 
 - `command` actions also anchor to `sessionRoot`; they do not use the current image directory as their working directory.
 - Starting from a relative move-target folder reuses that folder as the slideshow directory but sets `sessionRoot` to its parent, so review folders still restore back to the work root.
 - Leaving `sessionRoot` or any of its descendants during slideshow loading or action requests automatically ends the session.
-- `restore` is only valid when the current directory matches one of the configured `move` targets resolved against `sessionRoot`.
+- `restore` is only valid when the current directory matches one of the configured `move` targets resolved against `sessionRoot`, and the slideshow action list omits it everywhere else instead of rendering a disabled button.
 - When slideshow is opened inside a move-target directory, the action list omits any `move` binding whose destination is that same directory.
 - `command.command` is raw shell text only. The product does not expand placeholders or inject current-image or current-directory variables.
 - `alias` is the user-facing label for `move` and `command` actions. Sorting buttons and help action labels prefer it; command-terminal titles also prefer it for `command` actions. Legacy configs without it fall back to the old target-based or generic command labels until the user saves a fixed config.

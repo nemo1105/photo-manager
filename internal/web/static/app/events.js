@@ -205,6 +205,8 @@ export function createEventHandlers(deps) {
           movePreview(-1);
         } else if (action === "preview-next") {
           movePreview(1);
+        } else if (action === "preview-close") {
+          closePreview();
         }
       });
     });

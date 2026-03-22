@@ -299,10 +299,10 @@ func (a *App) Slideshow(relPath string, locale localize.Locale) (*SlideshowData,
 		if binding.Action == "move" && a.moveTargetMatchesCurrentDirLocked(binding, absPath) {
 			continue
 		}
-		enabled := a.session != nil
-		if binding.Action == "restore" {
-			enabled = a.session != nil && isTarget
+		if binding.Action == "restore" && !isTarget {
+			continue
 		}
+		enabled := a.session != nil
 		actions = append(actions, ActionButton{
 			Key:     binding.Key,
 			Action:  binding.Action,

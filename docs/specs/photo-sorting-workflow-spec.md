@@ -59,7 +59,7 @@ Users need to start from an arbitrary directory, browse to a folder that contain
 - [x] In a review folder, slideshow hides the move action that points to the current directory while still exposing other actions and `restore`.
 - [x] `move` creates missing target folders and auto-renames on conflicts.
 - [x] `delete` sends the image to the platform recycle bin / Trash.
-- [x] `restore` only works inside configured move-target directories and returns the image to the session root.
+- [x] `restore` is shown only inside configured move-target directories and returns the image to the session root.
 - [x] `command` opens a full-screen interactive terminal, starts in `sessionRoot`, and keeps the terminal visible until the user closes it after the process exits.
 - [x] Starting `command` from a review folder still uses the parent sort-starting folder as the working directory.
 - [x] When `alias` is present on `move` or `command`, sorting action buttons and help action shortcuts show the alias itself with no `Move to / 移动到` or `Run Command / 执行命令` prefix.
