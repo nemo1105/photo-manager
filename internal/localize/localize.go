@@ -129,6 +129,8 @@ func ActionLabel(locale Locale, action, target string) string {
 		return ActionName(locale, action)
 	case "restore":
 		return ActionName(locale, action)
+	case "command":
+		return ActionName(locale, action)
 	default:
 		return action
 	}
@@ -142,6 +144,8 @@ func ActionName(locale Locale, action string) string {
 		return choose(locale, "Delete", "删除")
 	case "restore":
 		return choose(locale, "Restore", "恢复")
+	case "command":
+		return choose(locale, "Run Command", "执行命令")
 	default:
 		return action
 	}

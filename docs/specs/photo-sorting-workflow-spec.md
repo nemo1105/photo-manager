@@ -1,6 +1,6 @@
 # Photo Sorting Workflow Spec
 
-Last updated: 2026-03-21
+Last updated: 2026-03-22
 
 ## Problem
 
@@ -12,7 +12,7 @@ Users need to start from an arbitrary directory, browse to a folder that contain
   - Browsing directories inside the launch root.
   - Previewing images without side effects.
   - Explicitly starting and exiting sorting.
-  - Executing `move`, `delete`, and `restore` actions on a single image.
+  - Executing `move`, `delete`, `restore`, and `command` actions from a single image.
   - Editing key bindings and actions in the web UI and saving them to `~/.photo-manager/config.yaml`.
 - Out of scope:
   - Recursive slideshow across subdirectories.
@@ -25,10 +25,12 @@ Users need to start from an arbitrary directory, browse to a folder that contain
 - Launch-root containment must be enforced on every path coming from the browser.
 - All configured keys are single keys; modifier combinations are not part of the current contract.
 - Relative `move.target` values are resolved from the active session root only.
+- `command.command` is raw command-line text; the product does not support placeholders or inject current-image or current-directory variables.
 - Sorting state must not be created implicitly by image preview.
 - Browser mode and active work-session/slideshow mode are mutually exclusive. Entering browser mode ends any active session.
 - Starting a session from a configured relative move-target folder should treat that folder as a review view for already moved photos, while using its parent as `sessionRoot`.
 - Deletion must go to the platform recycle bin / Trash, not permanent removal.
+- `command` actions run in a full-screen interactive terminal, through the platform shell, with the initial working directory fixed to `sessionRoot`.
 - Slideshow mode is an immersive full-viewport viewer and must not introduce browser-level scrollbars during normal desktop use.
 - Browser and tree directory lists should sort naturally by numeric segments instead of pure lexicographic order.
 - Browser UI localization supports only `zh-CN` and `en`; any browser locale starting with `zh` maps to `zh-CN`, and other browser locales fall back to `en`.
@@ -56,6 +58,8 @@ Users need to start from an arbitrary directory, browse to a folder that contain
 - [x] `move` creates missing target folders and auto-renames on conflicts.
 - [x] `delete` sends the image to the platform recycle bin / Trash.
 - [x] `restore` only works inside configured move-target directories and returns the image to the session root.
+- [x] `command` opens a full-screen interactive terminal, starts in `sessionRoot`, and keeps the terminal visible until the user closes it after the process exits.
+- [x] Starting `command` from a review folder still uses the parent sort-starting folder as the working directory.
 - [x] Moving outside the current sorting range ends sorting automatically and informs the user.
 - [x] Config edits in the browser are validated and saved back to `~/.photo-manager/config.yaml`.
 - [x] Outside preview and slideshow, configurable browser tree keys move through the visible directory list with Up / Down and expand or collapse the current directory with Right / Left.
@@ -95,6 +99,7 @@ Users need to start from an arbitrary directory, browse to a folder that contain
   - `delete` sends the photo to the recycle bin / Trash.
   - `arrowdown` moves the image to relative target `0`.
   - `arrowup` restores the image to `sessionRoot`.
+  - The default template does not add a command action; users opt into it by editing settings.
 
 ## Open questions
 

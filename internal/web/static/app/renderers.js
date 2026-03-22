@@ -8,6 +8,7 @@ export function createRenderers(deps) {
     previewModal,
     settingsModal,
     helpModal,
+    commandTerminalModal,
     currentSession,
     currentData,
     pathLabel,
@@ -43,6 +44,7 @@ export function createRenderers(deps) {
     bindSlideshowEvents,
     bindPreviewEvents,
     bindSettingsEvents,
+    bindCommandTerminalEvents,
     applyStaticTranslations,
   } = deps;
 
@@ -54,6 +56,7 @@ export function createRenderers(deps) {
     renderPreview();
     renderSettings();
     renderHelp();
+    renderCommandTerminal();
   }
 
   function renderShell() {
@@ -68,6 +71,7 @@ export function createRenderers(deps) {
     document.body.classList.toggle("session-active", !!session.active);
     document.body.classList.toggle("app-busy", !!state.busy);
     document.body.classList.toggle("slideshow-mode", state.mode === "slideshow");
+    document.body.classList.toggle("command-terminal-open", !!state.commandTerminal?.open);
 
     if (browserMode) {
       document.getElementById("statusBar").innerHTML = "";
@@ -468,6 +472,40 @@ export function createRenderers(deps) {
       </section>
     `;
     bindShellEvents();
+  }
+
+  function renderCommandTerminal() {
+    commandTerminalModal.hidden = !state.commandTerminal?.open;
+    if (!state.commandTerminal?.open) {
+      return;
+    }
+
+    const exited = state.commandTerminal.status === "exited" || state.commandTerminal.status === "error";
+    const statusLabel = state.commandTerminal.status === "error"
+      ? t("command.error")
+      : (state.commandTerminal.status === "exited" ? t("command.exited") : (state.commandTerminal.status === "running" ? t("command.running") : t("command.connecting")));
+    const detail = state.commandTerminal.status === "connecting"
+      ? t("command.waiting")
+      : (exited && Number.isFinite(state.commandTerminal.exitCode)
+          ? t("command.exitCode", { code: state.commandTerminal.exitCode })
+          : t("command.interactive"));
+    const workingDir = pathLabel(state.commandTerminal.workingDir, t("common.root"));
+
+    document.getElementById("commandTerminalKicker").textContent = t("command.title");
+    document.getElementById("commandTerminalTitle").textContent = state.commandTerminal.command || t("command.title");
+    document.getElementById("commandTerminalMeta").textContent = t("command.workingDir", { path: workingDir });
+    document.getElementById("commandTerminalStatus").className = `command-terminal-status ${state.commandTerminal.status === "error" ? "is-error" : ""}`;
+    document.getElementById("commandTerminalStatus").innerHTML = `
+      <strong>${escapeHtml(statusLabel)}</strong>
+      <span>${escapeHtml(detail)}</span>
+    `;
+    document.getElementById("commandTerminalActionButton").innerHTML = `
+      <div>
+        <strong>${escapeHtml(exited ? t("command.close") : t("command.terminate"))}</strong>
+      </div>
+    `;
+
+    bindCommandTerminalEvents();
   }
 
   return {

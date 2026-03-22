@@ -6,6 +6,7 @@ export function createEventHandlers(deps) {
     previewModal,
     settingsModal,
     helpModal,
+    commandTerminalModal,
     canonicalKey,
     clamp,
     setPath,
@@ -26,6 +27,8 @@ export function createEventHandlers(deps) {
     closePreview,
     closeHelp,
     closeSettings,
+    closeCommandTerminal,
+    terminateCommandTerminal,
     saveSettings,
     addAction,
     flushScheduledBrowserLoad,
@@ -39,6 +42,13 @@ export function createEventHandlers(deps) {
     document.getElementById("previewCloseButton").addEventListener("click", closePreview);
     document.getElementById("settingsCloseButton").addEventListener("click", closeSettings);
     document.getElementById("helpCloseButton").addEventListener("click", closeHelp);
+    document.getElementById("commandTerminalActionButton").addEventListener("click", () => {
+      if (state.commandTerminal?.status === "running" || state.commandTerminal?.status === "connecting") {
+        terminateCommandTerminal().catch((error) => showNotice(error.message, "error"));
+        return;
+      }
+      closeCommandTerminal().catch((error) => showNotice(error.message, "error"));
+    });
     document.getElementById("saveSettingsButton").addEventListener("click", () => {
       saveSettings().catch((error) => showNotice(error.message, "error"));
     });
@@ -55,6 +65,11 @@ export function createEventHandlers(deps) {
     helpModal.addEventListener("click", (event) => {
       if (event.target.dataset.closeHelp === "true") {
         closeHelp();
+      }
+    });
+    commandTerminalModal.addEventListener("click", () => {
+      if (state.commandTerminal?.open && state.commandTerminal?.terminal?.focus) {
+        state.commandTerminal.terminal.focus();
       }
     });
   }
@@ -250,6 +265,9 @@ export function createEventHandlers(deps) {
           if (event.target.value !== "move") {
             state.settingsDraft.actions[index].target = "";
           }
+          if (event.target.value !== "command") {
+            state.settingsDraft.actions[index].command = "";
+          }
           render();
         }
       });
@@ -281,6 +299,10 @@ export function createEventHandlers(deps) {
   function onKeyDown(event) {
     const key = canonicalKey(event);
     if (!key) {
+      return;
+    }
+
+    if (state.commandTerminal?.open) {
       return;
     }
 
@@ -402,6 +424,7 @@ export function createEventHandlers(deps) {
 
   return {
     bindBrowserEvents,
+    bindCommandTerminalEvents: () => {},
     bindPreviewEvents,
     bindSettingsEvents,
     bindShellEvents,

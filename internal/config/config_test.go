@@ -92,6 +92,49 @@ func TestValidateAndNormalizeAllowsEscapeAsActionKey(t *testing.T) {
 	}
 }
 
+func TestValidateAndNormalizeAllowsCommandActions(t *testing.T) {
+	cfg := Default()
+	cfg.Actions = append(cfg.Actions, ActionBinding{
+		Key:     "c",
+		Action:  "command",
+		Command: "python script.py",
+	})
+
+	if err := cfg.ValidateAndNormalize(); err != nil {
+		t.Fatalf("expected command action to validate, got %v", err)
+	}
+
+	if cfg.Actions[3].Command != "python script.py" {
+		t.Fatalf("expected command text to remain, got %q", cfg.Actions[3].Command)
+	}
+}
+
+func TestValidateAndNormalizeRejectsCommandWithoutText(t *testing.T) {
+	cfg := Default()
+	cfg.Actions = append(cfg.Actions, ActionBinding{
+		Key:    "c",
+		Action: "command",
+	})
+
+	if err := cfg.ValidateAndNormalize(); err == nil {
+		t.Fatal("expected missing command text error")
+	}
+}
+
+func TestValidateAndNormalizeRejectsCommandActionWithTarget(t *testing.T) {
+	cfg := Default()
+	cfg.Actions = append(cfg.Actions, ActionBinding{
+		Key:     "c",
+		Action:  "command",
+		Target:  "0",
+		Command: "python script.py",
+	})
+
+	if err := cfg.ValidateAndNormalize(); err == nil {
+		t.Fatal("expected command target error")
+	}
+}
+
 func TestLoadIgnoresLegacyBrowserEndSessionBrowserUpDirBrowserOpenSettingsAndSlideshowBackToBrowserFields(t *testing.T) {
 	root := t.TempDir()
 	path := filepath.Join(root, "config.yaml")

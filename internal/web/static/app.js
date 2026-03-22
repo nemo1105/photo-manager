@@ -12,6 +12,25 @@ import { MESSAGES } from "./app/messages.js";
 import { createEventHandlers } from "./app/events.js";
 import { createRenderers } from "./app/renderers.js";
 import { createViewHelpers } from "./app/view-helpers.js";
+import { Terminal } from "./app/vendor/xterm.mjs";
+import { FitAddon } from "./app/vendor/addon-fit.mjs";
+
+  function createCommandTerminalState() {
+    return {
+      open: false,
+      sessionId: "",
+      command: "",
+      workingDir: "",
+      status: "idle",
+      exitCode: null,
+      socket: null,
+      socketClosing: false,
+      terminal: null,
+      fitAddon: null,
+      currentPath: "",
+      preferredIndex: 0,
+    };
+  }
 
   const STORAGE_KEY = window.__photoManagerBootstrap?.storageKey || "photo-manager.locale";
 
@@ -35,6 +54,7 @@ import { createViewHelpers } from "./app/view-helpers.js";
       recursiveImageCount: null,
       loading: false,
     },
+    commandTerminal: createCommandTerminalState(),
     busy: false,
     busyLabel: "",
     tree: {
@@ -48,12 +68,14 @@ import { createViewHelpers } from "./app/view-helpers.js";
   let noticeTimer = 0;
   let browserLoadTimer = 0;
   let browserLoadToken = 0;
+  let commandResizeTimer = 0;
 
   const browserView = document.getElementById("browserView");
   const slideshowView = document.getElementById("slideshowView");
   const previewModal = document.getElementById("previewModal");
   const settingsModal = document.getElementById("settingsModal");
   const helpModal = document.getElementById("helpModal");
+  const commandTerminalModal = document.getElementById("commandTerminalModal");
 
   async function init() {
     await loadBrowser("");
@@ -128,6 +150,7 @@ import { createViewHelpers } from "./app/view-helpers.js";
   let bindSlideshowEvents;
   let bindPreviewEvents;
   let bindSettingsEvents;
+  let bindCommandTerminalEvents;
 
   const eventHandlers = createEventHandlers({
     state,
@@ -136,6 +159,7 @@ import { createViewHelpers } from "./app/view-helpers.js";
     previewModal,
     settingsModal,
     helpModal,
+    commandTerminalModal,
     canonicalKey,
     clamp,
     setPath,
@@ -156,6 +180,8 @@ import { createViewHelpers } from "./app/view-helpers.js";
     closePreview,
     closeHelp,
     closeSettings,
+    closeCommandTerminal,
+    terminateCommandTerminal,
     saveSettings,
     addAction,
     flushScheduledBrowserLoad,
@@ -170,6 +196,7 @@ import { createViewHelpers } from "./app/view-helpers.js";
   bindSlideshowEvents = eventHandlers.bindSlideshowEvents;
   bindPreviewEvents = eventHandlers.bindPreviewEvents;
   bindSettingsEvents = eventHandlers.bindSettingsEvents;
+  bindCommandTerminalEvents = eventHandlers.bindCommandTerminalEvents;
 
   ({ render, renderNotice } = createRenderers({
     state,
@@ -180,6 +207,7 @@ import { createViewHelpers } from "./app/view-helpers.js";
     previewModal,
     settingsModal,
     helpModal,
+    commandTerminalModal,
     currentSession,
     currentData,
     pathLabel,
@@ -215,10 +243,12 @@ import { createViewHelpers } from "./app/view-helpers.js";
     bindSlideshowEvents,
     bindPreviewEvents,
     bindSettingsEvents,
+    bindCommandTerminalEvents,
     applyStaticTranslations,
   }));
 
   bindStaticEvents();
+  window.addEventListener("resize", scheduleCommandTerminalResize);
   applyStaticTranslations();
   init().catch((error) => showNotice(error.message, "error"));
 
@@ -270,6 +300,12 @@ import { createViewHelpers } from "./app/view-helpers.js";
     document.getElementById("helpTitle").textContent = t("help.sortingGuide");
     document.getElementById("helpSettingsButton").setAttribute("aria-label", t("help.openSettings"));
     document.getElementById("helpCloseButton").setAttribute("aria-label", t("common.close"));
+    document.getElementById("commandTerminalActionButton").setAttribute(
+      "aria-label",
+      state.commandTerminal?.status === "running" || state.commandTerminal?.status === "connecting"
+        ? t("command.terminate")
+        : t("command.close"),
+    );
   }
 
   async function apiGet(path) {
@@ -297,6 +333,203 @@ import { createViewHelpers } from "./app/view-helpers.js";
       throw new Error(data.error || t("error.requestFailed"));
     }
     return data;
+  }
+
+  function commandSocketURL(sessionId) {
+    const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+    return `${protocol}//${window.location.host}/api/command/ws?id=${encodeURIComponent(sessionId)}`;
+  }
+
+  function decodeBase64Bytes(value) {
+    const raw = window.atob(value || "");
+    const bytes = new Uint8Array(raw.length);
+    for (let i = 0; i < raw.length; i += 1) {
+      bytes[i] = raw.charCodeAt(i);
+    }
+    return bytes;
+  }
+
+  function appendCommandTerminalText(text) {
+    if (!text || !state.commandTerminal.terminal) {
+      return;
+    }
+    state.commandTerminal.terminal.write(text);
+  }
+
+  function disposeCommandSocket(code, reason) {
+    const socket = state.commandTerminal.socket;
+    if (!socket) {
+      return;
+    }
+    state.commandTerminal.socketClosing = true;
+    state.commandTerminal.socket = null;
+    socket.onopen = null;
+    socket.onmessage = null;
+    socket.onerror = null;
+    socket.onclose = null;
+    if (socket.readyState === window.WebSocket.OPEN || socket.readyState === window.WebSocket.CONNECTING) {
+      socket.close(code || 1000, reason || "");
+    }
+    state.commandTerminal.socketClosing = false;
+  }
+
+  function disposeCommandTerminalRuntime() {
+    if (state.commandTerminal.fitAddon?.dispose) {
+      state.commandTerminal.fitAddon.dispose();
+    }
+    if (state.commandTerminal.terminal?.dispose) {
+      state.commandTerminal.terminal.dispose();
+    }
+    state.commandTerminal.fitAddon = null;
+    state.commandTerminal.terminal = null;
+    const viewport = document.getElementById("commandTerminalViewport");
+    if (viewport) {
+      viewport.innerHTML = "";
+    }
+  }
+
+  function sendCommandResize() {
+    if (!state.commandTerminal.open || !state.commandTerminal.terminal || !state.commandTerminal.fitAddon) {
+      return;
+    }
+    state.commandTerminal.fitAddon.fit();
+    const socket = state.commandTerminal.socket;
+    if (!socket || socket.readyState !== window.WebSocket.OPEN) {
+      return;
+    }
+    socket.send(JSON.stringify({
+      type: "resize",
+      cols: state.commandTerminal.terminal.cols || 0,
+      rows: state.commandTerminal.terminal.rows || 0,
+    }));
+  }
+
+  function scheduleCommandTerminalResize() {
+    if (!state.commandTerminal.open) {
+      return;
+    }
+    if (commandResizeTimer) {
+      window.clearTimeout(commandResizeTimer);
+    }
+    commandResizeTimer = window.setTimeout(() => {
+      commandResizeTimer = 0;
+      sendCommandResize();
+      state.commandTerminal.terminal?.focus();
+    }, 40);
+  }
+
+  function ensureCommandTerminalRuntime() {
+    if (!state.commandTerminal.open || state.commandTerminal.terminal) {
+      return;
+    }
+
+    const viewport = document.getElementById("commandTerminalViewport");
+    if (!viewport) {
+      return;
+    }
+
+    viewport.innerHTML = "";
+
+    const terminal = new Terminal({
+      cursorBlink: true,
+      convertEol: true,
+      fontFamily: state.locale === "zh-CN"
+        ? "'Cascadia Mono', 'Sarasa Mono SC', 'Consolas', monospace"
+        : "'Cascadia Mono', 'IBM Plex Mono', 'Consolas', monospace",
+      fontSize: 14,
+      scrollback: 5000,
+      theme: {
+        background: "#0b1220",
+        foreground: "#e5edf7",
+        cursor: "#f8fafc",
+        selectionBackground: "rgba(148, 163, 184, 0.34)",
+      },
+    });
+    const fitAddon = new FitAddon();
+    terminal.loadAddon(fitAddon);
+    terminal.open(viewport);
+    fitAddon.fit();
+    terminal.onData((data) => {
+      const socket = state.commandTerminal.socket;
+      if (!socket || socket.readyState !== window.WebSocket.OPEN) {
+        return;
+      }
+      socket.send(JSON.stringify({ type: "input", data }));
+    });
+
+    state.commandTerminal.terminal = terminal;
+    state.commandTerminal.fitAddon = fitAddon;
+    terminal.focus();
+    scheduleCommandTerminalResize();
+  }
+
+  function connectCommandTerminal() {
+    if (!state.commandTerminal.open || !state.commandTerminal.sessionId) {
+      return;
+    }
+
+    ensureCommandTerminalRuntime();
+
+    const socket = new window.WebSocket(commandSocketURL(state.commandTerminal.sessionId));
+    state.commandTerminal.socket = socket;
+
+    socket.onopen = () => {
+      state.commandTerminal.status = "running";
+      render();
+      sendCommandResize();
+      state.commandTerminal.terminal?.focus();
+    };
+
+    socket.onmessage = (event) => {
+      let payload = {};
+      try {
+        payload = JSON.parse(event.data);
+      } catch (error) {
+        return;
+      }
+
+      if (payload.type === "output" && payload.data) {
+        state.commandTerminal.terminal?.write(decodeBase64Bytes(payload.data));
+        return;
+      }
+
+      if (payload.type === "exit") {
+        state.commandTerminal.status = "exited";
+        state.commandTerminal.exitCode = Number.isFinite(Number(payload.code)) ? Number(payload.code) : 0;
+        render();
+        disposeCommandSocket(1000, "command-finished");
+        return;
+      }
+
+      if (payload.type === "error") {
+        state.commandTerminal.status = "error";
+        render();
+        if (payload.message) {
+          appendCommandTerminalText(`\r\n${payload.message}\r\n`);
+        }
+        disposeCommandSocket(1011, "command-error");
+      }
+    };
+
+    socket.onerror = () => {
+      if (state.commandTerminal.open && state.commandTerminal.status === "connecting") {
+        state.commandTerminal.status = "error";
+        render();
+      }
+    };
+
+    socket.onclose = () => {
+      if (!state.commandTerminal.open || state.commandTerminal.socketClosing) {
+        return;
+      }
+      state.commandTerminal.socket = null;
+      if (state.commandTerminal.status === "running" || state.commandTerminal.status === "connecting") {
+        state.commandTerminal.status = "error";
+        appendCommandTerminalText(`\r\n${t("command.connectionLost")}\r\n`);
+        showNotice(t("command.connectionLost"), "error");
+        render();
+      }
+    };
   }
 
   async function withBusy(label, work) {
@@ -606,10 +839,47 @@ import { createViewHelpers } from "./app/view-helpers.js";
     });
   }
 
+  function openCommandTerminal(result, currentPath, preferredIndex) {
+    disposeCommandSocket(1000, "command-restart");
+    disposeCommandTerminalRuntime();
+
+    state.commandTerminal = {
+      ...createCommandTerminalState(),
+      open: true,
+      sessionId: result.commandSessionId || "",
+      command: result.command || t("command.title"),
+      workingDir: result.workingDir || "",
+      status: "connecting",
+      currentPath: currentPath || "",
+      preferredIndex: preferredIndex || 0,
+    };
+    render();
+
+    window.requestAnimationFrame(() => {
+      ensureCommandTerminalRuntime();
+      connectCommandTerminal();
+    });
+  }
+
+  async function startCommandAction(actionKey, currentImage) {
+    return withBusy(t("busy.startingCommand"), async () => {
+      const result = await apiPost("/api/command/start", {
+        currentPath: state.slideshow.currentPath,
+        imagePath: currentImage.path,
+        actionKey,
+      });
+      openCommandTerminal(result, state.slideshow.currentPath, state.slideshow.index);
+    });
+  }
+
   async function runAction(actionKey) {
     const currentImage = currentSlideImage();
     if (!currentImage) {
       return null;
+    }
+    const action = (state.slideshow?.actionButtons || []).find((item) => item.key === actionKey);
+    if (action?.action === "command") {
+      return startCommandAction(actionKey, currentImage);
     }
     return withBusy(t("busy.working"), async () => {
       const preferredIndex = state.slideshow.index;
@@ -621,6 +891,30 @@ import { createViewHelpers } from "./app/view-helpers.js";
       showNotice(result.notice, "info");
       await loadSlideshow(state.slideshow.currentPath, preferredIndex);
     });
+  }
+
+  async function terminateCommandTerminal() {
+    const socket = state.commandTerminal.socket;
+    if (!socket || socket.readyState !== window.WebSocket.OPEN) {
+      return;
+    }
+    socket.send(JSON.stringify({ type: "terminate" }));
+  }
+
+  async function closeCommandTerminal() {
+    if (!state.commandTerminal.open) {
+      return;
+    }
+
+    const reloadPath = state.commandTerminal.currentPath;
+    const preferredIndex = state.commandTerminal.preferredIndex || 0;
+
+    disposeCommandSocket(1000, "command-close");
+    disposeCommandTerminalRuntime();
+    state.commandTerminal = createCommandTerminalState();
+    render();
+
+    await loadSlideshow(reloadPath, preferredIndex);
   }
 
   function openPreview(index) {
@@ -797,7 +1091,7 @@ import { createViewHelpers } from "./app/view-helpers.js";
   }
 
   function sortSettingsActions(actions) {
-    const priority = { delete: 0, restore: 1, move: 2 };
+    const priority = { delete: 0, restore: 1, move: 2, command: 3 };
     return (actions || []).sort((left, right) => {
       const leftPriority = priority[left.action] ?? 99;
       const rightPriority = priority[right.action] ?? 99;
@@ -817,6 +1111,7 @@ import { createViewHelpers } from "./app/view-helpers.js";
       key: "",
       action: type,
       target: "",
+      command: "",
     });
     sortSettingsActions(state.settingsDraft.actions);
     render();

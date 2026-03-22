@@ -1,14 +1,18 @@
 package app
 
 import (
+	"context"
+	"io"
 	"os"
 	"path/filepath"
 	"reflect"
 	"sort"
+	"sync"
 	"testing"
 
 	"github.com/nemo1105/photo-manager/internal/config"
 	"github.com/nemo1105/photo-manager/internal/localize"
+	"github.com/nemo1105/photo-manager/internal/terminal"
 )
 
 type fakeTrash struct {
@@ -20,11 +24,132 @@ func (f *fakeTrash) Trash(path string) error {
 	return os.Remove(path)
 }
 
+type fakeTerminalManager struct {
+	reserved   []terminal.Spec
+	reserveErr error
+	session    terminal.Session
+	attachID   string
+	attachErr  error
+}
+
+func (f *fakeTerminalManager) Reserve(spec terminal.Spec) (*terminal.Reservation, error) {
+	f.reserved = append(f.reserved, spec)
+	if f.reserveErr != nil {
+		return nil, f.reserveErr
+	}
+	return &terminal.Reservation{
+		ID:         "cmd-1",
+		Command:    spec.Command,
+		WorkDirRel: spec.WorkDirRel,
+	}, nil
+}
+
+func (f *fakeTerminalManager) Attach(id string) (terminal.Session, error) {
+	f.attachID = id
+	if f.attachErr != nil {
+		return nil, f.attachErr
+	}
+	return f.session, nil
+}
+
+type fakeTerminalSession struct {
+	chunks       [][]byte
+	readIndex    int
+	readDone     chan struct{}
+	readDoneOnce sync.Once
+	writes       [][]byte
+	resizes      [][2]int
+	terminated   bool
+	closed       bool
+	exitCode     int
+	waitErr      error
+}
+
+func newFakeTerminalSession(chunks ...string) *fakeTerminalSession {
+	byteChunks := make([][]byte, 0, len(chunks))
+	for _, chunk := range chunks {
+		byteChunks = append(byteChunks, []byte(chunk))
+	}
+	return &fakeTerminalSession{
+		chunks:   byteChunks,
+		readDone: make(chan struct{}),
+	}
+}
+
+func (f *fakeTerminalSession) ID() string {
+	return "cmd-1"
+}
+
+func (f *fakeTerminalSession) Command() string {
+	return "python script.py"
+}
+
+func (f *fakeTerminalSession) WorkDirRel() string {
+	return "work"
+}
+
+func (f *fakeTerminalSession) Read(p []byte) (int, error) {
+	if f.readIndex >= len(f.chunks) {
+		f.markReadDone()
+		return 0, io.EOF
+	}
+	chunk := f.chunks[f.readIndex]
+	f.readIndex += 1
+	copy(p, chunk)
+	if f.readIndex >= len(f.chunks) {
+		f.markReadDone()
+	}
+	return len(chunk), nil
+}
+
+func (f *fakeTerminalSession) Write(p []byte) (int, error) {
+	copyBuf := append([]byte(nil), p...)
+	f.writes = append(f.writes, copyBuf)
+	return len(p), nil
+}
+
+func (f *fakeTerminalSession) Resize(cols, rows int) error {
+	f.resizes = append(f.resizes, [2]int{cols, rows})
+	return nil
+}
+
+func (f *fakeTerminalSession) Terminate() error {
+	f.terminated = true
+	f.markReadDone()
+	return nil
+}
+
+func (f *fakeTerminalSession) Wait(ctx context.Context) (int, error) {
+	select {
+	case <-f.readDone:
+		return f.exitCode, f.waitErr
+	case <-ctx.Done():
+		return 0, ctx.Err()
+	}
+}
+
+func (f *fakeTerminalSession) Close() error {
+	f.closed = true
+	f.markReadDone()
+	return nil
+}
+
+func (f *fakeTerminalSession) markReadDone() {
+	f.readDoneOnce.Do(func() {
+		close(f.readDone)
+	})
+}
+
 func TestMoveAndRestoreUseSessionRoot(t *testing.T) {
 	root := t.TempDir()
 	mustWriteFile(t, filepath.Join(root, "photo.jpg"))
 
 	cfg := config.Default()
+	cfg.Actions = append(cfg.Actions, config.ActionBinding{
+		Key:     "c",
+		Action:  "command",
+		Command: "python script.py",
+	})
 	app := New(root, filepath.Join(root, "config.yaml"), cfg, &fakeTrash{})
 
 	if _, err := app.OpenSession(""); err != nil {
@@ -49,11 +174,105 @@ func TestMoveAndRestoreUseSessionRoot(t *testing.T) {
 	}
 }
 
+func TestStartCommandActionUsesSessionRoot(t *testing.T) {
+	root := t.TempDir()
+	mustWriteFile(t, filepath.Join(root, "work", "photo.jpg"))
+
+	cfg := config.Default()
+	cfg.Actions = append(cfg.Actions, config.ActionBinding{
+		Key:     "c",
+		Action:  "command",
+		Command: "python script.py",
+	})
+	manager := &fakeTerminalManager{}
+	app := NewWithTerminal(root, filepath.Join(root, "config.yaml"), cfg, &fakeTrash{}, manager)
+
+	if _, err := app.OpenSession("work"); err != nil {
+		t.Fatalf("open session: %v", err)
+	}
+
+	result, err := app.StartCommandAction("work", "work/photo.jpg", "c", localize.EN)
+	if err != nil {
+		t.Fatalf("start command action: %v", err)
+	}
+
+	if len(manager.reserved) != 1 {
+		t.Fatalf("expected one reservation, got %d", len(manager.reserved))
+	}
+	if manager.reserved[0].WorkDirAbs != filepath.Join(root, "work") {
+		t.Fatalf("expected work dir %q, got %q", filepath.Join(root, "work"), manager.reserved[0].WorkDirAbs)
+	}
+	if manager.reserved[0].WorkDirRel != "work" {
+		t.Fatalf("expected work dir rel work, got %q", manager.reserved[0].WorkDirRel)
+	}
+	if result.WorkingDir != "work" {
+		t.Fatalf("expected result working dir work, got %q", result.WorkingDir)
+	}
+}
+
+func TestStartCommandActionFromReviewFolderUsesParentSessionRoot(t *testing.T) {
+	root := t.TempDir()
+	mustWriteFile(t, filepath.Join(root, "work", "0", "review.jpg"))
+
+	cfg := config.Default()
+	cfg.Actions = append(cfg.Actions, config.ActionBinding{
+		Key:     "c",
+		Action:  "command",
+		Command: "python script.py",
+	})
+	manager := &fakeTerminalManager{}
+	app := NewWithTerminal(root, filepath.Join(root, "config.yaml"), cfg, &fakeTrash{}, manager)
+
+	if _, err := app.OpenSession("work/0"); err != nil {
+		t.Fatalf("open session: %v", err)
+	}
+
+	if _, err := app.StartCommandAction("work/0", "work/0/review.jpg", "c", localize.EN); err != nil {
+		t.Fatalf("start command action: %v", err)
+	}
+
+	if len(manager.reserved) != 1 {
+		t.Fatalf("expected one reservation, got %d", len(manager.reserved))
+	}
+	if manager.reserved[0].WorkDirAbs != filepath.Join(root, "work") {
+		t.Fatalf("expected review command to use parent work root, got %q", manager.reserved[0].WorkDirAbs)
+	}
+	if manager.reserved[0].WorkDirRel != "work" {
+		t.Fatalf("expected review command to use rel work dir, got %q", manager.reserved[0].WorkDirRel)
+	}
+}
+
+func TestPerformActionRejectsCommandActions(t *testing.T) {
+	root := t.TempDir()
+	mustWriteFile(t, filepath.Join(root, "work", "photo.jpg"))
+
+	cfg := config.Default()
+	cfg.Actions = append(cfg.Actions, config.ActionBinding{
+		Key:     "c",
+		Action:  "command",
+		Command: "python script.py",
+	})
+	app := New(root, filepath.Join(root, "config.yaml"), cfg, &fakeTrash{})
+
+	if _, err := app.OpenSession("work"); err != nil {
+		t.Fatalf("open session: %v", err)
+	}
+
+	if _, err := app.PerformAction("work", "work/photo.jpg", "c", localize.EN); err == nil {
+		t.Fatal("expected command action to be rejected on file action path")
+	}
+}
+
 func TestOpenSessionFromTargetUsesParentAsSessionRoot(t *testing.T) {
 	root := t.TempDir()
 	mustWriteFile(t, filepath.Join(root, "work", "0", "review.jpg"))
 
 	cfg := config.Default()
+	cfg.Actions = append(cfg.Actions, config.ActionBinding{
+		Key:     "c",
+		Action:  "command",
+		Command: "python script.py",
+	})
 	app := New(root, filepath.Join(root, "config.yaml"), cfg, &fakeTrash{})
 
 	result, err := app.OpenSession("work/0")
@@ -398,6 +617,11 @@ func TestLocalizedBreadcrumbsActionLabelsAndNotices(t *testing.T) {
 	mustWriteFile(t, filepath.Join(root, "other", "keep.jpg"))
 
 	cfg := config.Default()
+	cfg.Actions = append(cfg.Actions, config.ActionBinding{
+		Key:     "c",
+		Action:  "command",
+		Command: "python script.py",
+	})
 	app := New(root, filepath.Join(root, "config.yaml"), cfg, &fakeTrash{})
 
 	browserData, err := app.Browser("work", localize.ZHCN)
@@ -428,6 +652,9 @@ func TestLocalizedBreadcrumbsActionLabelsAndNotices(t *testing.T) {
 	}
 	if labels["arrowup"] != "恢复" {
 		t.Fatalf("expected localized restore label, got %q", labels["arrowup"])
+	}
+	if labels["c"] != "执行命令" {
+		t.Fatalf("expected localized command label, got %q", labels["c"])
 	}
 
 	result, err := app.PerformAction("work", "work/photo.jpg", "arrowdown", localize.ZHCN)

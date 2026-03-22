@@ -30,6 +30,9 @@ export function createViewHelpers({
       }
       return target.length > 14 ? t("settings.actionType.move") : target;
     }
+    if (action.action === "command") {
+      return t("settings.actionType.command");
+    }
     return action.label || action.action;
   }
 
@@ -243,8 +246,9 @@ export function createViewHelpers({
   function settingsActionRowHtml(action, index) {
     const isCapturing = isCaptureAction(index);
     const showTarget = action.action === "move";
+    const showCommand = action.action === "command";
     return `
-      <div class="settings-row settings-row--action ${isCapturing ? "capturing" : ""} ${showTarget ? "settings-row--with-target" : "settings-row--without-target"}">
+      <div class="settings-row settings-row--action ${isCapturing ? "capturing" : ""} ${showTarget || showCommand ? "settings-row--with-target" : "settings-row--without-target"}">
         <div class="settings-action-inline">
           <span class="settings-action-prefix">${escapeHtml(t("settings.action"))}:</span>
           <div class="settings-select-wrap">
@@ -252,11 +256,16 @@ export function createViewHelpers({
               ${optionHtml("delete", action.action === "delete")}
               ${optionHtml("restore", action.action === "restore")}
               ${optionHtml("move", action.action === "move")}
+              ${optionHtml("command", action.action === "command")}
             </select>
           </div>
           ${showTarget ? `
             <span class="settings-action-separator">${escapeHtml(t("settings.toFolder"))}</span>
             <input data-action-field="target" data-action-index="${index}" value="${escapeHtml(action.target || "")}" placeholder="${escapeHtml(t("settings.targetPlaceholder"))}">
+          ` : ""}
+          ${showCommand ? `
+            <span class="settings-action-separator">${escapeHtml(t("settings.commandLine"))}</span>
+            <input data-action-field="command" data-action-index="${index}" value="${escapeHtml(action.command || "")}" placeholder="${escapeHtml(t("settings.commandPlaceholder"))}">
           ` : ""}
         </div>
         <div class="settings-action-tail">

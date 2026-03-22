@@ -13,6 +13,7 @@ import (
 
 	"github.com/nemo1105/photo-manager/internal/config"
 	"github.com/nemo1105/photo-manager/internal/localize"
+	"github.com/nemo1105/photo-manager/internal/terminal"
 )
 
 type App struct {
@@ -21,6 +22,7 @@ type App struct {
 	configPath string
 	cfg        *config.Config
 	trash      Trasher
+	terminal   terminal.Manager
 	session    *Session
 }
 
@@ -54,6 +56,7 @@ type ActionButton struct {
 	Key     string `json:"key"`
 	Action  string `json:"action"`
 	Target  string `json:"target,omitempty"`
+	Command string `json:"command,omitempty"`
 	Label   string `json:"label"`
 	Enabled bool   `json:"enabled"`
 }
@@ -101,6 +104,13 @@ type ActionResult struct {
 	Session SessionInfo `json:"session"`
 }
 
+type CommandStartResult struct {
+	CommandSessionID string      `json:"commandSessionId"`
+	Command          string      `json:"command"`
+	WorkingDir       string      `json:"workingDir"`
+	Session          SessionInfo `json:"session"`
+}
+
 type OpenSessionResult struct {
 	Session       SessionInfo `json:"session"`
 	SlideshowPath string      `json:"slideshowPath"`
@@ -114,6 +124,9 @@ var (
 	errSourceDestinationSame  = localize.NewStaticError("This photo is already in that folder", "这张图片已经在那个文件夹里")
 	errRestoreOnlyInTarget    = localize.NewStaticError("Restore is only available in folders with sorted photos", "只有在已整理图片的文件夹里才能恢复")
 	errUnsupportedAction      = localize.NewStaticError("This action is not supported", "不支持这个整理动作")
+	errCommandOnlyAction      = localize.NewStaticError("This action must be started from the command path", "这个动作需要通过执行命令路径启动")
+	errActionNotCommand       = localize.NewStaticError("This is not a command action", "这不是执行命令动作")
+	errCommandAlreadyRunning  = localize.NewStaticError("Finish the current command before starting another", "请先结束当前命令，再启动新的命令")
 	errPathNotDirectory       = localize.NewStaticError("This is not a folder", "这不是文件夹")
 	errPathIsDirectory        = localize.NewStaticError("This is a folder, not a photo", "这是文件夹，不是图片")
 	errUnsupportedImage       = localize.NewStaticError("This image format is not supported", "不支持这种图片格式")
@@ -123,11 +136,19 @@ var (
 )
 
 func New(launchRoot, configPath string, cfg *config.Config, trash Trasher) *App {
+	return NewWithTerminal(launchRoot, configPath, cfg, trash, terminal.NewSystemManager())
+}
+
+func NewWithTerminal(launchRoot, configPath string, cfg *config.Config, trash Trasher, terminalManager terminal.Manager) *App {
+	if terminalManager == nil {
+		terminalManager = terminal.NewSystemManager()
+	}
 	return &App{
 		launchRoot: filepath.Clean(launchRoot),
 		configPath: configPath,
 		cfg:        cfg.Clone(),
 		trash:      trash,
+		terminal:   terminalManager,
 	}
 }
 
@@ -300,6 +321,7 @@ func (a *App) Slideshow(relPath string, locale localize.Locale) (*SlideshowData,
 			Key:     binding.Key,
 			Action:  binding.Action,
 			Target:  binding.Target,
+			Command: binding.Command,
 			Label:   actionLabel(locale, binding),
 			Enabled: enabled,
 		})
@@ -393,6 +415,8 @@ func (a *App) PerformAction(currentDirRel, imageRel, actionKey string, locale lo
 			return nil, err
 		}
 		notice = localize.RestoreNotice(locale, filepath.Base(imageAbs))
+	case "command":
+		return nil, errCommandOnlyAction
 	default:
 		return nil, errUnsupportedAction
 	}
@@ -403,6 +427,75 @@ func (a *App) PerformAction(currentDirRel, imageRel, actionKey string, locale lo
 		Notice:  notice,
 		Session: a.sessionInfoLocked(),
 	}, nil
+}
+
+func (a *App) StartCommandAction(currentDirRel, imageRel, actionKey string, locale localize.Locale) (*CommandStartResult, error) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+
+	if a.session == nil {
+		return nil, errNoActiveSession
+	}
+
+	currentDirRel, currentDirAbs, err := a.resolveDir(currentDirRel)
+	if err != nil {
+		return nil, err
+	}
+	if notice := a.maybeAutoEndSessionLocked(locale, currentDirAbs); notice != "" {
+		return nil, localize.NewStaticError("left the active work directory range, session ended automatically", notice)
+	}
+
+	imageRel, imageAbs, err := a.resolveFile(imageRel)
+	if err != nil {
+		return nil, err
+	}
+	if !isWithinDir(imageAbs, currentDirAbs) {
+		return nil, errImageOutsideCurrentDir
+	}
+
+	key, err := config.NormalizeKey(actionKey)
+	if err != nil {
+		return nil, err
+	}
+
+	binding, found := findAction(a.cfg.Actions, key)
+	if !found {
+		return nil, errActionKeyNotConfigured
+	}
+	if binding.Action != "command" {
+		return nil, errActionNotCommand
+	}
+
+	rootRel, err := filepath.Rel(a.launchRoot, a.session.RootAbs)
+	if err != nil || rootRel == "." {
+		rootRel = ""
+	}
+
+	reservation, err := a.terminal.Reserve(terminal.Spec{
+		Command:    binding.Command,
+		WorkDirAbs: a.session.RootAbs,
+		WorkDirRel: filepath.ToSlash(rootRel),
+		Env:        os.Environ(),
+	})
+	if err != nil {
+		if errors.Is(err, terminal.ErrSessionActive) {
+			return nil, errCommandAlreadyRunning
+		}
+		return nil, err
+	}
+
+	_ = currentDirRel
+	_ = imageRel
+	return &CommandStartResult{
+		CommandSessionID: reservation.ID,
+		Command:          reservation.Command,
+		WorkingDir:       reservation.WorkDirRel,
+		Session:          a.sessionInfoLocked(),
+	}, nil
+}
+
+func (a *App) AttachCommandSession(id string) (terminal.Session, error) {
+	return a.terminal.Attach(strings.TrimSpace(id))
 }
 
 func (a *App) ImagePath(relPath string) (string, error) {

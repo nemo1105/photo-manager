@@ -121,6 +121,26 @@
     </div>
   </div>
 
+  <div id="commandTerminalModal" class="modal modal--terminal" hidden>
+    <div class="modal-backdrop"></div>
+    <div class="modal-card command-terminal-card" role="dialog" aria-modal="true" aria-labelledby="commandTerminalTitle">
+      <div class="modal-header command-terminal-header">
+        <div>
+          <p id="commandTerminalKicker" class="modal-kicker">Run Command</p>
+          <h2 id="commandTerminalTitle" class="modal-title">Run Command</h2>
+          <p id="commandTerminalMeta" class="modal-caption command-terminal-meta"></p>
+        </div>
+        <div class="modal-header-actions">
+          <button id="commandTerminalActionButton" class="ghost-button utility-button help-header-button" type="button">Terminate</button>
+        </div>
+      </div>
+      <div id="commandTerminalStatus" class="command-terminal-status"></div>
+      <div id="commandTerminalBody" class="command-terminal-body">
+        <div id="commandTerminalViewport" class="command-terminal-viewport"></div>
+      </div>
+    </div>
+  </div>
+
   <script type="module" src="/app.js"></script>
 </body>
 </html>

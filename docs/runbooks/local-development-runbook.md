@@ -1,6 +1,6 @@
 # Local Development Runbook
 
-Last updated: 2026-03-21
+Last updated: 2026-03-22
 
 ## Preconditions
 
@@ -18,8 +18,9 @@ Last updated: 2026-03-21
 5. Start sorting using the main button or its configured folder-browsing key.
 6. Browse into a configured target folder such as `0`, confirm a bottom-right review toast appears, start there, and verify `restore` returns files to the parent sorting-start folder.
 7. Exercise `move`, `delete`, and `restore` using both the buttons and the configured keys.
-8. Open Help, use the header `Settings` button, change a key or action, save, and confirm the new binding works immediately.
-9. Navigate outside the active sorting range and confirm sorting ends automatically with a notice.
+8. Open Help, use the header `Settings` button, add a `command` action such as `powershell -NoLogo` or `python`, save, and confirm it opens an interactive full-screen terminal from the current sort-starting folder.
+9. Close the terminal after the process exits and confirm the app returns to the current sorting directory with refreshed file state.
+10. Navigate outside the active sorting range and confirm sorting ends automatically with a notice.
 
 ## Rollback
 
@@ -34,4 +35,6 @@ Last updated: 2026-03-21
 - Sorting/review state appears only while sorting is active.
 - Target folders present a bottom-right review toast before sorting starts and a review state inside the sorting view.
 - Relative move targets resolve from the chosen sort starting folder, even inside review folders.
+- `command` actions also start from that same sort-starting folder, even when launched from a review subfolder.
+- The command terminal captures keyboard input while open and does not let slideshow shortcuts fire underneath it.
 - Hidden files and unsupported file types do not appear in directory listings.

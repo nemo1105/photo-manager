@@ -2,22 +2,133 @@ package web
 
 import (
 	"bytes"
+	"context"
+	"encoding/base64"
 	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strings"
+	"sync"
 	"testing"
+	"time"
 
+	"github.com/coder/websocket"
+	"github.com/coder/websocket/wsjson"
 	"github.com/nemo1105/photo-manager/internal/app"
 	"github.com/nemo1105/photo-manager/internal/config"
 	"github.com/nemo1105/photo-manager/internal/localize"
+	"github.com/nemo1105/photo-manager/internal/terminal"
 )
 
 type stubTrash struct{}
 
 func (stubTrash) Trash(string) error {
 	return nil
+}
+
+type fakeHandlerTerminalManager struct {
+	reserved []terminal.Spec
+	session  terminal.Session
+}
+
+func (f *fakeHandlerTerminalManager) Reserve(spec terminal.Spec) (*terminal.Reservation, error) {
+	f.reserved = append(f.reserved, spec)
+	return &terminal.Reservation{
+		ID:         "cmd-1",
+		Command:    spec.Command,
+		WorkDirRel: spec.WorkDirRel,
+	}, nil
+}
+
+func (f *fakeHandlerTerminalManager) Attach(id string) (terminal.Session, error) {
+	if id != "cmd-1" || f.session == nil {
+		return nil, terminal.ErrSessionNotFound
+	}
+	return f.session, nil
+}
+
+type fakeHandlerTerminalSession struct {
+	chunks       [][]byte
+	readIndex    int
+	readDone     chan struct{}
+	readDoneOnce sync.Once
+	resizes      [][2]int
+	closed       bool
+}
+
+func newFakeHandlerTerminalSession(chunks ...string) *fakeHandlerTerminalSession {
+	byteChunks := make([][]byte, 0, len(chunks))
+	for _, chunk := range chunks {
+		byteChunks = append(byteChunks, []byte(chunk))
+	}
+	return &fakeHandlerTerminalSession{
+		chunks:   byteChunks,
+		readDone: make(chan struct{}),
+	}
+}
+
+func (f *fakeHandlerTerminalSession) ID() string {
+	return "cmd-1"
+}
+
+func (f *fakeHandlerTerminalSession) Command() string {
+	return "python script.py"
+}
+
+func (f *fakeHandlerTerminalSession) WorkDirRel() string {
+	return "work"
+}
+
+func (f *fakeHandlerTerminalSession) Read(p []byte) (int, error) {
+	if f.readIndex >= len(f.chunks) {
+		f.markReadDone()
+		return 0, io.EOF
+	}
+	chunk := f.chunks[f.readIndex]
+	f.readIndex += 1
+	copy(p, chunk)
+	if f.readIndex >= len(f.chunks) {
+		f.markReadDone()
+	}
+	return len(chunk), nil
+}
+
+func (f *fakeHandlerTerminalSession) Write(p []byte) (int, error) {
+	return len(p), nil
+}
+
+func (f *fakeHandlerTerminalSession) Resize(cols, rows int) error {
+	f.resizes = append(f.resizes, [2]int{cols, rows})
+	return nil
+}
+
+func (f *fakeHandlerTerminalSession) Terminate() error {
+	f.markReadDone()
+	return nil
+}
+
+func (f *fakeHandlerTerminalSession) Wait(ctx context.Context) (int, error) {
+	select {
+	case <-f.readDone:
+		return 0, nil
+	case <-ctx.Done():
+		return 0, ctx.Err()
+	}
+}
+
+func (f *fakeHandlerTerminalSession) Close() error {
+	f.closed = true
+	f.markReadDone()
+	return nil
+}
+
+func (f *fakeHandlerTerminalSession) markReadDone() {
+	f.readDoneOnce.Do(func() {
+		close(f.readDone)
+	})
 }
 
 func TestHandleConfigReturnsLocalizedValidationError(t *testing.T) {
@@ -102,6 +213,139 @@ func TestHandleActionWithoutSortingUsesUserLanguage(t *testing.T) {
 	}
 	if payload["error"] != "请先开始整理" {
 		t.Fatalf("unexpected localized action error: %q", payload["error"])
+	}
+}
+
+func TestHandleCommandStartReturnsReservation(t *testing.T) {
+	root := t.TempDir()
+	mustWriteHandlerFile(t, filepath.Join(root, "work", "a.jpg"))
+
+	cfg := config.Default()
+	cfg.Actions = append(cfg.Actions, config.ActionBinding{
+		Key:     "c",
+		Action:  "command",
+		Command: "python script.py",
+	})
+	manager := &fakeHandlerTerminalManager{}
+	photoApp := app.NewWithTerminal(root, filepath.Join(root, "config.yaml"), cfg, stubTrash{}, manager)
+	if _, err := photoApp.OpenSession("work"); err != nil {
+		t.Fatalf("open session: %v", err)
+	}
+	handler := NewHandler(photoApp)
+
+	req := httptest.NewRequest(http.MethodPost, "/api/command/start", bytes.NewBufferString(`{"currentPath":"work","imagePath":"work/a.jpg","actionKey":"c"}`))
+	req.Header.Set("Content-Type", "application/json")
+
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d body=%s", rec.Code, rec.Body.String())
+	}
+
+	var payload struct {
+		CommandSessionID string `json:"commandSessionId"`
+		Command          string `json:"command"`
+		WorkingDir       string `json:"workingDir"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &payload); err != nil {
+		t.Fatalf("decode payload: %v", err)
+	}
+	if payload.CommandSessionID != "cmd-1" {
+		t.Fatalf("expected session id cmd-1, got %q", payload.CommandSessionID)
+	}
+	if payload.WorkingDir != "work" {
+		t.Fatalf("expected working dir work, got %q", payload.WorkingDir)
+	}
+	if len(manager.reserved) != 1 || manager.reserved[0].WorkDirRel != "work" {
+		t.Fatalf("unexpected reserved specs: %+v", manager.reserved)
+	}
+}
+
+func TestHandleCommandWSStreamsOutputAndExit(t *testing.T) {
+	root := t.TempDir()
+	mustWriteHandlerFile(t, filepath.Join(root, "work", "a.jpg"))
+
+	cfg := config.Default()
+	cfg.Actions = append(cfg.Actions, config.ActionBinding{
+		Key:     "c",
+		Action:  "command",
+		Command: "python script.py",
+	})
+	session := newFakeHandlerTerminalSession("hello\r\n")
+	manager := &fakeHandlerTerminalManager{session: session}
+	photoApp := app.NewWithTerminal(root, filepath.Join(root, "config.yaml"), cfg, stubTrash{}, manager)
+	if _, err := photoApp.OpenSession("work"); err != nil {
+		t.Fatalf("open session: %v", err)
+	}
+	if _, err := photoApp.StartCommandAction("work", "work/a.jpg", "c", localize.EN); err != nil {
+		t.Fatalf("start command action: %v", err)
+	}
+
+	server := httptest.NewServer(NewHandler(photoApp))
+	defer server.Close()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	wsURL := "ws" + strings.TrimPrefix(server.URL, "http") + "/api/command/ws?id=cmd-1"
+	conn, _, err := websocket.Dial(ctx, wsURL, nil)
+	if err != nil {
+		t.Fatalf("dial websocket: %v", err)
+	}
+	defer conn.Close(websocket.StatusNormalClosure, "")
+
+	var started map[string]any
+	if err := wsjson.Read(ctx, conn, &started); err != nil {
+		t.Fatalf("read started frame: %v", err)
+	}
+	if started["type"] != "started" {
+		t.Fatalf("expected started frame, got %+v", started)
+	}
+
+	if err := wsjson.Write(ctx, conn, map[string]any{
+		"type": "resize",
+		"cols": 100,
+		"rows": 40,
+	}); err != nil {
+		t.Fatalf("write resize frame: %v", err)
+	}
+
+	var output struct {
+		Type string `json:"type"`
+		Data string `json:"data"`
+	}
+	if err := wsjson.Read(ctx, conn, &output); err != nil {
+		t.Fatalf("read output frame: %v", err)
+	}
+	if output.Type != "output" {
+		t.Fatalf("expected output frame, got %+v", output)
+	}
+	data, err := base64.StdEncoding.DecodeString(output.Data)
+	if err != nil {
+		t.Fatalf("decode output: %v", err)
+	}
+	if string(data) != "hello\r\n" {
+		t.Fatalf("unexpected output payload: %q", string(data))
+	}
+
+	var exit struct {
+		Type string `json:"type"`
+		Code int    `json:"code"`
+	}
+	if err := wsjson.Read(ctx, conn, &exit); err != nil {
+		t.Fatalf("read exit frame: %v", err)
+	}
+	if exit.Type != "exit" || exit.Code != 0 {
+		t.Fatalf("unexpected exit frame: %+v", exit)
+	}
+
+	deadline := time.Now().Add(250 * time.Millisecond)
+	for len(session.resizes) == 0 && time.Now().Before(deadline) {
+		time.Sleep(10 * time.Millisecond)
+	}
+	if len(session.resizes) == 0 || session.resizes[0] != [2]int{100, 40} {
+		t.Fatalf("expected resize 100x40, got %+v", session.resizes)
 	}
 }
 
@@ -234,14 +478,17 @@ func TestHandleStaticModuleAsset(t *testing.T) {
 	cfg := config.Default()
 	handler := NewHandler(app.New(root, filepath.Join(root, "config.yaml"), cfg, stubTrash{}))
 
-	req := httptest.NewRequest(http.MethodGet, "/app/helpers.js", nil)
+	req := httptest.NewRequest(http.MethodGet, "/app/vendor/addon-fit.mjs", nil)
 	rec := httptest.NewRecorder()
 	handler.ServeHTTP(rec, req)
 
 	if rec.Code != http.StatusOK {
 		t.Fatalf("expected 200, got %d", rec.Code)
 	}
-	if !bytes.Contains(rec.Body.Bytes(), []byte("export function normalizeLocale")) {
+	if contentType := rec.Header().Get("Content-Type"); !strings.HasPrefix(contentType, "text/javascript") {
+		t.Fatalf("expected javascript content type, got %q", contentType)
+	}
+	if !bytes.Contains(rec.Body.Bytes(), []byte("FitAddon")) {
 		t.Fatalf("unexpected module body: %s", rec.Body.String())
 	}
 }

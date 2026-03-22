@@ -57,6 +57,8 @@ Track the next round of UX and reliability work after the initial browse/preview
   Current execution focus on 2026-03-21: move pure frontend helpers and view-fragment builders out of `internal/web/static/app.js`, keep behavior in the entrypoint unchanged, and serve the new module files through the embedded static handler.
 - [ ] Prevent repeated operations on the same stale image state from surfacing as user-visible errors.
 - [ ] Make the settings key-capture mode visually obvious while waiting for the next key press.
+- [x] Add interactive `command` actions with a full-screen terminal overlay rooted at the current sort-starting folder.
+  Current execution focus on 2026-03-22: add a `command` action type to the action library, open it in a full-screen in-page terminal, keep the shell working directory fixed to `sessionRoot`, and hold the terminal open until the user closes it after process exit.
 
 ## Risks
 
@@ -68,6 +70,7 @@ Track the next round of UX and reliability work after the initial browse/preview
 - Removing `browser.end_session` changes both config shape and browser/session semantics, so refresh and old-config save paths need explicit regression coverage.
 - Removing `browser.up_dir` changes the config shape again, so old YAML cleanup and browser shortcut/help coverage need to stay aligned.
 - Removing `browser.open_settings` changes the config shape again, so old YAML cleanup and help/settings-entry coverage need to stay aligned.
+- Interactive terminal support depends on platform-specific PTY behavior, so Windows and macOS runtime verification need to stay explicit even when backend tests pass.
 
 ## Decisions
 
@@ -83,6 +86,7 @@ Track the next round of UX and reliability work after the initial browse/preview
 - `keys.browser.up_dir` is removed from the product contract because `collapse_dir` already covers both collapsing the current node and stepping to the parent when appropriate. Old YAML with `browser.up_dir` is ignored and dropped on the next save.
 - `keys.browser.open_settings` is removed from the product contract so folder-browsing keys stay focused on navigation plus sorting start. Settings now opens only from the help modal header button, and old YAML with `browser.open_settings` is ignored and dropped on the next save.
 - The browser payload no longer carries legacy `parentPath` / `canGoUp` fields, and the frontend no longer keeps an unused `up-dir` toolbar action branch.
+- `command` actions run as raw shell text with no placeholder DSL or auto-injected current-image/current-directory variables; the only guaranteed execution context is the initial `sessionRoot` working directory.
 
 ## Verification
 
@@ -99,6 +103,7 @@ Track the next round of UX and reliability work after the initial browse/preview
 - Manually verify browse, preview, start-session, move, delete, restore, and auto-end-session behavior in the browser.
 - Manually verify target folders trigger the review toast before session start and the review state inside slideshow.
 - Confirm any UI work still keeps action buttons usable without keyboard shortcuts.
+- Manually verify `command` opens an interactive full-screen terminal, starts in the sort-starting folder even from review mode, and returns cleanly to sorting after manual close.
 
 ## Next update trigger
 

@@ -1,22 +1,36 @@
 package web
 
 import (
+	"context"
 	"embed"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
+	"io"
 	"io/fs"
 	"log"
+	"mime"
 	"net/http"
+	"strings"
+	"sync"
+	"time"
 
+	"github.com/coder/websocket"
+	"github.com/coder/websocket/wsjson"
 	"github.com/nemo1105/photo-manager/internal/app"
 	"github.com/nemo1105/photo-manager/internal/config"
 	"github.com/nemo1105/photo-manager/internal/localize"
+	"github.com/nemo1105/photo-manager/internal/terminal"
 )
 
 //go:embed static/*
 var assets embed.FS
 
 var errInvalidRequest = localize.NewStaticError("invalid request body", "请求体无效")
+
+func init() {
+	mime.AddExtensionType(".mjs", "text/javascript; charset=utf-8")
+}
 
 type Handler struct {
 	app        *app.App
@@ -53,6 +67,8 @@ func NewHandler(photoApp *app.App) http.Handler {
 	mux.HandleFunc("/api/session/end", h.handleSessionEnd)
 	mux.HandleFunc("/api/slideshow", h.handleSlideshow)
 	mux.HandleFunc("/api/action", h.handleAction)
+	mux.HandleFunc("/api/command/start", h.handleCommandStart)
+	mux.HandleFunc("/api/command/ws", h.handleCommandWS)
 	mux.HandleFunc("/api/config", h.handleConfig)
 	mux.HandleFunc("/image", h.handleImage)
 	return mux
@@ -173,6 +189,75 @@ func (h *Handler) handleAction(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, result)
 }
 
+func (h *Handler) handleCommandStart(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		methodNotAllowed(w)
+		return
+	}
+	var req struct {
+		CurrentPath string `json:"currentPath"`
+		ImagePath   string `json:"imagePath"`
+		ActionKey   string `json:"actionKey"`
+	}
+	if err := decodeJSON(r, &req); err != nil {
+		writeError(w, r, err)
+		return
+	}
+	result, err := h.app.StartCommandAction(req.CurrentPath, req.ImagePath, req.ActionKey, localize.FromRequest(r))
+	if err != nil {
+		writeError(w, r, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, result)
+}
+
+func (h *Handler) handleCommandWS(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		methodNotAllowed(w)
+		return
+	}
+
+	conn, err := websocket.Accept(w, r, &websocket.AcceptOptions{
+		InsecureSkipVerify: true,
+	})
+	if err != nil {
+		return
+	}
+	defer conn.Close(websocket.StatusNormalClosure, "")
+
+	session, err := h.app.AttachCommandSession(r.URL.Query().Get("id"))
+	if err != nil {
+		status := websocket.StatusInternalError
+		if errors.Is(err, terminal.ErrSessionNotFound) || errors.Is(err, terminal.ErrSessionAttached) {
+			status = websocket.StatusPolicyViolation
+		}
+		_ = conn.Close(status, "command session unavailable")
+		return
+	}
+	defer session.Close()
+
+	writer := &commandFrameWriter{
+		ctx:  r.Context(),
+		conn: conn,
+	}
+
+	_ = writer.Write(commandWSMessage{Type: "started"})
+
+	go streamCommandOutput(r.Context(), writer, session)
+	go waitCommandExit(writer, session)
+
+	if err := readCommandControl(r.Context(), conn, session); err != nil {
+		status := websocket.CloseStatus(err)
+		if status == websocket.StatusNormalClosure || status == websocket.StatusGoingAway {
+			return
+		}
+		if errors.Is(err, context.Canceled) {
+			return
+		}
+		log.Printf("command websocket closed: %v", err)
+	}
+}
+
 func (h *Handler) handleConfig(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodGet:
@@ -246,4 +331,105 @@ func writeError(w http.ResponseWriter, r *http.Request, err error) {
 
 func methodNotAllowed(w http.ResponseWriter) {
 	w.WriteHeader(http.StatusMethodNotAllowed)
+}
+
+type commandWSControl struct {
+	Type string `json:"type"`
+	Data string `json:"data,omitempty"`
+	Cols int    `json:"cols,omitempty"`
+	Rows int    `json:"rows,omitempty"`
+}
+
+type commandWSMessage struct {
+	Type    string `json:"type"`
+	Data    string `json:"data,omitempty"`
+	Code    int    `json:"code,omitempty"`
+	Message string `json:"message,omitempty"`
+}
+
+type commandFrameWriter struct {
+	ctx  context.Context
+	conn *websocket.Conn
+	mu   sync.Mutex
+}
+
+func (w *commandFrameWriter) Write(message commandWSMessage) error {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+
+	ctx, cancel := context.WithTimeout(w.ctx, 5*time.Second)
+	defer cancel()
+	return wsjson.Write(ctx, w.conn, message)
+}
+
+func streamCommandOutput(ctx context.Context, writer *commandFrameWriter, session terminal.Session) {
+	buf := make([]byte, 4096)
+	for {
+		n, err := session.Read(buf)
+		if n > 0 {
+			payload := base64.StdEncoding.EncodeToString(buf[:n])
+			if writeErr := writer.Write(commandWSMessage{
+				Type: "output",
+				Data: payload,
+			}); writeErr != nil {
+				return
+			}
+		}
+		if err != nil {
+			if !errors.Is(err, io.EOF) && !errors.Is(err, context.Canceled) && !strings.Contains(strings.ToLower(err.Error()), "file has already been closed") {
+				_ = writer.Write(commandWSMessage{
+					Type:    "error",
+					Message: err.Error(),
+				})
+			}
+			return
+		}
+		select {
+		case <-ctx.Done():
+			return
+		default:
+		}
+	}
+}
+
+func waitCommandExit(writer *commandFrameWriter, session terminal.Session) {
+	code, err := session.Wait(context.Background())
+	if err != nil {
+		_ = writer.Write(commandWSMessage{
+			Type:    "error",
+			Message: err.Error(),
+		})
+		return
+	}
+	_ = writer.Write(commandWSMessage{
+		Type: "exit",
+		Code: code,
+	})
+}
+
+func readCommandControl(ctx context.Context, conn *websocket.Conn, session terminal.Session) error {
+	for {
+		var message commandWSControl
+		if err := wsjson.Read(ctx, conn, &message); err != nil {
+			return err
+		}
+
+		switch message.Type {
+		case "input":
+			if message.Data == "" {
+				continue
+			}
+			if _, err := session.Write([]byte(message.Data)); err != nil {
+				return err
+			}
+		case "resize":
+			if err := session.Resize(message.Cols, message.Rows); err != nil {
+				return err
+			}
+		case "terminate":
+			if err := session.Terminate(); err != nil {
+				return err
+			}
+		}
+	}
 }

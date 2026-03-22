@@ -45,9 +45,10 @@ type SlideshowKeys struct {
 }
 
 type ActionBinding struct {
-	Key    string `yaml:"key" json:"key"`
-	Action string `yaml:"action" json:"action"`
-	Target string `yaml:"target,omitempty" json:"target,omitempty"`
+	Key     string `yaml:"key" json:"key"`
+	Action  string `yaml:"action" json:"action"`
+	Target  string `yaml:"target,omitempty" json:"target,omitempty"`
+	Command string `yaml:"command,omitempty" json:"command,omitempty"`
 }
 
 type ValidationCode string
@@ -130,19 +131,29 @@ func (e *ValidationError) UserMessage(locale localize.Locale) string {
 		return fmt.Sprintf("%s must be a single key.", label)
 	case errors.Is(e.Err, errInvalidAction):
 		if locale == localize.ZHCN {
-			return fmt.Sprintf("%s必须是移动、删除或恢复。", label)
+			return fmt.Sprintf("%s必须是移动、删除、恢复或执行命令。", label)
 		}
-		return fmt.Sprintf("%s must be move, delete, or restore.", label)
+		return fmt.Sprintf("%s must be move, delete, restore, or command.", label)
 	case errors.Is(e.Err, errMissingTarget):
 		if locale == localize.ZHCN {
 			return fmt.Sprintf("%s需要目标路径。", label)
 		}
 		return fmt.Sprintf("%s requires a target path.", label)
+	case errors.Is(e.Err, errMissingCommand):
+		if locale == localize.ZHCN {
+			return fmt.Sprintf("%s需要命令行。", label)
+		}
+		return fmt.Sprintf("%s requires command text.", label)
 	case errors.Is(e.Err, errUnexpectedTarget):
 		if locale == localize.ZHCN {
 			return fmt.Sprintf("%s只适用于移动动作。", label)
 		}
 		return fmt.Sprintf("%s is only used by move actions.", label)
+	case errors.Is(e.Err, errUnexpectedCommand):
+		if locale == localize.ZHCN {
+			return fmt.Sprintf("%s只适用于执行命令动作。", label)
+		}
+		return fmt.Sprintf("%s is only used by command actions.", label)
 	default:
 		if locale == localize.ZHCN {
 			return "配置无效。"
@@ -152,11 +163,13 @@ func (e *ValidationError) UserMessage(locale localize.Locale) string {
 }
 
 var (
-	errEmptyKey         = localize.NewStaticError("key cannot be empty", "按键不能为空")
-	errInvalidKey       = localize.NewStaticError("key must be a single key", "按键必须是单个按键")
-	errInvalidAction    = localize.NewStaticError("action must be move, delete, or restore", "动作必须是 move、delete 或 restore")
-	errMissingTarget    = localize.NewStaticError("move action requires target", "move 动作需要目标路径")
-	errUnexpectedTarget = localize.NewStaticError("delete and restore actions cannot have target", "delete 和 restore 动作不能包含目标路径")
+	errEmptyKey          = localize.NewStaticError("key cannot be empty", "按键不能为空")
+	errInvalidKey        = localize.NewStaticError("key must be a single key", "按键必须是单个按键")
+	errInvalidAction     = localize.NewStaticError("action must be move, delete, restore, or command", "动作必须是 move、delete、restore 或 command")
+	errMissingTarget     = localize.NewStaticError("move action requires target", "move 动作需要目标路径")
+	errMissingCommand    = localize.NewStaticError("command action requires command text", "command 动作需要命令行")
+	errUnexpectedTarget  = localize.NewStaticError("only move actions can have target", "只有 move 动作可以包含目标路径")
+	errUnexpectedCommand = localize.NewStaticError("only command actions can have command text", "只有 command 动作可以包含命令行")
 )
 
 var namedKeys = map[string]struct{}{
@@ -342,6 +355,7 @@ func (c *Config) ValidateAndNormalize() error {
 		c.Actions[i].Key = key
 		c.Actions[i].Action = strings.ToLower(strings.TrimSpace(c.Actions[i].Action))
 		c.Actions[i].Target = strings.TrimSpace(c.Actions[i].Target)
+		c.Actions[i].Command = strings.TrimSpace(c.Actions[i].Command)
 
 		if _, exists := actionKeys[key]; exists {
 			return &ValidationError{
@@ -359,11 +373,36 @@ func (c *Config) ValidateAndNormalize() error {
 					Err:  errMissingTarget,
 				}
 			}
+			if c.Actions[i].Command != "" {
+				return &ValidationError{
+					Path: actionValidationPath(i, "command"),
+					Err:  errUnexpectedCommand,
+				}
+			}
+		case "command":
+			if c.Actions[i].Command == "" {
+				return &ValidationError{
+					Path: actionValidationPath(i, "command"),
+					Err:  errMissingCommand,
+				}
+			}
+			if c.Actions[i].Target != "" {
+				return &ValidationError{
+					Path: actionValidationPath(i, "target"),
+					Err:  errUnexpectedTarget,
+				}
+			}
 		case "delete", "restore":
 			if c.Actions[i].Target != "" {
 				return &ValidationError{
 					Path: actionValidationPath(i, "target"),
 					Err:  errUnexpectedTarget,
+				}
+			}
+			if c.Actions[i].Command != "" {
+				return &ValidationError{
+					Path: actionValidationPath(i, "command"),
+					Err:  errUnexpectedCommand,
 				}
 			}
 		default:
@@ -456,6 +495,8 @@ func validationFieldLabel(locale localize.Locale, path string) string {
 					return localizedActionLabel(locale, index, "action")
 				case "target":
 					return localizedActionLabel(locale, index, "target")
+				case "command":
+					return localizedActionLabel(locale, index, "command")
 				}
 			}
 		}
@@ -482,6 +523,11 @@ func localizedActionLabel(locale localize.Locale, index int, field string) strin
 			return fmt.Sprintf("动作 %d 的目标路径", number)
 		}
 		return fmt.Sprintf("Action %d target", number)
+	case "command":
+		if locale == localize.ZHCN {
+			return fmt.Sprintf("动作 %d 的命令行", number)
+		}
+		return fmt.Sprintf("Action %d command text", number)
 	default:
 		return fmt.Sprintf("actions[%d].%s", index, field)
 	}

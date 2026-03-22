@@ -1,11 +1,11 @@
 # Current Quality
 
-Last updated: 2026-03-21
+Last updated: 2026-03-22
 Status: active
 
 ## Quality goals
 
-- Keep all file-system operations contained inside the launch root unless the user explicitly configured an absolute move target.
+- Keep browser-supplied paths and built-in file operations contained inside the launch root unless the user explicitly configured an absolute move target.
 - Make session-root-based sorting predictable enough that review and restore never depend on the current image's parent folder.
 - Make review-folder entry explicit from the user's point of view, so moved-photo checks do not expose session-root internals.
 - Prevent review folders from surfacing a redundant self-target move action in slideshow.
@@ -27,6 +27,8 @@ Status: active
 - Keep help-modal summary stats compact while still exposing direct and recursive image counts without mutating session state.
 - Keep browser-visible copy consistent within the selected locale so static UI, server notices, and validation errors do not mix English and Chinese in the same flow.
 - Keep user-facing language centered on sorting and reviewing photos, not on internal implementation concepts like session, workspace, browser, slideshow, or capture.
+- Keep `command` actions anchored to the current sort-starting folder, even when they are launched from a review subfolder.
+- Keep the interactive command terminal modal, so keyboard input does not leak through to slideshow navigation or file actions.
 
 ## Known issues
 
@@ -41,6 +43,7 @@ Status: active
   - Default shortcut template for browser, slideshow, and action keys.
   - Session-root-based `move` and `restore` behavior.
   - Session-start fallback from target folders to the parent work root.
+  - Session-root-based `command` working directory selection.
   - Review-folder slideshow filtering that hides the current target move action while keeping restore and other actions available.
   - Ending sessions when browser mode is loaded, and auto-ending sessions when slideshow/action requests leave the session subtree.
   - Side-effect-free browser help stats counts, including recursive image totals that ignore hidden entries and unsupported files.
@@ -50,6 +53,7 @@ Status: active
   - Legacy config loading after removing the slideshow back-to-browser binding.
   - Request-locale parsing for `X-Photo-Manager-Locale` and `Accept-Language`.
   - Localized breadcrumbs, action labels, notices, and validation-error responses in `zh-CN`.
+  - Command-action config validation, reservation start path, and WebSocket output/exit streaming.
   - Task-first user terminology across UI dictionaries, backend notices, and settings validation labels.
   - Windows PowerShell path quoting for recycle-bin deletion.
 - Missing coverage:
@@ -62,6 +66,7 @@ Status: active
   - Browser-storage persistence and no-reload locale switching in the live UI.
   - Repeated-action protection for stale slideshow state.
   - Settings capture-state UX, explicit settings-entry flow, and config-edit browser flows.
+  - Manual runtime verification of the full-screen interactive command terminal with real shell programs.
 
 ## Debt and follow-ups
 
