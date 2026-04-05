@@ -14,8 +14,9 @@ import (
 )
 
 type Config struct {
-	Keys    KeyConfig       `yaml:"keys" json:"keys"`
-	Actions []ActionBinding `yaml:"actions" json:"actions"`
+	Keys           KeyConfig       `yaml:"keys" json:"keys"`
+	Actions        []ActionBinding `yaml:"actions" json:"actions"`
+	BrowserActions []ActionBinding `yaml:"browser_actions" json:"browserActions"`
 }
 
 type KeyConfig struct {
@@ -58,6 +59,7 @@ const (
 	validationDuplicateField          ValidationCode = "duplicate_field"
 	validationDuplicateActionKey      ValidationCode = "duplicate_action_key"
 	validationActionConflictSlideshow ValidationCode = "action_conflicts_with_slideshow"
+	validationActionConflictBrowser   ValidationCode = "action_conflicts_with_browser"
 )
 
 type ValidationError struct {
@@ -79,6 +81,8 @@ func (e *ValidationError) Error() string {
 		return fmt.Sprintf("%s duplicates another action", e.Path)
 	case validationActionConflictSlideshow:
 		return fmt.Sprintf("action key %q conflicts with slideshow keys", e.Key)
+	case validationActionConflictBrowser:
+		return fmt.Sprintf("action key %q conflicts with browser keys", e.Key)
 	default:
 		if e.Err == nil {
 			return e.Path
@@ -117,6 +121,11 @@ func (e *ValidationError) UserMessage(locale localize.Locale) string {
 			return fmt.Sprintf("%s与整理界面切图快捷键冲突。", label)
 		}
 		return fmt.Sprintf("%s conflicts with sorting-view navigation keys.", label)
+	case validationActionConflictBrowser:
+		if locale == localize.ZHCN {
+			return fmt.Sprintf("%s与文件夹浏览快捷键冲突。", label)
+		}
+		return fmt.Sprintf("%s conflicts with folder-browsing keys.", label)
 	}
 
 	switch {
@@ -135,6 +144,11 @@ func (e *ValidationError) UserMessage(locale localize.Locale) string {
 			return fmt.Sprintf("%s必须是移动、删除、恢复或执行命令。", label)
 		}
 		return fmt.Sprintf("%s must be move, delete, restore, or command.", label)
+	case errors.Is(e.Err, errInvalidBrowserAction):
+		if locale == localize.ZHCN {
+			return fmt.Sprintf("%s必须是移动或删除。", label)
+		}
+		return fmt.Sprintf("%s must be move or delete.", label)
 	case errors.Is(e.Err, errMissingTarget):
 		if locale == localize.ZHCN {
 			return fmt.Sprintf("%s需要目标路径。", label)
@@ -174,15 +188,16 @@ func (e *ValidationError) UserMessage(locale localize.Locale) string {
 }
 
 var (
-	errEmptyKey          = localize.NewStaticError("key cannot be empty", "按键不能为空")
-	errInvalidKey        = localize.NewStaticError("key must be a single key", "按键必须是单个按键")
-	errInvalidAction     = localize.NewStaticError("action must be move, delete, restore, or command", "动作必须是 move、delete、restore 或 command")
-	errMissingTarget     = localize.NewStaticError("move action requires target", "move 动作需要目标路径")
-	errMissingCommand    = localize.NewStaticError("command action requires command text", "command 动作需要命令行")
-	errMissingAlias      = localize.NewStaticError("move or command action requires alias", "move 或 command 动作需要别名")
-	errUnexpectedTarget  = localize.NewStaticError("only move actions can have target", "只有 move 动作可以包含目标路径")
-	errUnexpectedCommand = localize.NewStaticError("only command actions can have command text", "只有 command 动作可以包含命令行")
-	errUnexpectedAlias   = localize.NewStaticError("only move or command actions can have alias", "只有 move 或 command 动作可以包含别名")
+	errEmptyKey             = localize.NewStaticError("key cannot be empty", "按键不能为空")
+	errInvalidKey           = localize.NewStaticError("key must be a single key", "按键必须是单个按键")
+	errInvalidAction        = localize.NewStaticError("action must be move, delete, restore, or command", "动作必须是 move、delete、restore 或 command")
+	errInvalidBrowserAction = localize.NewStaticError("browser action must be move or delete", "文件夹浏览动作必须是 move 或 delete")
+	errMissingTarget        = localize.NewStaticError("move action requires target", "move 动作需要目标路径")
+	errMissingCommand       = localize.NewStaticError("command action requires command text", "command 动作需要命令行")
+	errMissingAlias         = localize.NewStaticError("move or command action requires alias", "move 或 command 动作需要别名")
+	errUnexpectedTarget     = localize.NewStaticError("only move actions can have target", "只有 move 动作可以包含目标路径")
+	errUnexpectedCommand    = localize.NewStaticError("only command actions can have command text", "只有 command 动作可以包含命令行")
+	errUnexpectedAlias      = localize.NewStaticError("only move or command actions can have alias", "只有 move 或 command 动作可以包含别名")
 )
 
 type validationOptions struct {
@@ -235,6 +250,9 @@ func Default() *Config {
 			{Key: "delete", Action: "delete"},
 			{Key: "arrowdown", Action: "move", Target: "0", Alias: "0"},
 			{Key: "arrowup", Action: "restore"},
+		},
+		BrowserActions: []ActionBinding{
+			{Key: "delete", Action: "delete"},
 		},
 	}
 }
@@ -298,6 +316,7 @@ func (c *Config) Clone() *Config {
 	}
 	copyCfg := *c
 	copyCfg.Actions = append([]ActionBinding(nil), c.Actions...)
+	copyCfg.BrowserActions = append([]ActionBinding(nil), c.BrowserActions...)
 	return &copyCfg
 }
 
@@ -364,93 +383,18 @@ func (c *Config) validateAndNormalize(options validationOptions) error {
 		}
 	}
 
-	actionKeys := map[string]int{}
-	for i := range c.Actions {
-		key, err := NormalizeKey(c.Actions[i].Key)
-		if err != nil {
-			return &ValidationError{
-				Path: actionValidationPath(i, "key"),
-				Err:  err,
-			}
-		}
-		c.Actions[i].Key = key
-		c.Actions[i].Action = strings.ToLower(strings.TrimSpace(c.Actions[i].Action))
-		c.Actions[i].Target = strings.TrimSpace(c.Actions[i].Target)
-		c.Actions[i].Command = strings.TrimSpace(c.Actions[i].Command)
-		c.Actions[i].Alias = strings.TrimSpace(c.Actions[i].Alias)
-
-		if _, exists := actionKeys[key]; exists {
-			return &ValidationError{
-				Path: actionValidationPath(i, "key"),
-				Code: validationDuplicateActionKey,
-			}
-		}
-		actionKeys[key] = i
-
-		switch c.Actions[i].Action {
-		case "move":
-			if c.Actions[i].Target == "" {
-				return &ValidationError{
-					Path: actionValidationPath(i, "target"),
-					Err:  errMissingTarget,
-				}
-			}
-			if c.Actions[i].Alias == "" && !options.allowLegacyMissingAlias {
-				return &ValidationError{
-					Path: actionValidationPath(i, "alias"),
-					Err:  errMissingAlias,
-				}
-			}
-			if c.Actions[i].Command != "" {
-				return &ValidationError{
-					Path: actionValidationPath(i, "command"),
-					Err:  errUnexpectedCommand,
-				}
-			}
-		case "command":
-			if c.Actions[i].Command == "" {
-				return &ValidationError{
-					Path: actionValidationPath(i, "command"),
-					Err:  errMissingCommand,
-				}
-			}
-			if c.Actions[i].Alias == "" && !options.allowLegacyMissingAlias {
-				return &ValidationError{
-					Path: actionValidationPath(i, "alias"),
-					Err:  errMissingAlias,
-				}
-			}
-			if c.Actions[i].Target != "" {
-				return &ValidationError{
-					Path: actionValidationPath(i, "target"),
-					Err:  errUnexpectedTarget,
-				}
-			}
-		case "delete", "restore":
-			if c.Actions[i].Target != "" {
-				return &ValidationError{
-					Path: actionValidationPath(i, "target"),
-					Err:  errUnexpectedTarget,
-				}
-			}
-			if c.Actions[i].Command != "" {
-				return &ValidationError{
-					Path: actionValidationPath(i, "command"),
-					Err:  errUnexpectedCommand,
-				}
-			}
-			if c.Actions[i].Alias != "" {
-				return &ValidationError{
-					Path: actionValidationPath(i, "alias"),
-					Err:  errUnexpectedAlias,
-				}
-			}
-		default:
-			return &ValidationError{
-				Path: actionValidationPath(i, "action"),
-				Err:  errInvalidAction,
-			}
-		}
+	if err := validateActionBindings(c.Actions, actionBindingValidation{
+		prefix:                  "actions",
+		allowLegacyMissingAlias: options.allowLegacyMissingAlias,
+		invalidActionErr:        errInvalidAction,
+		allowedActions: map[string]struct{}{
+			"move":    {},
+			"delete":  {},
+			"restore": {},
+			"command": {},
+		},
+	}); err != nil {
+		return err
 	}
 
 	for i := range c.Actions {
@@ -459,13 +403,140 @@ func (c *Config) validateAndNormalize(options validationOptions) error {
 			key == c.Keys.Slideshow.Prev ||
 			key == c.Keys.Slideshow.EndSession {
 			return &ValidationError{
-				Path: actionValidationPath(i, "key"),
+				Path: bindingValidationPath("actions", i, "key"),
 				Code: validationActionConflictSlideshow,
 				Key:  key,
 			}
 		}
 	}
 
+	if err := validateActionBindings(c.BrowserActions, actionBindingValidation{
+		prefix:           "browser_actions",
+		invalidActionErr: errInvalidBrowserAction,
+		allowedActions: map[string]struct{}{
+			"move":   {},
+			"delete": {},
+		},
+	}); err != nil {
+		return err
+	}
+
+	for i := range c.BrowserActions {
+		key := c.BrowserActions[i].Key
+		if key == c.Keys.Browser.StartSession ||
+			key == c.Keys.Browser.TreeUp ||
+			key == c.Keys.Browser.TreeDown ||
+			key == c.Keys.Browser.ExpandDir ||
+			key == c.Keys.Browser.CollapseDir {
+			return &ValidationError{
+				Path: bindingValidationPath("browser_actions", i, "key"),
+				Code: validationActionConflictBrowser,
+				Key:  key,
+			}
+		}
+	}
+
+	return nil
+}
+
+type actionBindingValidation struct {
+	prefix                  string
+	allowLegacyMissingAlias bool
+	invalidActionErr        error
+	allowedActions          map[string]struct{}
+}
+
+func validateActionBindings(bindings []ActionBinding, options actionBindingValidation) error {
+	actionKeys := map[string]int{}
+	for i := range bindings {
+		key, err := NormalizeKey(bindings[i].Key)
+		if err != nil {
+			return &ValidationError{
+				Path: bindingValidationPath(options.prefix, i, "key"),
+				Err:  err,
+			}
+		}
+		bindings[i].Key = key
+		bindings[i].Action = strings.ToLower(strings.TrimSpace(bindings[i].Action))
+		bindings[i].Target = strings.TrimSpace(bindings[i].Target)
+		bindings[i].Command = strings.TrimSpace(bindings[i].Command)
+		bindings[i].Alias = strings.TrimSpace(bindings[i].Alias)
+
+		if _, exists := actionKeys[key]; exists {
+			return &ValidationError{
+				Path: bindingValidationPath(options.prefix, i, "key"),
+				Code: validationDuplicateActionKey,
+			}
+		}
+		actionKeys[key] = i
+
+		if _, ok := options.allowedActions[bindings[i].Action]; !ok {
+			return &ValidationError{
+				Path: bindingValidationPath(options.prefix, i, "action"),
+				Err:  options.invalidActionErr,
+			}
+		}
+
+		switch bindings[i].Action {
+		case "move":
+			if bindings[i].Target == "" {
+				return &ValidationError{
+					Path: bindingValidationPath(options.prefix, i, "target"),
+					Err:  errMissingTarget,
+				}
+			}
+			if bindings[i].Alias == "" && !options.allowLegacyMissingAlias {
+				return &ValidationError{
+					Path: bindingValidationPath(options.prefix, i, "alias"),
+					Err:  errMissingAlias,
+				}
+			}
+			if bindings[i].Command != "" {
+				return &ValidationError{
+					Path: bindingValidationPath(options.prefix, i, "command"),
+					Err:  errUnexpectedCommand,
+				}
+			}
+		case "command":
+			if bindings[i].Command == "" {
+				return &ValidationError{
+					Path: bindingValidationPath(options.prefix, i, "command"),
+					Err:  errMissingCommand,
+				}
+			}
+			if bindings[i].Alias == "" && !options.allowLegacyMissingAlias {
+				return &ValidationError{
+					Path: bindingValidationPath(options.prefix, i, "alias"),
+					Err:  errMissingAlias,
+				}
+			}
+			if bindings[i].Target != "" {
+				return &ValidationError{
+					Path: bindingValidationPath(options.prefix, i, "target"),
+					Err:  errUnexpectedTarget,
+				}
+			}
+		case "delete", "restore":
+			if bindings[i].Target != "" {
+				return &ValidationError{
+					Path: bindingValidationPath(options.prefix, i, "target"),
+					Err:  errUnexpectedTarget,
+				}
+			}
+			if bindings[i].Command != "" {
+				return &ValidationError{
+					Path: bindingValidationPath(options.prefix, i, "command"),
+					Err:  errUnexpectedCommand,
+				}
+			}
+			if bindings[i].Alias != "" {
+				return &ValidationError{
+					Path: bindingValidationPath(options.prefix, i, "alias"),
+					Err:  errUnexpectedAlias,
+				}
+			}
+		}
+	}
 	return nil
 }
 
@@ -493,8 +564,8 @@ func validationPath(group, field string) string {
 	return group + "." + field
 }
 
-func actionValidationPath(index int, field string) string {
-	return fmt.Sprintf("actions[%d].%s", index, field)
+func bindingValidationPath(prefix string, index int, field string) string {
+	return fmt.Sprintf("%s[%d].%s", prefix, index, field)
 }
 
 func validationFieldLabel(locale localize.Locale, path string) string {
@@ -523,60 +594,69 @@ func validationFieldLabel(locale localize.Locale, path string) string {
 		return localizedLabel(locale, "Sorting view exit key", "整理界面退出整理快捷键")
 	}
 
-	if strings.HasPrefix(path, "actions[") {
-		closeIndex := strings.Index(path, "]")
-		if closeIndex > len("actions[") {
-			index, err := strconv.Atoi(path[len("actions["):closeIndex])
-			if err == nil {
-				switch strings.TrimPrefix(path[closeIndex+1:], ".") {
-				case "key":
-					return localizedActionLabel(locale, index, "key")
-				case "action":
-					return localizedActionLabel(locale, index, "action")
-				case "target":
-					return localizedActionLabel(locale, index, "target")
-				case "command":
-					return localizedActionLabel(locale, index, "command")
-				case "alias":
-					return localizedActionLabel(locale, index, "alias")
-				}
-			}
-		}
+	if label, ok := localizedIndexedBindingLabel(locale, path, "actions", false); ok {
+		return label
+	}
+	if label, ok := localizedIndexedBindingLabel(locale, path, "browser_actions", true); ok {
+		return label
 	}
 
 	return path
 }
 
-func localizedActionLabel(locale localize.Locale, index int, field string) string {
+func localizedIndexedBindingLabel(locale localize.Locale, path, prefix string, browser bool) (string, bool) {
+	startToken := prefix + "["
+	if !strings.HasPrefix(path, startToken) {
+		return "", false
+	}
+	closeIndex := strings.Index(path, "]")
+	if closeIndex <= len(startToken) {
+		return "", false
+	}
+	index, err := strconv.Atoi(path[len(startToken):closeIndex])
+	if err != nil {
+		return "", false
+	}
+	field := strings.TrimPrefix(path[closeIndex+1:], ".")
+	return localizedActionLabel(locale, index, field, browser), true
+}
+
+func localizedActionLabel(locale localize.Locale, index int, field string, browser bool) string {
 	number := index + 1
+	enPrefix := "Action"
+	zhPrefix := "动作"
+	if browser {
+		enPrefix = "Folder action"
+		zhPrefix = "文件夹动作"
+	}
 	switch field {
 	case "key":
 		if locale == localize.ZHCN {
-			return fmt.Sprintf("动作 %d 的按键", number)
+			return fmt.Sprintf("%s %d 的按键", zhPrefix, number)
 		}
-		return fmt.Sprintf("Action %d key", number)
+		return fmt.Sprintf("%s %d key", enPrefix, number)
 	case "action":
 		if locale == localize.ZHCN {
-			return fmt.Sprintf("动作 %d 的类型", number)
+			return fmt.Sprintf("%s %d 的类型", zhPrefix, number)
 		}
-		return fmt.Sprintf("Action %d type", number)
+		return fmt.Sprintf("%s %d type", enPrefix, number)
 	case "target":
 		if locale == localize.ZHCN {
-			return fmt.Sprintf("动作 %d 的目标路径", number)
+			return fmt.Sprintf("%s %d 的目标路径", zhPrefix, number)
 		}
-		return fmt.Sprintf("Action %d target", number)
+		return fmt.Sprintf("%s %d target", enPrefix, number)
 	case "command":
 		if locale == localize.ZHCN {
-			return fmt.Sprintf("动作 %d 的命令行", number)
+			return fmt.Sprintf("%s %d 的命令行", zhPrefix, number)
 		}
-		return fmt.Sprintf("Action %d command text", number)
+		return fmt.Sprintf("%s %d command text", enPrefix, number)
 	case "alias":
 		if locale == localize.ZHCN {
-			return fmt.Sprintf("动作 %d 的别名", number)
+			return fmt.Sprintf("%s %d 的别名", zhPrefix, number)
 		}
-		return fmt.Sprintf("Action %d alias", number)
+		return fmt.Sprintf("%s %d alias", enPrefix, number)
 	default:
-		return fmt.Sprintf("actions[%d].%s", index, field)
+		return fmt.Sprintf("%s[%d].%s", enPrefix, index, field)
 	}
 }
 

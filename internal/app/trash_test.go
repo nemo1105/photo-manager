@@ -7,10 +7,22 @@ import (
 
 func TestWindowsTrashScriptQuotesPath(t *testing.T) {
 	path := `D:\Photos\a b\c.png`
-	script := windowsTrashScript(path)
+	script := windowsTrashFileScript(path)
 
 	if !strings.Contains(script, `'D:\Photos\a b\c.png'`) {
 		t.Fatalf("expected quoted path in script, got %q", script)
+	}
+}
+
+func TestWindowsTrashDirectoryScriptQuotesPath(t *testing.T) {
+	path := `D:\Photos\a b\folder`
+	script := windowsTrashDirectoryScript(path)
+
+	if !strings.Contains(script, `'D:\Photos\a b\folder'`) {
+		t.Fatalf("expected quoted path in script, got %q", script)
+	}
+	if !strings.Contains(script, "DeleteDirectory") {
+		t.Fatalf("expected directory delete script, got %q", script)
 	}
 }
 

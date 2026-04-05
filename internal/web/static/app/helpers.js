@@ -260,8 +260,11 @@ export function createAppHelpers({ state, t }) {
     return state.captureTarget && state.captureTarget.type === "path" && state.captureTarget.path.join(".") === path.join(".");
   }
 
-  function isCaptureAction(index) {
-    return state.captureTarget && state.captureTarget.type === "action" && state.captureTarget.index === index;
+  function isCaptureAction(kind, index) {
+    return state.captureTarget
+      && state.captureTarget.type === "action"
+      && state.captureTarget.kind === kind
+      && state.captureTarget.index === index;
   }
 
   function currentData() {

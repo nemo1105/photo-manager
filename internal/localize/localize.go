@@ -114,8 +114,16 @@ func MoveNotice(locale Locale, name string) string {
 	return choose(locale, fmt.Sprintf("Moved %s.", name), fmt.Sprintf("已移动 %s。", name))
 }
 
+func MoveFolderNotice(locale Locale, name string) string {
+	return choose(locale, fmt.Sprintf("Moved folder %s.", name), fmt.Sprintf("已移动文件夹 %s。", name))
+}
+
 func DeleteNotice(locale Locale, name string) string {
 	return choose(locale, fmt.Sprintf("Deleted %s to recycle bin.", name), fmt.Sprintf("已将 %s 移到回收站。", name))
+}
+
+func DeleteFolderNotice(locale Locale, name string) string {
+	return choose(locale, fmt.Sprintf("Moved folder %s to recycle bin.", name), fmt.Sprintf("已将文件夹 %s 移到回收站。", name))
 }
 
 func RestoreNotice(locale Locale, name string) string {

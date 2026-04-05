@@ -290,8 +290,12 @@ export function createViewHelpers({
     `;
   }
 
-  function settingsActionRowHtml(action, index) {
-    const isCapturing = isCaptureAction(index);
+  function settingsActionRowHtml(action, index, options = {}) {
+    const {
+      kind = "sorting",
+      allowedActions = ["delete", "restore", "move", "command"],
+    } = options;
+    const isCapturing = isCaptureAction(kind, index);
     const showTarget = action.action === "move";
     const showCommand = action.action === "command";
     const showAlias = action.action === "move" || action.action === "command";
@@ -300,31 +304,28 @@ export function createViewHelpers({
         <div class="settings-action-inline">
           <span class="settings-action-prefix">${escapeHtml(t("settings.action"))}:</span>
           <div class="settings-select-wrap">
-            <select data-action-field="action" data-action-index="${index}">
-              ${optionHtml("delete", action.action === "delete")}
-              ${optionHtml("restore", action.action === "restore")}
-              ${optionHtml("move", action.action === "move")}
-              ${optionHtml("command", action.action === "command")}
+            <select data-action-kind="${escapeHtml(kind)}" data-action-field="action" data-action-index="${index}">
+              ${allowedActions.map((value) => optionHtml(value, action.action === value)).join("")}
             </select>
           </div>
           ${showTarget ? `
             <span class="settings-action-separator">${escapeHtml(t("settings.toFolder"))}</span>
-            <input data-action-field="target" data-action-index="${index}" value="${escapeHtml(action.target || "")}" placeholder="${escapeHtml(t("settings.targetPlaceholder"))}">
+            <input data-action-kind="${escapeHtml(kind)}" data-action-field="target" data-action-index="${index}" value="${escapeHtml(action.target || "")}" placeholder="${escapeHtml(t("settings.targetPlaceholder"))}">
           ` : ""}
           ${showAlias ? `
             <span class="settings-action-separator">${escapeHtml(t("settings.commandAlias"))}</span>
-            <input data-action-field="alias" data-action-index="${index}" value="${escapeHtml(action.alias || "")}" placeholder="${escapeHtml(t("settings.commandAliasPlaceholder"))}">
+            <input data-action-kind="${escapeHtml(kind)}" data-action-field="alias" data-action-index="${index}" value="${escapeHtml(action.alias || "")}" placeholder="${escapeHtml(t("settings.commandAliasPlaceholder"))}">
           ` : ""}
           ${showCommand ? `
             <span class="settings-action-separator">${escapeHtml(t("settings.commandLine"))}</span>
-            <input data-action-field="command" data-action-index="${index}" value="${escapeHtml(action.command || "")}" placeholder="${escapeHtml(t("settings.commandPlaceholder"))}">
+            <input data-action-kind="${escapeHtml(kind)}" data-action-field="command" data-action-index="${index}" value="${escapeHtml(action.command || "")}" placeholder="${escapeHtml(t("settings.commandPlaceholder"))}">
           ` : ""}
         </div>
         <div class="settings-action-tail">
-          <button class="secondary-button utility-button settings-danger-button" data-remove-action="${index}">
+          <button class="secondary-button utility-button settings-danger-button" data-remove-action="${index}" data-remove-action-kind="${escapeHtml(kind)}">
             ${escapeHtml(t("settings.remove"))}
           </button>
-          <button class="capture-row ${isCapturing ? "capturing" : ""}" data-capture-action="${index}" type="button">
+          <button class="capture-row ${isCapturing ? "capturing" : ""}" data-capture-action="${index}" data-capture-action-kind="${escapeHtml(kind)}" type="button">
             <span class="key-value-chip ${isCapturing ? "capturing" : ""}">${escapeHtml(keyBindingLabel(action.key) || " ")}</span>
             <span class="capture-inline-text">${escapeHtml(isCapturing ? t("settings.pressKey") : t("settings.capture"))}</span>
           </button>

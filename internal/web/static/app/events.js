@@ -23,7 +23,10 @@ export function createEventHandlers(deps) {
     openPreview,
     toggleBrowserImageMenu,
     closeBrowserImageMenu,
+    toggleBrowserFolderMenu,
+    closeBrowserFolderMenu,
     runBrowserImageAction,
+    runBrowserFolderAction,
     runAction,
     movePreview,
     closePreview,
@@ -33,11 +36,24 @@ export function createEventHandlers(deps) {
     terminateCommandTerminal,
     saveSettings,
     addAction,
+    addBrowserAction,
     flushScheduledBrowserLoad,
     moveTreeSelection,
     expandCurrentTreeDirectory,
     collapseCurrentTreeDirectory,
   } = deps;
+
+  function settingsActionList(kind) {
+    if (!state.settingsDraft) {
+      return [];
+    }
+    if (kind === "browser") {
+      state.settingsDraft.browserActions = state.settingsDraft.browserActions || [];
+      return state.settingsDraft.browserActions;
+    }
+    state.settingsDraft.actions = state.settingsDraft.actions || [];
+    return state.settingsDraft.actions;
+  }
 
   function bindStaticEvents() {
     document.addEventListener("keydown", onKeyDown);
@@ -137,6 +153,7 @@ export function createEventHandlers(deps) {
       button.dataset.boundHelpToggle = "true";
       button.addEventListener("click", () => {
         closeBrowserImageMenu();
+        closeBrowserFolderMenu();
         state.browserHelpOpen = !state.browserHelpOpen;
         render();
       });
@@ -178,6 +195,7 @@ export function createEventHandlers(deps) {
         event.preventDefault();
         toggleBrowserImageMenu(Number(button.dataset.browserImageMenuToggle));
         syncBrowserImageMenus();
+        syncBrowserFolderMenus();
       });
     });
     browserView.querySelectorAll("[data-browser-image-action]").forEach((button) => {
@@ -190,6 +208,31 @@ export function createEventHandlers(deps) {
         runBrowserImageAction(
           Number(button.dataset.browserImageAction),
           button.dataset.browserImageActionType,
+        ).catch((error) => showNotice(error.message, "error"));
+      });
+    });
+    browserView.querySelectorAll("[data-browser-folder-menu-toggle]").forEach((button) => {
+      if (button.dataset.boundBrowserFolderMenuToggle === "true") {
+        return;
+      }
+      button.dataset.boundBrowserFolderMenuToggle = "true";
+      button.addEventListener("click", (event) => {
+        event.stopPropagation();
+        event.preventDefault();
+        toggleBrowserFolderMenu(button.dataset.browserFolderMenuToggle || "");
+        syncBrowserFolderMenus();
+      });
+    });
+    browserView.querySelectorAll("[data-browser-folder-action]").forEach((button) => {
+      if (button.dataset.boundBrowserFolderAction === "true") {
+        return;
+      }
+      button.dataset.boundBrowserFolderAction = "true";
+      button.addEventListener("click", (event) => {
+        event.stopPropagation();
+        runBrowserFolderAction(
+          button.dataset.browserFolderAction || "",
+          button.dataset.browserFolderActionKey || "",
         ).catch((error) => showNotice(error.message, "error"));
       });
     });
@@ -249,6 +292,10 @@ export function createEventHandlers(deps) {
       }
       button.dataset.boundAddAction = "true";
       button.addEventListener("click", () => {
+        if (button.dataset.addActionKind === "browser") {
+          addBrowserAction("move");
+          return;
+        }
         addAction("move");
       });
     });
@@ -274,10 +321,12 @@ export function createEventHandlers(deps) {
       button.dataset.boundCaptureAction = "true";
       button.addEventListener("click", () => {
         const index = Number(button.dataset.captureAction);
+        const kind = button.dataset.captureActionKind === "browser" ? "browser" : "sorting";
         const isSameTarget = state.captureTarget
           && state.captureTarget.type === "action"
+          && state.captureTarget.kind === kind
           && state.captureTarget.index === index;
-        state.captureTarget = isSameTarget ? null : { type: "action", index };
+        state.captureTarget = isSameTarget ? null : { type: "action", kind, index };
         render();
       });
     });
@@ -289,21 +338,24 @@ export function createEventHandlers(deps) {
       input.addEventListener("input", (event) => {
         const index = Number(event.target.dataset.actionIndex);
         const field = event.target.dataset.actionField;
-        state.settingsDraft.actions[index][field] = event.target.value;
+        const kind = event.target.dataset.actionKind === "browser" ? "browser" : "sorting";
+        settingsActionList(kind)[index][field] = event.target.value;
       });
       input.addEventListener("change", (event) => {
         const index = Number(event.target.dataset.actionIndex);
         const field = event.target.dataset.actionField;
-        state.settingsDraft.actions[index][field] = event.target.value;
+        const kind = event.target.dataset.actionKind === "browser" ? "browser" : "sorting";
+        const actions = settingsActionList(kind);
+        actions[index][field] = event.target.value;
         if (field === "action") {
           if (event.target.value !== "move") {
-            state.settingsDraft.actions[index].target = "";
+            actions[index].target = "";
           }
           if (event.target.value !== "command") {
-            state.settingsDraft.actions[index].command = "";
+            actions[index].command = "";
           }
           if (event.target.value !== "move" && event.target.value !== "command") {
-            state.settingsDraft.actions[index].alias = "";
+            actions[index].alias = "";
           }
           render();
         }
@@ -315,7 +367,8 @@ export function createEventHandlers(deps) {
       }
       button.dataset.boundRemoveAction = "true";
       button.addEventListener("click", () => {
-        state.settingsDraft.actions.splice(Number(button.dataset.removeAction), 1);
+        const kind = button.dataset.removeActionKind === "browser" ? "browser" : "sorting";
+        settingsActionList(kind).splice(Number(button.dataset.removeAction), 1);
         render();
       });
     });
@@ -348,7 +401,7 @@ export function createEventHandlers(deps) {
       if (state.captureTarget.type === "path") {
         setPath(state.settingsDraft, state.captureTarget.path, key);
       } else if (state.captureTarget.type === "action") {
-        state.settingsDraft.actions[state.captureTarget.index].key = key;
+        settingsActionList(state.captureTarget.kind)[state.captureTarget.index].key = key;
       }
       state.captureTarget = null;
       render();
@@ -367,6 +420,13 @@ export function createEventHandlers(deps) {
       event.preventDefault();
       closeBrowserImageMenu();
       syncBrowserImageMenus();
+      return;
+    }
+
+    if (state.browserFolderMenuPath && key === "escape") {
+      event.preventDefault();
+      closeBrowserFolderMenu();
+      syncBrowserFolderMenus();
       return;
     }
 
@@ -415,6 +475,14 @@ export function createEventHandlers(deps) {
     if (key === keys.collapseDir) {
       event.preventDefault();
       collapseCurrentTreeDirectory().catch((error) => showNotice(error.message, "error"));
+      return;
+    }
+
+    const folderAction = (state.config?.browserActions || []).find((item) => item.key === key);
+    if (folderAction) {
+      event.preventDefault();
+      runBrowserFolderAction(state.tree.focusPath || state.browserPending?.path || state.browser.currentPath || "", key)
+        .catch((error) => showNotice(error.message, "error"));
     }
   }
 
@@ -467,14 +535,14 @@ export function createEventHandlers(deps) {
   }
 
   function onDocumentClick(event) {
-    if (state.browserImageMenuIndex === -1) {
-      return;
+    if (state.browserImageMenuIndex !== -1 && !event.target.closest("[data-browser-image-menu]")) {
+      closeBrowserImageMenu();
+      syncBrowserImageMenus();
     }
-    if (event.target.closest("[data-browser-image-menu]")) {
-      return;
+    if (state.browserFolderMenuPath && !event.target.closest("[data-browser-folder-menu]")) {
+      closeBrowserFolderMenu();
+      syncBrowserFolderMenus();
     }
-    closeBrowserImageMenu();
-    syncBrowserImageMenus();
   }
 
   function syncBrowserImageMenus() {
@@ -488,6 +556,22 @@ export function createEventHandlers(deps) {
       }
       const menuWrap = button.closest("[data-browser-image-menu]");
       const menu = menuWrap ? menuWrap.querySelector(".image-card-menu") : null;
+      if (menu) {
+        menu.hidden = !open;
+      }
+    });
+  }
+
+  function syncBrowserFolderMenus() {
+    browserView.querySelectorAll("[data-browser-folder-menu-toggle]").forEach((button) => {
+      const path = button.dataset.browserFolderMenuToggle || "";
+      const open = path === state.browserFolderMenuPath;
+      button.setAttribute("aria-expanded", open ? "true" : "false");
+      const wrap = button.closest("[data-browser-folder-menu]");
+      if (wrap) {
+        wrap.classList.toggle("is-open", open);
+      }
+      const menu = wrap ? wrap.querySelector(".tree-row-menu") : null;
       if (menu) {
         menu.hidden = !open;
       }

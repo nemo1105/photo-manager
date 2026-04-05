@@ -23,11 +23,25 @@
   padding-bottom: 22px;
 }
 
+.settings-subsection {
+  display: grid;
+  gap: 14px;
+}
+
+.settings-subsection--actions {
+  padding-top: 6px;
+  border-top: 1px solid rgba(180, 201, 219, 0.62);
+}
+
 .settings-section-head {
   display: flex;
   align-items: start;
   justify-content: space-between;
   gap: 14px;
+}
+
+.settings-section-head--nested {
+  padding-top: 2px;
 }
 
 .settings-section h3 {

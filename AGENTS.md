@@ -26,3 +26,13 @@ Last updated: 2026-03-22
 - Only an explicit browser action starts a work session. Browsing folders or previewing images must not create a session.
 - Relative move targets are resolved from the active session root, not from the current image directory.
 - `todo.md` is a scratch note, not the canonical source of plan or quality state. Use `docs/plans/active/` and `docs/quality/` for durable updates.
+
+## Browser Automation
+
+Use `agent-browser` for web automation. Run `agent-browser --help` for all commands.
+
+Core workflow:
+1. `agent-browser open <url>` - Navigate to page
+2. `agent-browser snapshot -i` - Get interactive elements with refs (@e1, @e2)
+3. `agent-browser click @e1` / `fill @e2 "text"` - Interact using refs
+4. Re-snapshot after page changes

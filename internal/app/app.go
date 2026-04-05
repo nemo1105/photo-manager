@@ -112,6 +112,11 @@ type BrowserImageActionResult struct {
 	Notice string `json:"notice"`
 }
 
+type BrowserFolderActionResult struct {
+	Notice   string `json:"notice"`
+	NextPath string `json:"nextPath"`
+}
+
 type CommandStartResult struct {
 	CommandSessionID string      `json:"commandSessionId"`
 	Command          string      `json:"command"`
@@ -126,22 +131,26 @@ type OpenSessionResult struct {
 }
 
 var (
-	errCurrentDirNoImages     = localize.NewStaticError("No photos to sort in this folder", "这个文件夹里没有可整理的图片")
-	errNoActiveSession        = localize.NewStaticError("Start sorting first", "请先开始整理")
-	errImageOutsideCurrentDir = localize.NewStaticError("This photo is not in the current folder", "这张图片不在当前文件夹里")
-	errActionKeyNotConfigured = localize.NewStaticError("No sorting action is set for this key", "这个按键没有设置整理动作")
-	errSourceDestinationSame  = localize.NewStaticError("This photo is already in that folder", "这张图片已经在那个文件夹里")
-	errRestoreOnlyInTarget    = localize.NewStaticError("Restore is only available in folders with sorted photos", "只有在已整理图片的文件夹里才能恢复")
-	errUnsupportedAction      = localize.NewStaticError("This action is not supported", "不支持这个整理动作")
-	errCommandOnlyAction      = localize.NewStaticError("This action must be started from the command path", "这个动作需要通过执行命令路径启动")
-	errActionNotCommand       = localize.NewStaticError("This is not a command action", "这不是执行命令动作")
-	errCommandAlreadyRunning  = localize.NewStaticError("Finish the current command before starting another", "请先结束当前命令，再启动新的命令")
-	errPathNotDirectory       = localize.NewStaticError("This is not a folder", "这不是文件夹")
-	errPathIsDirectory        = localize.NewStaticError("This is a folder, not a photo", "这是文件夹，不是图片")
-	errUnsupportedImage       = localize.NewStaticError("This image format is not supported", "不支持这种图片格式")
-	errAbsolutePathNotAllowed = localize.NewStaticError("Absolute paths are not allowed here", "这里不能使用绝对路径")
-	errPathEscapesLaunchRoot  = localize.NewStaticError("This path is outside the browse range", "这个路径超出了浏览范围")
-	errTargetEmpty            = localize.NewStaticError("Target folder cannot be empty", "目标文件夹不能为空")
+	errCurrentDirNoImages            = localize.NewStaticError("No photos to sort in this folder", "这个文件夹里没有可整理的图片")
+	errNoActiveSession               = localize.NewStaticError("Start sorting first", "请先开始整理")
+	errImageOutsideCurrentDir        = localize.NewStaticError("This photo is not in the current folder", "这张图片不在当前文件夹里")
+	errActionKeyNotConfigured        = localize.NewStaticError("No sorting action is set for this key", "这个按键没有设置整理动作")
+	errBrowserActionKeyNotConfigured = localize.NewStaticError("No folder-browsing action is set for this key", "这个按键没有设置文件夹浏览动作")
+	errSourceDestinationSame         = localize.NewStaticError("This photo is already in that folder", "这张图片已经在那个文件夹里")
+	errRestoreOnlyInTarget           = localize.NewStaticError("Restore is only available in folders with sorted photos", "只有在已整理图片的文件夹里才能恢复")
+	errUnsupportedAction             = localize.NewStaticError("This action is not supported", "不支持这个整理动作")
+	errUnsupportedBrowserAction      = localize.NewStaticError("This folder action is not supported yet", "这个文件夹动作暂未支持")
+	errCommandOnlyAction             = localize.NewStaticError("This action must be started from the command path", "这个动作需要通过执行命令路径启动")
+	errActionNotCommand              = localize.NewStaticError("This is not a command action", "这不是执行命令动作")
+	errCommandAlreadyRunning         = localize.NewStaticError("Finish the current command before starting another", "请先结束当前命令，再启动新的命令")
+	errPathNotDirectory              = localize.NewStaticError("This is not a folder", "这不是文件夹")
+	errPathIsDirectory               = localize.NewStaticError("This is a folder, not a photo", "这是文件夹，不是图片")
+	errUnsupportedImage              = localize.NewStaticError("This image format is not supported", "不支持这种图片格式")
+	errAbsolutePathNotAllowed        = localize.NewStaticError("Absolute paths are not allowed here", "这里不能使用绝对路径")
+	errPathEscapesLaunchRoot         = localize.NewStaticError("This path is outside the browse range", "这个路径超出了浏览范围")
+	errTargetEmpty                   = localize.NewStaticError("Target folder cannot be empty", "目标文件夹不能为空")
+	errLaunchRootAction              = localize.NewStaticError("Browse root cannot be moved or deleted", "浏览起点不能移动或删除")
+	errMoveIntoSelf                  = localize.NewStaticError("A folder cannot be moved into itself", "不能把文件夹移动到自身里面")
 )
 
 func New(launchRoot, configPath string, cfg *config.Config, trash Trasher) *App {
@@ -463,6 +472,74 @@ func (a *App) PerformBrowserImageAction(currentDirRel, imageRel, action string, 
 		}, nil
 	default:
 		return nil, errUnsupportedAction
+	}
+}
+
+func (a *App) PerformBrowserFolderAction(dirRel, actionKey string, locale localize.Locale) (*BrowserFolderActionResult, error) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+
+	dirRel, dirAbs, err := a.resolveDir(dirRel)
+	if err != nil {
+		return nil, err
+	}
+	if samePath(dirAbs, a.launchRoot) {
+		return nil, errLaunchRootAction
+	}
+
+	key, err := config.NormalizeKey(actionKey)
+	if err != nil {
+		return nil, err
+	}
+	binding, found := findAction(a.cfg.BrowserActions, key)
+	if !found {
+		return nil, errBrowserActionKeyNotConfigured
+	}
+
+	parentAbs := filepath.Dir(dirAbs)
+	parentRel, err := filepath.Rel(a.launchRoot, parentAbs)
+	if err != nil || parentRel == "." {
+		parentRel = ""
+	}
+	nextPath := filepath.ToSlash(parentRel)
+	dirName := filepath.Base(dirAbs)
+
+	switch binding.Action {
+	case "move":
+		targetRootAbs, err := resolveTargetDir(binding.Target, parentAbs)
+		if err != nil {
+			return nil, err
+		}
+		if isWithinDir(targetRootAbs, dirAbs) {
+			return nil, errMoveIntoSelf
+		}
+		dstPath, err := uniqueDestination(targetRootAbs, dirName)
+		if err != nil {
+			return nil, err
+		}
+		if samePath(dirAbs, dstPath) {
+			return nil, errSourceDestinationSame
+		}
+		if isWithinDir(dstPath, dirAbs) {
+			return nil, errMoveIntoSelf
+		}
+		if err := os.Rename(dirAbs, dstPath); err != nil {
+			return nil, err
+		}
+		return &BrowserFolderActionResult{
+			Notice:   localize.MoveFolderNotice(locale, dirName),
+			NextPath: nextPath,
+		}, nil
+	case "delete":
+		if err := a.trash.Trash(dirAbs); err != nil {
+			return nil, err
+		}
+		return &BrowserFolderActionResult{
+			Notice:   localize.DeleteFolderNotice(locale, dirName),
+			NextPath: nextPath,
+		}, nil
+	default:
+		return nil, errUnsupportedBrowserAction
 	}
 }
 

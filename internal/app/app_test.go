@@ -22,7 +22,7 @@ type fakeTrash struct {
 
 func (f *fakeTrash) Trash(path string) error {
 	f.paths = append(f.paths, path)
-	return os.Remove(path)
+	return os.RemoveAll(path)
 }
 
 type fakeTerminalManager struct {
@@ -374,6 +374,114 @@ func TestPerformBrowserImageActionRejectsUnsupportedAction(t *testing.T) {
 	app := New(root, filepath.Join(root, "config.yaml"), config.Default(), &fakeTrash{})
 	if _, err := app.PerformBrowserImageAction("work", "work/photo.jpg", "move", localize.EN); err == nil {
 		t.Fatal("expected unsupported browser image action to fail")
+	}
+}
+
+func TestPerformBrowserFolderActionMovesDirectoryUsingParentRelativeTarget(t *testing.T) {
+	root := t.TempDir()
+	mustWriteFile(t, filepath.Join(root, "work", "album", "photo.jpg"))
+
+	cfg := config.Default()
+	cfg.BrowserActions = append(cfg.BrowserActions, config.ActionBinding{
+		Key:    "m",
+		Action: "move",
+		Target: "0",
+		Alias:  "0",
+	})
+	app := New(root, filepath.Join(root, "config.yaml"), cfg, &fakeTrash{})
+
+	result, err := app.PerformBrowserFolderAction("work/album", "m", localize.ZHCN)
+	if err != nil {
+		t.Fatalf("move folder: %v", err)
+	}
+
+	if result.NextPath != "work" {
+		t.Fatalf("expected next path work, got %q", result.NextPath)
+	}
+	if result.Notice != "已移动文件夹 album。" {
+		t.Fatalf("unexpected move notice: %q", result.Notice)
+	}
+	if _, err := os.Stat(filepath.Join(root, "work", "0", "album", "photo.jpg")); err != nil {
+		t.Fatalf("expected moved folder contents, stat err=%v", err)
+	}
+	if _, err := os.Stat(filepath.Join(root, "work", "album")); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("expected source folder to be gone, stat err=%v", err)
+	}
+}
+
+func TestPerformBrowserFolderActionAutoRenamesOnConflict(t *testing.T) {
+	root := t.TempDir()
+	mustWriteFile(t, filepath.Join(root, "work", "album", "photo.jpg"))
+	mustWriteFile(t, filepath.Join(root, "work", "0", "album", "keep.jpg"))
+
+	cfg := config.Default()
+	cfg.BrowserActions = append(cfg.BrowserActions, config.ActionBinding{
+		Key:    "m",
+		Action: "move",
+		Target: "0",
+		Alias:  "0",
+	})
+	app := New(root, filepath.Join(root, "config.yaml"), cfg, &fakeTrash{})
+
+	if _, err := app.PerformBrowserFolderAction("work/album", "m", localize.EN); err != nil {
+		t.Fatalf("move folder with conflict: %v", err)
+	}
+
+	if _, err := os.Stat(filepath.Join(root, "work", "0", "album (1)", "photo.jpg")); err != nil {
+		t.Fatalf("expected renamed target folder, stat err=%v", err)
+	}
+}
+
+func TestPerformBrowserFolderActionDeletesDirectoryAndReturnsParent(t *testing.T) {
+	root := t.TempDir()
+	mustMkdir(t, filepath.Join(root, "work", "empty"))
+
+	trash := &fakeTrash{}
+	app := New(root, filepath.Join(root, "config.yaml"), config.Default(), trash)
+
+	result, err := app.PerformBrowserFolderAction("work/empty", "delete", localize.ZHCN)
+	if err != nil {
+		t.Fatalf("delete folder: %v", err)
+	}
+
+	if result.NextPath != "work" {
+		t.Fatalf("expected next path work, got %q", result.NextPath)
+	}
+	if result.Notice != "已将文件夹 empty 移到回收站。" {
+		t.Fatalf("unexpected delete notice: %q", result.Notice)
+	}
+	if len(trash.paths) != 1 || trash.paths[0] != filepath.Join(root, "work", "empty") {
+		t.Fatalf("unexpected trash paths: %+v", trash.paths)
+	}
+	if _, err := os.Stat(filepath.Join(root, "work", "empty")); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("expected deleted folder to be gone, stat err=%v", err)
+	}
+}
+
+func TestPerformBrowserFolderActionRejectsBrowseRoot(t *testing.T) {
+	root := t.TempDir()
+
+	app := New(root, filepath.Join(root, "config.yaml"), config.Default(), &fakeTrash{})
+	if _, err := app.PerformBrowserFolderAction("", "delete", localize.EN); err == nil {
+		t.Fatal("expected browse root action to fail")
+	}
+}
+
+func TestPerformBrowserFolderActionRejectsMoveIntoSelf(t *testing.T) {
+	root := t.TempDir()
+	mustWriteFile(t, filepath.Join(root, "work", "album", "photo.jpg"))
+
+	cfg := config.Default()
+	cfg.BrowserActions = append(cfg.BrowserActions, config.ActionBinding{
+		Key:    "m",
+		Action: "move",
+		Target: "album/sub",
+		Alias:  "Inside",
+	})
+	app := New(root, filepath.Join(root, "config.yaml"), cfg, &fakeTrash{})
+
+	if _, err := app.PerformBrowserFolderAction("work/album", "m", localize.EN); err == nil {
+		t.Fatal("expected move-into-self to fail")
 	}
 }
 

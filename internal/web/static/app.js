@@ -50,6 +50,7 @@ const state = {
     slideshow: null,
     preview: {open: false, images: [], index: 0},
     browserImageMenuIndex: -1,
+    browserFolderMenuPath: "",
     config: null,
     launchRoot: "",
     notice: {type: "info", text: ""},
@@ -179,7 +180,10 @@ const eventHandlers = createEventHandlers({
     openPreview,
     toggleBrowserImageMenu,
     closeBrowserImageMenu,
+    toggleBrowserFolderMenu,
+    closeBrowserFolderMenu,
     runBrowserImageAction,
+    runBrowserFolderAction,
     runAction,
     movePreview,
     closePreview,
@@ -189,6 +193,7 @@ const eventHandlers = createEventHandlers({
     terminateCommandTerminal,
     saveSettings,
     addAction,
+    addBrowserAction,
     flushScheduledBrowserLoad,
     moveTreeSelection,
     expandCurrentTreeDirectory,
@@ -321,6 +326,21 @@ function toggleBrowserImageMenu(index) {
     }
     state.browserHelpOpen = false;
     state.browserImageMenuIndex = state.browserImageMenuIndex === nextIndex ? -1 : nextIndex;
+    state.browserFolderMenuPath = "";
+}
+
+function closeBrowserFolderMenu() {
+    state.browserFolderMenuPath = "";
+}
+
+function toggleBrowserFolderMenu(path) {
+    const nextPath = String(path || "");
+    if (!nextPath) {
+        return;
+    }
+    state.browserHelpOpen = false;
+    state.browserImageMenuIndex = -1;
+    state.browserFolderMenuPath = state.browserFolderMenuPath === nextPath ? "" : nextPath;
 }
 
 async function apiGet(path) {
@@ -651,6 +671,7 @@ async function performBrowserLoad(path, options) {
     state.launchRoot = data.launchRoot || state.launchRoot;
     state.mode = "browser";
     state.browserImageMenuIndex = -1;
+    state.browserFolderMenuPath = "";
     browserView.hidden = false;
     slideshowView.hidden = true;
     try {
@@ -700,6 +721,7 @@ async function loadSlideshow(path, preferredIndex) {
     state.config = data.config || state.config;
     state.browserHelpOpen = false;
     state.browserImageMenuIndex = -1;
+    state.browserFolderMenuPath = "";
     if (!data.session.active) {
         await loadBrowser(path || "");
         if (data.notice) {
@@ -813,6 +835,7 @@ function cacheTreeNode(path, name, directories, imageCount, imageCountEstimated,
 async function changeDirectory(path) {
     state.browserHelpOpen = false;
     state.browserImageMenuIndex = -1;
+    state.browserFolderMenuPath = "";
     cancelScheduledBrowserLoad(true);
     return loadBrowser(path || "", {expandTree: true});
 }
@@ -833,6 +856,7 @@ function scheduleKeyboardDirectoryLoad(path) {
     const nextPath = path || "";
     cancelScheduledBrowserLoad(false);
     state.browserHelpOpen = false;
+    state.browserFolderMenuPath = "";
     state.tree.focusPath = nextPath;
     const requestToken = nextBrowserLoadToken();
     render();
@@ -971,6 +995,76 @@ async function runBrowserImageAction(index, action) {
     });
 }
 
+function selectedTreeEntry(path) {
+    const targetPath = String(path || "");
+    if (targetPath === "") {
+        const rootNode = rootTreeNode();
+        return {
+            path: "",
+            name: rootNode.name || t("common.root"),
+        };
+    }
+
+    const chain = pathChain(targetPath);
+    const parentPath = chain.length > 1 ? chain[chain.length - 2] : "";
+    const parentNode = state.tree.nodes[parentPath || ""];
+    const entry = (parentNode?.directories || []).find((item) => item.path === targetPath);
+    if (entry) {
+        return {
+            path: targetPath,
+            name: entry.name || targetPath.split("/").pop() || targetPath,
+        };
+    }
+
+    return {
+        path: targetPath,
+        name: targetPath.split("/").pop() || targetPath,
+    };
+}
+
+function confirmBrowserFolderDelete(path) {
+    const entry = selectedTreeEntry(path);
+    return window.confirm(t("browser.deleteFolderConfirm", {
+        path: pathLabel(entry.path, entry.name),
+    }));
+}
+
+function invalidateBrowserLoads(clearFocus) {
+    cancelScheduledBrowserLoad(clearFocus);
+    nextBrowserLoadToken();
+    state.browserPending = createBrowserPendingState();
+}
+
+async function runBrowserFolderAction(path, actionKey) {
+    const targetPath = String(path || "");
+    if (!targetPath) {
+        showNotice(t("browser.rootActionForbidden"), "error");
+        return null;
+    }
+
+    const action = (state.config?.browserActions || []).find((item) => item.key === actionKey);
+    if (!action) {
+        return null;
+    }
+
+    if (action.action === "delete" && !confirmBrowserFolderDelete(targetPath)) {
+        return null;
+    }
+
+    closeBrowserFolderMenu();
+    render();
+    invalidateBrowserLoads(false);
+
+    return withBusy(t("busy.working"), async () => {
+        const result = await apiPost("/api/browser/folder-action", {
+            path: targetPath,
+            actionKey,
+        });
+        showNotice(result.notice, "info");
+        await loadBrowser(result.nextPath || "", {expandTree: true});
+    });
+}
+
 async function terminateCommandTerminal() {
     const socket = state.commandTerminal.socket;
     if (!socket || socket.readyState !== window.WebSocket.OPEN) {
@@ -999,6 +1093,7 @@ function openPreview(index) {
     cancelScheduledBrowserLoad(true);
     state.browserHelpOpen = false;
     state.browserImageMenuIndex = -1;
+    state.browserFolderMenuPath = "";
     state.preview = {
         open: true,
         images: normalizeImages(state.browser ? state.browser.images : []),
@@ -1157,9 +1252,12 @@ async function openSettings() {
     cancelScheduledBrowserLoad(true);
     return withBusy(t("busy.loadingSettings"), async () => {
         state.browserHelpOpen = false;
+        state.browserImageMenuIndex = -1;
+        state.browserFolderMenuPath = "";
         state.config = await apiGet("/api/config");
         state.settingsDraft = clone(state.config);
         state.settingsDraft.actions = sortSettingsActions(state.settingsDraft.actions || []);
+        state.settingsDraft.browserActions = state.settingsDraft.browserActions || [];
         state.settingsOpen = true;
         state.captureTarget = null;
         render();
@@ -1200,12 +1298,28 @@ function addAction(type) {
     render();
 }
 
+function addBrowserAction(type) {
+    if (!state.settingsDraft) {
+        return;
+    }
+    state.settingsDraft.browserActions = state.settingsDraft.browserActions || [];
+    state.settingsDraft.browserActions.push({
+        key: "",
+        action: type,
+        target: "",
+        command: "",
+        alias: "",
+    });
+    render();
+}
+
 async function saveSettings() {
     if (!state.settingsDraft) {
         return null;
     }
     return withBusy(t("busy.savingSettings"), async () => {
         state.settingsDraft.actions = sortSettingsActions(state.settingsDraft.actions || []);
+        state.settingsDraft.browserActions = state.settingsDraft.browserActions || [];
         const saved = await apiPost("/api/config", state.settingsDraft);
         state.config = saved;
         state.settingsOpen = false;
@@ -1224,7 +1338,10 @@ function captureHintText() {
         return "";
     }
     if (state.captureTarget.type === "action") {
-        return t("capture.action", {index: state.captureTarget.index + 1});
+        if (state.captureTarget.kind === "browser") {
+            return t("capture.browserAction", {index: state.captureTarget.index + 1});
+        }
+        return t("capture.sortingAction", {index: state.captureTarget.index + 1});
     }
     return t("capture.field", {label: capturePathLabel(state.captureTarget.path)});
 }

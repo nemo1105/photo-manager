@@ -43,4 +43,10 @@ func TestTaskLanguageHelpers(t *testing.T) {
 	if got := SessionAutoEndedNotice(ZHCN); got != "已离开当前整理范围，整理已自动结束。" {
 		t.Fatalf("unexpected zh auto-end notice: %q", got)
 	}
+	if got := MoveFolderNotice(EN, "album"); got != "Moved folder album." {
+		t.Fatalf("unexpected folder move notice: %q", got)
+	}
+	if got := DeleteFolderNotice(ZHCN, "album"); got != "已将文件夹 album 移到回收站。" {
+		t.Fatalf("unexpected folder delete notice: %q", got)
+	}
 }

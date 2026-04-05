@@ -84,6 +84,12 @@ func TestDefaultUsesUpdatedSlideshowAndActionKeys(t *testing.T) {
 	if cfg.Actions[2].Key != "arrowup" || cfg.Actions[2].Action != "restore" {
 		t.Fatalf("unexpected default restore action: %+v", cfg.Actions[2])
 	}
+	if len(cfg.BrowserActions) != 1 {
+		t.Fatalf("expected 1 default browser action, got %d", len(cfg.BrowserActions))
+	}
+	if cfg.BrowserActions[0].Key != "delete" || cfg.BrowserActions[0].Action != "delete" {
+		t.Fatalf("unexpected default browser delete action: %+v", cfg.BrowserActions[0])
+	}
 }
 
 func TestValidateAndNormalizeAllowsEscapeAsActionKey(t *testing.T) {
@@ -113,6 +119,48 @@ func TestValidateAndNormalizeAllowsCommandActions(t *testing.T) {
 	}
 	if cfg.Actions[3].Alias != "Python" {
 		t.Fatalf("expected alias to remain, got %q", cfg.Actions[3].Alias)
+	}
+}
+
+func TestValidateAndNormalizeAllowsBrowserMoveActions(t *testing.T) {
+	cfg := Default()
+	cfg.BrowserActions = append(cfg.BrowserActions, ActionBinding{
+		Key:    "m",
+		Action: "move",
+		Target: "0",
+		Alias:  "Inbox",
+	})
+
+	if err := cfg.ValidateAndNormalize(); err != nil {
+		t.Fatalf("expected browser move action to validate, got %v", err)
+	}
+}
+
+func TestValidateAndNormalizeRejectsUnsupportedBrowserActionType(t *testing.T) {
+	cfg := Default()
+	cfg.BrowserActions = append(cfg.BrowserActions, ActionBinding{
+		Key:     "c",
+		Action:  "command",
+		Command: "python script.py",
+		Alias:   "Python",
+	})
+
+	if err := cfg.ValidateAndNormalize(); err == nil {
+		t.Fatal("expected unsupported browser action type to fail")
+	}
+}
+
+func TestValidateAndNormalizeRejectsBrowserActionConflict(t *testing.T) {
+	cfg := Default()
+	cfg.BrowserActions = append(cfg.BrowserActions, ActionBinding{
+		Key:    cfg.Keys.Browser.TreeUp,
+		Action: "move",
+		Target: "0",
+		Alias:  "Inbox",
+	})
+
+	if err := cfg.ValidateAndNormalize(); err == nil {
+		t.Fatal("expected browser action/browser key conflict")
 	}
 }
 

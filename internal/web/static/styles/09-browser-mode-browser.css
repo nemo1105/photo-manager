@@ -14,7 +14,7 @@ body.browser-mode .browser-tree-shell {
 }
 
 body.browser-mode .tree-row {
-  grid-template-columns: 16px minmax(0, 1fr);
+  grid-template-columns: 16px minmax(0, 1fr) auto;
   gap: 3px;
   padding-left: calc(var(--depth) * 8px);
 }
@@ -68,6 +68,94 @@ body.browser-mode .tree-link {
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
   gap: 10px;
+}
+
+body.browser-mode .tree-row-actions {
+  position: relative;
+  width: 0;
+  min-width: 0;
+  opacity: 0;
+  pointer-events: none;
+  overflow: hidden;
+  justify-self: end;
+  transition: width 120ms ease, opacity 120ms ease;
+}
+
+body.browser-mode .tree-node:hover .tree-row.is-selected .tree-row-actions--selected,
+body.browser-mode .tree-row-actions.is-open {
+  width: 32px;
+  opacity: 1;
+  pointer-events: auto;
+  overflow: visible;
+}
+
+body.browser-mode .tree-row-menu-toggle,
+body.browser-mode .tree-row-menu-item {
+  border: 1px solid rgba(103, 232, 249, 0.14);
+  background: rgba(8, 12, 22, 0.9);
+  color: #e6eefc;
+}
+
+body.browser-mode .tree-row-menu-toggle {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 10px 24px rgba(3, 7, 18, 0.28);
+}
+
+body.browser-mode .tree-row-menu-toggle:hover:not(:disabled),
+body.browser-mode .tree-row-menu-toggle[aria-expanded="true"] {
+  border-color: rgba(34, 211, 238, 0.28);
+  background: rgba(15, 23, 42, 0.96);
+}
+
+body.browser-mode .tree-row-menu-toggle .browser-icon-svg {
+  width: 16px;
+  height: 16px;
+}
+
+body.browser-mode .tree-row-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 3;
+  min-width: 132px;
+  padding: 6px;
+  border-radius: 14px;
+  border: 1px solid rgba(103, 232, 249, 0.14);
+  background: rgba(8, 12, 22, 0.96);
+  box-shadow: 0 16px 36px rgba(3, 7, 18, 0.38);
+}
+
+body.browser-mode .tree-row-menu[hidden] {
+  display: none;
+}
+
+body.browser-mode .tree-row-menu-item {
+  width: 100%;
+  min-height: 36px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  font-size: 0.82rem;
+  text-align: left;
+}
+
+body.browser-mode .tree-row-menu-item:hover:not(:disabled) {
+  border-color: rgba(103, 232, 249, 0.28);
+  background: rgba(15, 23, 42, 0.96);
+}
+
+body.browser-mode .tree-row-menu-item--danger {
+  color: #fecaca;
+}
+
+body.browser-mode .tree-row-menu-item--danger:hover:not(:disabled) {
+  border-color: rgba(248, 113, 113, 0.28);
+  background: rgba(69, 10, 10, 0.92);
 }
 
 body.browser-mode .tree-link:hover:not(:disabled) {

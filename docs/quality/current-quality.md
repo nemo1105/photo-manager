@@ -1,6 +1,6 @@
 # Current Quality
 
-Last updated: 2026-03-22
+Last updated: 2026-04-05
 Status: active
 
 ## Quality goals
@@ -9,6 +9,7 @@ Status: active
 - Keep sorting semantics anchored to `sessionRoot`, including review-folder entry, restore behavior, and command working-directory selection.
 - Keep browser and sorting states unambiguous: browser mode must not preserve an active session, and sorting actions must stay available by both keyboard and visible buttons.
 - Keep browser-mode single-image actions constrained and explicit: the browse-gallery overflow menu must not start sorting and delete must still use the recycle bin / Trash.
+- Keep browser-mode single-folder actions explicit and bounded: tree-row actions must target the selected folder, root-folder actions must stay blocked, and folder delete must always require confirmation.
 - Keep the browser tree predictable and bounded: natural directory ordering, keyboard/tree behavior alignment, and image counts capped at 3 descendant levels with explicit estimate marking.
 - Keep folder browsing responsive while directories load: the tree should remain clickable, the latest target should win, stale responses must not restore older content, and the gallery should not keep showing the previous folder once a new load starts.
 - Keep directory decorations lightweight and isolated: browser/tree status icons should remain localized, should not bubble unexpectedly across folders, and must not break browsing when a decorator fails.
@@ -47,9 +48,15 @@ Status: active
   - Task-first user terminology across UI dictionaries, backend notices, and settings validation labels.
   - Windows PowerShell path quoting for recycle-bin deletion.
   - Browser-mode single-image delete without an active session.
+  - Browser-mode `browser_actions[]` validation, including browser-key conflicts, supported-type limits, and the default folder-delete template.
+  - Browser-mode selected-folder `move` and `delete`, including parent-relative target resolution, conflict renaming, root-folder blocking, move-into-self rejection, and post-action navigation back to the original parent folder.
+  - Browser-folder handler responses, including localized notices and root-folder rejection.
 - Missing coverage:
   - Browser-side UI flows in the static frontend bundle under `internal/web/static/app.js` and `internal/web/static/app/`.
   - Automated browser verification that the browse-gallery overflow menu opens from the bottom-right trigger, dismisses on outside click, and refreshes masonry layout after delete.
+  - Automated browser verification that the selected tree row shows the folder-action trigger only on hover, shifts the count badge only for that hover state, and keeps the trigger hidden during pure keyboard navigation.
+  - Automated browser verification that browser folder-action hotkeys target the selected tree row instead of the currently opened photo pane.
+  - Automated browser verification that browser folder delete always shows a confirmation prompt before the request is sent.
   - Automated browser verification that rapid tree clicks and debounced keyboard scans follow latest-request-wins browse loading, clear the gallery into a loading state, and suppress stale request errors.
   - Automated browser verification that deeper browser-tree levels keep increasing indentation instead of visually collapsing onto the same column.
   - Automated browser verification that tree decoration chips stay aligned with folder labels and counts across current, ancestor, and collapsed states.
@@ -60,8 +67,10 @@ Status: active
   - Manual verification that the regrouped help modal keeps its two-column shortcut layout and header actions readable across browser widths.
   - Manual verification that directory-tree count badges and decoration chips stay aligned and refresh after sorting actions or `done.txt` marker changes.
   - Manual verification that hovering and clicking through the tree during gallery loads no longer causes row flashing, and that the latest clicked folder remains selected until its response arrives or is superseded.
+  - Manual verification that the selected-row folder-action trigger appears only on mouse hover, that the count shifts left only for that hover state, and that the popup dismisses correctly on outside click.
   - Manual verification that refreshing during slideshow ends the session and reopens browser mode without browser-side active-session controls.
   - End-to-end verification of delete-to-recycle-bin behavior.
+  - End-to-end verification of folder delete-to-recycle-bin behavior with the runtime confirmation dialog.
   - Browser-storage persistence and no-reload locale switching in the live UI.
   - Repeated-action protection for stale slideshow state.
   - Settings capture-state UX, explicit settings-entry flow, and config-edit browser flows.

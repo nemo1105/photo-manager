@@ -117,6 +117,54 @@ export function createRenderers(deps) {
     `;
   }
 
+  function browserFolderActions() {
+    return Array.isArray(state.config?.browserActions) ? state.config.browserActions : [];
+  }
+
+  function browserFolderActionMenuHtml(path, selected) {
+    if (!selected || !path) {
+      return "";
+    }
+
+    const actions = browserFolderActions();
+    if (!actions.length) {
+      return "";
+    }
+
+    const menuOpen = state.browserFolderMenuPath === path;
+    return `
+      <div class="tree-row-actions tree-row-actions--selected ${menuOpen ? "is-open" : ""}" data-browser-folder-menu>
+        <button
+          class="tree-row-menu-toggle"
+          type="button"
+          aria-label="${escapeHtml(t("browser.moreActions"))}"
+          aria-haspopup="menu"
+          aria-expanded="${menuOpen ? "true" : "false"}"
+          data-browser-folder-menu-toggle="${escapeHtml(path)}"
+        >
+          <svg class="browser-icon-svg" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <circle cx="6" cy="12" r="1.6" style="fill:currentColor;stroke:none"></circle>
+            <circle cx="12" cy="12" r="1.6" style="fill:currentColor;stroke:none"></circle>
+            <circle cx="18" cy="12" r="1.6" style="fill:currentColor;stroke:none"></circle>
+          </svg>
+        </button>
+        <div class="tree-row-menu" role="menu" aria-label="${escapeHtml(t("browser.folderActions"))}" ${menuOpen ? "" : "hidden"}>
+          ${actions.map((action) => `
+            <button
+              class="tree-row-menu-item ${action.action === "delete" ? "tree-row-menu-item--danger" : ""}"
+              type="button"
+              role="menuitem"
+              data-browser-folder-action="${escapeHtml(path)}"
+              data-browser-folder-action-key="${escapeHtml(action.key)}"
+            >
+              ${escapeHtml(shortActionLabel(action))}
+            </button>
+          `).join("")}
+        </div>
+      </div>
+    `;
+  }
+
   function renderShell() {
     const session = currentSession();
     const current = currentData();
@@ -317,6 +365,7 @@ export function createRenderers(deps) {
     const ancestor = !selected && isPathAncestor(path, selectedPath);
     const pending = !!state.browserPending?.active && state.browserPending.path === path;
     const expanded = !!state.tree.expanded[path];
+    const menuOpen = state.browserFolderMenuPath === path;
     const node = state.tree.nodes[path];
     const hasChildren = !!entry.hasChildren || (!!node && node.directories.length > 0);
     const childMarkup = expanded
@@ -334,8 +383,8 @@ export function createRenderers(deps) {
       : `<span class="tree-spacer" aria-hidden="true"></span>`;
 
     return `
-      <div class="tree-node">
-        <div class="tree-row" style="--depth:${depth}">
+      <div class="tree-node ${menuOpen ? "is-folder-menu-open" : ""}">
+        <div class="tree-row ${selected ? "is-selected" : ""}" style="--depth:${depth}">
           ${toggleMarkup}
           <button
             class="tree-link ${selected ? "current" : (ancestor ? "ancestor" : "")} ${pending ? "pending" : ""}"
@@ -344,6 +393,7 @@ export function createRenderers(deps) {
           >
             ${treeLabelHtml(entry.name, entry.imageCount || 0, !!entry.imageCountEstimated, entry.decorations, pending)}
           </button>
+          ${browserFolderActionMenuHtml(path, selected)}
         </div>
         ${childMarkup}
       </div>
@@ -474,14 +524,47 @@ export function createRenderers(deps) {
       return;
     }
 
+    const browserActionRows = (state.settingsDraft.browserActions || [])
+      .map((action, index) => settingsActionRowHtml(action, index, {
+        kind: "browser",
+        allowedActions: ["delete", "move"],
+      }))
+      .join("");
+
     document.getElementById("settingsBody").innerHTML = `
-      ${settingsSectionHtml(t("settings.browserKeys"), [
-        settingsFieldHtml(t("settings.startSession"), ["keys", "browser", "startSession"]),
-        settingsFieldHtml(t("settings.treeUp"), ["keys", "browser", "treeUp"]),
-        settingsFieldHtml(t("settings.treeDown"), ["keys", "browser", "treeDown"]),
-        settingsFieldHtml(t("settings.expandDirectory"), ["keys", "browser", "expandDir"]),
-        settingsFieldHtml(t("settings.collapseDirectory"), ["keys", "browser", "collapseDir"]),
-      ], { caption: t("settings.browserKeysHint") })}
+      <section class="settings-section settings-section--browser">
+        <div class="settings-section-head">
+          <div>
+            <p class="section-kicker">${escapeHtml(t("settings.keyBindings"))}</p>
+            <h3>${escapeHtml(t("settings.browserKeys"))}</h3>
+          </div>
+          <p class="modal-caption settings-section-caption">${escapeHtml(t("settings.browserKeysHint"))}</p>
+        </div>
+        <div class="settings-grid">
+          ${settingsFieldHtml(t("settings.startSession"), ["keys", "browser", "startSession"])}
+          ${settingsFieldHtml(t("settings.treeUp"), ["keys", "browser", "treeUp"])}
+          ${settingsFieldHtml(t("settings.treeDown"), ["keys", "browser", "treeDown"])}
+          ${settingsFieldHtml(t("settings.expandDirectory"), ["keys", "browser", "expandDir"])}
+          ${settingsFieldHtml(t("settings.collapseDirectory"), ["keys", "browser", "collapseDir"])}
+        </div>
+        <div class="settings-subsection settings-subsection--actions">
+          <div class="settings-section-head settings-section-head--nested">
+            <div class="settings-section-title-row">
+              <p class="section-kicker">${escapeHtml(t("settings.actionLibrary"))}</p>
+              <div class="settings-section-title-inline">
+                <h3>${escapeHtml(t("settings.browserActions"))}</h3>
+                <button class="secondary-button utility-button settings-section-button" type="button" data-add-action data-add-action-kind="browser">
+                  ${escapeHtml(t("settings.addAction"))}
+                </button>
+              </div>
+            </div>
+            <div class="settings-section-head-actions">
+              <p class="modal-caption settings-section-caption">${escapeHtml(t("settings.browserActionsHint"))}</p>
+            </div>
+          </div>
+          ${browserActionRows}
+        </div>
+      </section>
       ${settingsSectionHtml(t("settings.previewKeys"), [
         settingsFieldHtml(t("settings.closePreview"), ["keys", "preview", "close"]),
         settingsFieldHtml(t("settings.nextPreviewImage"), ["keys", "preview", "next"]),
@@ -507,7 +590,10 @@ export function createRenderers(deps) {
             <p class="modal-caption settings-section-caption">${escapeHtml(t("settings.actionsHint"))}</p>
           </div>
         </div>
-        ${(state.settingsDraft.actions || []).map((action, index) => settingsActionRowHtml(action, index)).join("")}
+        ${(state.settingsDraft.actions || []).map((action, index) => settingsActionRowHtml(action, index, {
+          kind: "sorting",
+          allowedActions: ["delete", "restore", "move", "command"],
+        })).join("")}
       </section>
     `;
 
@@ -537,6 +623,9 @@ export function createRenderers(deps) {
       compactKeyText(keyLabel(getConfig(["keys", "slideshow", "prev"]))),
       compactKeyText(keyLabel(getConfig(["keys", "slideshow", "next"]))),
     ].filter(Boolean).join(" / ");
+
+    const browserActionShortcuts = (state.config?.browserActions || [])
+      .map((action) => browserInfoKeyHtml(shortActionLabel(action), action.key));
 
     document.getElementById("helpSettingsButton").innerHTML = `
       <div>
@@ -569,7 +658,7 @@ export function createRenderers(deps) {
               browserInfoKeyHtml(t("help.treeMove"), "", treeMoveKeys),
               browserInfoKeyHtml(t("help.expand"), getConfig(["keys", "browser", "expandDir"])),
               browserInfoKeyHtml(t("help.collapse"), getConfig(["keys", "browser", "collapseDir"])),
-            ])}
+            ].concat(browserActionShortcuts))}
             ${shortcutGroupHtml(t("help.previewShortcuts"), [
               browserInfoKeyHtml(t("help.closePreview"), getConfig(["keys", "preview", "close"])),
               browserInfoKeyHtml(t("help.preview"), "", previewBrowseKeys),

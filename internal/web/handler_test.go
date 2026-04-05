@@ -36,7 +36,7 @@ type deletingStubTrash struct {
 
 func (d *deletingStubTrash) Trash(path string) error {
 	d.paths = append(d.paths, path)
-	return os.Remove(path)
+	return os.RemoveAll(path)
 }
 
 type fakeHandlerTerminalManager struct {
@@ -456,6 +456,110 @@ func TestHandleBrowserActionDeletesPhotoWithoutSession(t *testing.T) {
 	}
 	if payload.Notice != "已将 a.jpg 移到回收站。" {
 		t.Fatalf("unexpected localized delete notice: %q", payload.Notice)
+	}
+}
+
+func TestHandleBrowserFolderActionMovesDirectory(t *testing.T) {
+	root := t.TempDir()
+	mustWriteHandlerFile(t, filepath.Join(root, "work", "album", "a.jpg"))
+
+	cfg := config.Default()
+	cfg.BrowserActions = append(cfg.BrowserActions, config.ActionBinding{
+		Key:    "m",
+		Action: "move",
+		Target: "0",
+		Alias:  "0",
+	})
+	handler := NewHandler(app.New(root, filepath.Join(root, "config.yaml"), cfg, stubTrash{}))
+
+	req := httptest.NewRequest(http.MethodPost, "/api/browser/folder-action", bytes.NewBufferString(`{"path":"work/album","actionKey":"m"}`))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-Photo-Manager-Locale", "zh-CN")
+
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d body=%s", rec.Code, rec.Body.String())
+	}
+
+	var payload struct {
+		Notice   string `json:"notice"`
+		NextPath string `json:"nextPath"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &payload); err != nil {
+		t.Fatalf("decode payload: %v", err)
+	}
+	if payload.Notice != "已移动文件夹 album。" {
+		t.Fatalf("unexpected move notice: %q", payload.Notice)
+	}
+	if payload.NextPath != "work" {
+		t.Fatalf("expected nextPath work, got %q", payload.NextPath)
+	}
+	if _, err := os.Stat(filepath.Join(root, "work", "0", "album", "a.jpg")); err != nil {
+		t.Fatalf("expected moved folder contents, stat err=%v", err)
+	}
+}
+
+func TestHandleBrowserFolderActionDeletesDirectory(t *testing.T) {
+	root := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(root, "work", "empty"), 0o755); err != nil {
+		t.Fatalf("mkdir dir: %v", err)
+	}
+
+	trash := &deletingStubTrash{}
+	handler := NewHandler(app.New(root, filepath.Join(root, "config.yaml"), config.Default(), trash))
+
+	req := httptest.NewRequest(http.MethodPost, "/api/browser/folder-action", bytes.NewBufferString(`{"path":"work/empty","actionKey":"delete"}`))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-Photo-Manager-Locale", "zh-CN")
+
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d body=%s", rec.Code, rec.Body.String())
+	}
+
+	var payload struct {
+		Notice   string `json:"notice"`
+		NextPath string `json:"nextPath"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &payload); err != nil {
+		t.Fatalf("decode payload: %v", err)
+	}
+	if payload.Notice != "已将文件夹 empty 移到回收站。" {
+		t.Fatalf("unexpected delete notice: %q", payload.Notice)
+	}
+	if payload.NextPath != "work" {
+		t.Fatalf("expected nextPath work, got %q", payload.NextPath)
+	}
+	if len(trash.paths) != 1 || trash.paths[0] != filepath.Join(root, "work", "empty") {
+		t.Fatalf("unexpected trash paths: %+v", trash.paths)
+	}
+}
+
+func TestHandleBrowserFolderActionRejectsBrowseRoot(t *testing.T) {
+	root := t.TempDir()
+	handler := NewHandler(app.New(root, filepath.Join(root, "config.yaml"), config.Default(), stubTrash{}))
+
+	req := httptest.NewRequest(http.MethodPost, "/api/browser/folder-action", bytes.NewBufferString(`{"path":"","actionKey":"delete"}`))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-Photo-Manager-Locale", "zh-CN")
+
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400, got %d body=%s", rec.Code, rec.Body.String())
+	}
+
+	var payload map[string]string
+	if err := json.Unmarshal(rec.Body.Bytes(), &payload); err != nil {
+		t.Fatalf("decode payload: %v", err)
+	}
+	if payload["error"] != "浏览起点不能移动或删除" {
+		t.Fatalf("unexpected localized error: %q", payload["error"])
 	}
 }
 
