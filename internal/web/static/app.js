@@ -58,6 +58,7 @@ const state = {
     preview: {open: false, images: [], index: 0},
     browserImageMenuIndex: -1,
     browserFolderMenuPath: "",
+    browserHoveredFolderPath: "",
     config: null,
     launchRoot: "",
     notice: {type: "info", text: ""},
@@ -352,6 +353,9 @@ function toggleBrowserFolderMenu(path) {
     state.browserHelpOpen = false;
     state.browserImageMenuIndex = -1;
     state.browserFolderMenuPath = state.browserFolderMenuPath === nextPath ? "" : nextPath;
+    if (state.browserFolderMenuPath) {
+        state.browserHoveredFolderPath = state.browserFolderMenuPath;
+    }
 }
 
 async function apiGet(path) {

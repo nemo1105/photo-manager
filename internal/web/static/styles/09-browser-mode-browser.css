@@ -81,7 +81,7 @@ body.browser-mode .tree-row-actions {
   transition: width 120ms ease, opacity 120ms ease;
 }
 
-body.browser-mode .tree-node:hover .tree-row-actions,
+body.browser-mode .tree-row-actions.is-visible,
 body.browser-mode .tree-row-actions.is-open {
   width: 32px;
   opacity: 1;

@@ -135,8 +135,13 @@ export function createRenderers(deps) {
     }
 
     const menuOpen = state.browserFolderMenuPath === path;
+    const visible = menuOpen || state.browserHoveredFolderPath === path;
     return `
-      <div class="tree-row-actions ${menuOpen ? "is-open" : ""}" data-browser-folder-menu>
+      <div
+        class="tree-row-actions ${menuOpen ? "is-open" : ""} ${visible ? "is-visible" : ""}"
+        data-browser-folder-menu
+        data-browser-folder-menu-path="${escapeHtml(path)}"
+      >
         <button
           class="tree-row-menu-toggle"
           type="button"
@@ -406,7 +411,7 @@ export function createRenderers(deps) {
 
     return `
       <div class="tree-node ${menuOpen ? "is-folder-menu-open" : ""}">
-        <div class="tree-row ${selected ? "is-selected" : ""}" style="--depth:${depth}">
+        <div class="tree-row ${selected ? "is-selected" : ""}" style="--depth:${depth}" data-browser-folder-row="${escapeHtml(path)}">
           ${toggleMarkup}
           <button
             class="tree-link ${selected ? "current" : (ancestor ? "ancestor" : "")} ${pending ? "pending" : ""}"

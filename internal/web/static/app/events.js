@@ -158,6 +158,28 @@ export function createEventHandlers(deps) {
         render();
       });
     });
+    browserView.querySelectorAll("[data-browser-folder-row]").forEach((row) => {
+      if (row.dataset.boundBrowserFolderRow === "true") {
+        return;
+      }
+      row.dataset.boundBrowserFolderRow = "true";
+      row.addEventListener("pointerenter", () => {
+        setBrowserHoveredFolderPath(row.dataset.browserFolderRow || "");
+      });
+      row.addEventListener("pointerleave", (event) => {
+        const relatedTarget = event.relatedTarget;
+        const relatedRow = relatedTarget && typeof relatedTarget.closest === "function"
+          ? relatedTarget.closest("[data-browser-folder-row]")
+          : null;
+        if (relatedRow) {
+          setBrowserHoveredFolderPath(relatedRow.dataset.browserFolderRow || "");
+          return;
+        }
+        if ((row.dataset.browserFolderRow || "") === state.browserHoveredFolderPath) {
+          setBrowserHoveredFolderPath("");
+        }
+      });
+    });
     browserView.querySelectorAll("[data-tree-path]").forEach((button) => {
       if (button.dataset.boundTreePath === "true") {
         return;
@@ -236,6 +258,7 @@ export function createEventHandlers(deps) {
         ).catch((error) => showNotice(error.message, "error"));
       });
     });
+    syncBrowserFolderMenus();
   }
 
   function bindSlideshowEvents() {
@@ -569,19 +592,30 @@ export function createEventHandlers(deps) {
   }
 
   function syncBrowserFolderMenus() {
-    browserView.querySelectorAll("[data-browser-folder-menu-toggle]").forEach((button) => {
-      const path = button.dataset.browserFolderMenuToggle || "";
+    browserView.querySelectorAll("[data-browser-folder-menu]").forEach((wrap) => {
+      const path = wrap.dataset.browserFolderMenuPath || "";
       const open = path === state.browserFolderMenuPath;
-      button.setAttribute("aria-expanded", open ? "true" : "false");
-      const wrap = button.closest("[data-browser-folder-menu]");
-      if (wrap) {
-        wrap.classList.toggle("is-open", open);
+      const visible = open || path === state.browserHoveredFolderPath;
+      wrap.classList.toggle("is-open", open);
+      wrap.classList.toggle("is-visible", visible);
+      const button = wrap.querySelector("[data-browser-folder-menu-toggle]");
+      if (button) {
+        button.setAttribute("aria-expanded", open ? "true" : "false");
       }
-      const menu = wrap ? wrap.querySelector(".tree-row-menu") : null;
+      const menu = wrap.querySelector(".tree-row-menu");
       if (menu) {
         menu.hidden = !open;
       }
     });
+  }
+
+  function setBrowserHoveredFolderPath(path) {
+    const nextPath = String(path || "");
+    if (state.browserHoveredFolderPath === nextPath) {
+      return;
+    }
+    state.browserHoveredFolderPath = nextPath;
+    syncBrowserFolderMenus();
   }
 
   return {
