@@ -184,7 +184,7 @@ func TestStartCommandActionUsesSessionRoot(t *testing.T) {
 	cfg.Actions = append(cfg.Actions, config.ActionBinding{
 		Key:     "c",
 		Action:  "command",
-		Command: "python script.py",
+		Command: "python script.py {{currentFile}}",
 		Alias:   "Python",
 	})
 	manager := &fakeTerminalManager{}
@@ -202,11 +202,18 @@ func TestStartCommandActionUsesSessionRoot(t *testing.T) {
 	if len(manager.reserved) != 1 {
 		t.Fatalf("expected one reservation, got %d", len(manager.reserved))
 	}
+	expectedCommand := "python script.py " + quotePathForShell(filepath.Join(root, "work", "photo.jpg"))
+	if manager.reserved[0].Command != expectedCommand {
+		t.Fatalf("expected command %q, got %q", expectedCommand, manager.reserved[0].Command)
+	}
 	if manager.reserved[0].WorkDirAbs != filepath.Join(root, "work") {
 		t.Fatalf("expected work dir %q, got %q", filepath.Join(root, "work"), manager.reserved[0].WorkDirAbs)
 	}
 	if manager.reserved[0].WorkDirRel != "work" {
 		t.Fatalf("expected work dir rel work, got %q", manager.reserved[0].WorkDirRel)
+	}
+	if result.Command != expectedCommand {
+		t.Fatalf("expected result command %q, got %q", expectedCommand, result.Command)
 	}
 	if result.WorkingDir != "work" {
 		t.Fatalf("expected result working dir work, got %q", result.WorkingDir)
@@ -221,7 +228,7 @@ func TestStartCommandActionFromReviewFolderUsesParentSessionRoot(t *testing.T) {
 	cfg.Actions = append(cfg.Actions, config.ActionBinding{
 		Key:     "c",
 		Action:  "command",
-		Command: "python script.py",
+		Command: "python script.py {{currentFile}}",
 		Alias:   "Python",
 	})
 	manager := &fakeTerminalManager{}
@@ -238,11 +245,44 @@ func TestStartCommandActionFromReviewFolderUsesParentSessionRoot(t *testing.T) {
 	if len(manager.reserved) != 1 {
 		t.Fatalf("expected one reservation, got %d", len(manager.reserved))
 	}
+	expectedCommand := "python script.py " + quotePathForShell(filepath.Join(root, "work", "0", "review.jpg"))
+	if manager.reserved[0].Command != expectedCommand {
+		t.Fatalf("expected review command %q, got %q", expectedCommand, manager.reserved[0].Command)
+	}
 	if manager.reserved[0].WorkDirAbs != filepath.Join(root, "work") {
 		t.Fatalf("expected review command to use parent work root, got %q", manager.reserved[0].WorkDirAbs)
 	}
 	if manager.reserved[0].WorkDirRel != "work" {
 		t.Fatalf("expected review command to use rel work dir, got %q", manager.reserved[0].WorkDirRel)
+	}
+}
+
+func TestStartCommandActionExpandsCurrentFilePlaceholderMultipleTimes(t *testing.T) {
+	root := t.TempDir()
+	mustWriteFile(t, filepath.Join(root, "work", "photo.jpg"))
+
+	cfg := config.Default()
+	cfg.Actions = append(cfg.Actions, config.ActionBinding{
+		Key:     "c",
+		Action:  "command",
+		Command: "tool {{currentFile}} --again {{currentFile}}",
+		Alias:   "Tool",
+	})
+	manager := &fakeTerminalManager{}
+	app := NewWithTerminal(root, filepath.Join(root, "config.yaml"), cfg, &fakeTrash{}, manager)
+
+	if _, err := app.OpenSession("work"); err != nil {
+		t.Fatalf("open session: %v", err)
+	}
+
+	if _, err := app.StartCommandAction("work", "work/photo.jpg", "c", localize.EN); err != nil {
+		t.Fatalf("start command action: %v", err)
+	}
+
+	expectedPath := quotePathForShell(filepath.Join(root, "work", "photo.jpg"))
+	expectedCommand := "tool " + expectedPath + " --again " + expectedPath
+	if len(manager.reserved) != 1 || manager.reserved[0].Command != expectedCommand {
+		t.Fatalf("expected expanded command %q, got %+v", expectedCommand, manager.reserved)
 	}
 }
 

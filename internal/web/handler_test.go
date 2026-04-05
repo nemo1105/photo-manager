@@ -567,7 +567,7 @@ func TestHandleCommandStartReturnsReservation(t *testing.T) {
 	cfg.Actions = append(cfg.Actions, config.ActionBinding{
 		Key:     "c",
 		Action:  "command",
-		Command: "python script.py",
+		Command: "python script.py {{currentFile}}",
 		Alias:   "Python",
 	})
 	manager := &fakeHandlerTerminalManager{}
@@ -604,6 +604,10 @@ func TestHandleCommandStartReturnsReservation(t *testing.T) {
 	}
 	if payload.Title != "Python" {
 		t.Fatalf("expected title Python, got %q", payload.Title)
+	}
+	expectedCommand := "python script.py '" + filepath.Join(root, "work", "a.jpg") + "'"
+	if payload.Command != expectedCommand {
+		t.Fatalf("expected command %q, got %q", expectedCommand, payload.Command)
 	}
 	if len(manager.reserved) != 1 || manager.reserved[0].WorkDirRel != "work" {
 		t.Fatalf("unexpected reserved specs: %+v", manager.reserved)

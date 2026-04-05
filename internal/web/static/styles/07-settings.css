@@ -216,7 +216,16 @@
 }
 
 .settings-action-inline input {
+  min-width: 0;
+  flex: 0 1 180px;
   max-width: 180px;
+}
+
+.settings-action-inline input[data-action-field="command"] {
+  min-width: 0;
+  flex: 1 1 360px;
+  max-width: none;
+  field-sizing: content;
 }
 
 .settings-card input.capturing,

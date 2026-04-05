@@ -31,7 +31,7 @@ This application is a single-binary Go tool that starts from an explicit launch 
 - Leaving `sessionRoot` or any of its descendants during slideshow loading or action requests automatically ends the session.
 - `restore` is only valid when the current directory matches one of the configured `move` targets resolved against `sessionRoot`, and the slideshow action list omits it everywhere else instead of rendering a disabled button.
 - When slideshow is opened inside a move-target directory, the action list omits any `move` binding whose destination is that same directory.
-- `command.command` is raw shell text only. The product does not expand placeholders or inject current-image or current-directory variables.
+- `command.command` is raw shell text only, except that exact `{{currentFile}}` tokens expand at command start to the selected image's absolute path with shell-safe quoting. The product does not inject current-directory variables or a broader placeholder DSL.
 - `alias` is the user-facing label for `move` and `command` actions. Sorting buttons and help action labels prefer it; command-terminal titles also prefer it for `command` actions. Legacy configs without it fall back to the old target-based or generic command labels until the user saves a fixed config.
 - Only one interactive command-terminal session may exist at a time, and while it is open the sorting UI must not also react to keyboard shortcuts.
 - Command-terminal transport ordering must preserve trailing PTY output before exit state: WebSocket `output` frames drain first, and the `exit` frame is emitted only after output streaming finishes.
@@ -64,7 +64,7 @@ This application is a single-binary Go tool that starts from an explicit launch 
   - `browser_actions[]` reuses the same action object shape as `actions[]`, but browser-mode execution currently accepts only `move`.
   - Directory decorations are not user-configurable in v1. The app registers them internally at startup.
   - `move.target` accepts relative or absolute paths.
-  - `command.command` stores the raw command-line text to run via the platform shell.
+  - `command.command` stores the raw command-line text to run via the platform shell; exact `{{currentFile}}` tokens expand at launch to the selected image's shell-quoted absolute path.
   - `alias` stores the user-facing label for `move` and `command` actions. It is required on save for those action types and rejected on `delete` / `restore`.
   - The default template maps `space` to browser session start and slideshow session end, `arrowup` / `arrowdown` / `arrowright` / `arrowleft` to browser-tree navigation, `arrowleft` and `arrowright` to slide navigation, `delete` to delete, `arrowdown` to move into `0`, and `arrowup` to restore.
 - HTTP API:
@@ -76,7 +76,7 @@ This application is a single-binary Go tool that starts from an explicit launch 
   - `POST /api/session/end`: clears the active session.
 - `GET /api/slideshow`: current directory image list plus localized action labels and action availability.
   - `POST /api/action`: executes `move`, `delete`, or `restore` for one image using the configured key.
-  - `POST /api/command/start`: validates a `command` action against the current slideshow state, reserves one interactive terminal session, and returns both the raw command text plus the alias-based terminal title.
+  - `POST /api/command/start`: validates a `command` action against the current slideshow state, expands any exact `{{currentFile}}` tokens to the selected image's shell-quoted absolute path, reserves one interactive terminal session, and returns the final runtime command text plus the alias-based terminal title.
   - `GET /api/command/ws?id=...`: upgrades to WebSocket, attaches the reserved terminal session, streams output, accepts input/resize/terminate messages, and emits exit state only after the output stream has drained.
   - `GET /api/config` and `POST /api/config`: load and save validated config.
   - `GET /image`: streams the original image file.
@@ -115,7 +115,7 @@ This application is a single-binary Go tool that starts from an explicit launch 
 - Review-folder entry is explained in the UI as checking already moved photos, rather than exposing the session-root fallback directly.
 - The default action template now favors a single hot folder, `0`, so a fresh install exposes one high-risk move target instead of several competing move destinations.
 - Browser-mode action configuration intentionally mirrors the sorting action object shape so later browser `command` support can extend the existing UI and transport model instead of introducing a third action schema.
-- `command.command` intentionally stays as plain shell text with no placeholder DSL or auto-injected current-image/current-directory variables.
+- `command.command` intentionally stays as plain shell text with only one built-in token, `{{currentFile}}`; the app does not provide a broader placeholder DSL or auto-injected current-directory variables.
 - Missing `alias` on `move` or `command` is treated as a legacy-load compatibility case only: config load tolerates it, but config save rejects it until the user fills the alias.
 - The current implementation prefers a small dependency set over a larger frontend framework.
 - `keys.browser.end_session` is intentionally removed from the product contract; old YAML that still contains it is ignored on load and dropped on the next save.

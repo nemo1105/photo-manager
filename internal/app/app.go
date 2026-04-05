@@ -576,6 +576,7 @@ func (a *App) StartCommandAction(currentDirRel, imageRel, actionKey string, loca
 	if binding.Action != "command" {
 		return nil, errActionNotCommand
 	}
+	expandedCommand := expandCommandTemplate(binding.Command, imageAbs)
 
 	rootRel, err := filepath.Rel(a.launchRoot, a.session.RootAbs)
 	if err != nil || rootRel == "." {
@@ -583,7 +584,7 @@ func (a *App) StartCommandAction(currentDirRel, imageRel, actionKey string, loca
 	}
 
 	reservation, err := a.terminal.Reserve(terminal.Spec{
-		Command:    binding.Command,
+		Command:    expandedCommand,
 		WorkDirAbs: a.session.RootAbs,
 		WorkDirRel: filepath.ToSlash(rootRel),
 		Env:        os.Environ(),

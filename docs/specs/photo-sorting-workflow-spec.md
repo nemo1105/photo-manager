@@ -27,7 +27,7 @@ Users need to start from an arbitrary directory, browse to a folder that contain
 - All configured keys are single keys; modifier combinations are not part of the current contract.
 - Relative `move.target` values are resolved from the active session root only.
 - Relative `browser_actions[].target` values are resolved from the selected folder's parent directory.
-- `command.command` is raw command-line text; the product does not support placeholders or inject current-image or current-directory variables.
+- `command.command` is raw command-line text, but exact `{{currentFile}}` tokens expand at command start to the selected image's absolute path with shell-safe quoting. The product still does not inject current-directory variables or a broader placeholder DSL.
 - `alias` is the user-facing label for `move` and `command` actions. New saves require it for those action types, but legacy configs without it still load and fall back to the old target-based or generic command labels until edited.
 - `browser_actions[]` shares the same `key` / `action` / `target` / `command` / `alias` shape as sorting `actions[]`, but current browser-mode execution supports only `move`.
 - Sorting state must not be created implicitly by image preview.
@@ -77,6 +77,7 @@ Users need to start from an arbitrary directory, browse to a folder that contain
 - [x] `restore` is shown only inside configured move-target directories and returns the image to the session root.
 - [x] `command` opens a full-screen interactive terminal, starts in `sessionRoot`, and keeps the terminal visible until the user closes it after the process exits.
 - [x] Starting `command` from a review folder still uses the parent sort-starting folder as the working directory.
+- [x] When `command.command` contains exact `{{currentFile}}` tokens, command start expands all of them to the selected image's absolute path with shell-safe quoting while keeping the terminal working directory fixed to `sessionRoot`.
 - [x] When a `command` writes output and then exits immediately, the terminal still renders that trailing output before showing the exited state.
 - [x] When `alias` is present on `move` or `command`, sorting action buttons and help action shortcuts show the alias itself with no `Move to / 移动到` or `Run Command / 执行命令` prefix.
 - [x] When `alias` is present on `command`, the command terminal title also shows that alias.
@@ -134,7 +135,7 @@ Users need to start from an arbitrary directory, browse to a folder that contain
   - `delete` sends the selected folder to the recycle bin / Trash after confirmation.
 - The default template does not add a command action; users opt into it by editing settings.
 - Move actions in settings require both an alias and target folder.
-- Command actions in settings require both an alias and command text.
+- Command actions in settings require both an alias and command text, and may use `{{currentFile}}` for the selected image path.
 - Browser move actions in settings require both an alias and target folder.
 
 ## Open questions

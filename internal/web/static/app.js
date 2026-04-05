@@ -103,7 +103,14 @@ function t(key, params) {
     const dictionary = MESSAGES[state.locale] || MESSAGES.en;
     const fallback = MESSAGES.en[key] || key;
     const template = dictionary[key] || fallback;
-    return String(template).replace(/\{(\w+)\}/g, (_, token) => String(params?.[token] ?? ""));
+    const escapedOpen = "\uE000";
+    const escapedClose = "\uE001";
+    return String(template)
+        .replaceAll("{{", escapedOpen)
+        .replaceAll("}}", escapedClose)
+        .replace(/\{(\w+)\}/g, (_, token) => String(params?.[token] ?? ""))
+        .replaceAll(escapedOpen, "{{")
+        .replaceAll(escapedClose, "}}");
 }
 
 const {
