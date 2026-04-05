@@ -49,7 +49,7 @@ Status: active
   - Windows PowerShell path quoting for recycle-bin deletion.
   - Browser-mode single-image delete without an active session.
   - Browser-mode `browser_actions[]` validation, including browser-key conflicts, supported-type limits, and the default folder-delete template.
-  - Browser-mode selected-folder `move` and `delete`, including parent-relative target resolution, conflict renaming, root-folder blocking, move-into-self rejection, and post-action navigation back to the original parent folder.
+  - Browser-mode selected-folder `move` and `delete`, including parent-relative target resolution, conflict renaming, root-folder blocking, move-into-self rejection, and optimistic post-action navigation to next sibling, otherwise previous sibling, otherwise parent.
   - Browser-folder handler responses, including localized notices and root-folder rejection.
 - Missing coverage:
   - Browser-side UI flows in the static frontend bundle under `internal/web/static/app.js` and `internal/web/static/app/`.

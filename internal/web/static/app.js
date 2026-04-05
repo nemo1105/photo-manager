@@ -41,6 +41,13 @@ function createBrowserPendingState() {
     };
 }
 
+function createBrowserFolderActionPendingState() {
+    return {
+        pending: {},
+        hidden: {},
+    };
+}
+
 const STORAGE_KEY = window.__photoManagerBootstrap?.storageKey || "photo-manager.locale";
 
 const state = {
@@ -60,6 +67,7 @@ const state = {
     browserHelpOpen: false,
     commandTerminal: createCommandTerminalState(),
     browserPending: createBrowserPendingState(),
+    browserFolderActionPending: createBrowserFolderActionPendingState(),
     busy: false,
     busyLabel: "",
     tree: {
@@ -73,6 +81,9 @@ const state = {
 let noticeTimer = 0;
 let browserLoadTimer = 0;
 let browserLoadToken = 0;
+// Tree writes use a separate version so optimistic folder actions can drop stale
+// tree payloads without discarding the current gallery load.
+let browserTreeVersion = 1;
 let currentBrowserLoadPromise = null;
 let commandResizeTimer = 0;
 
@@ -607,6 +618,64 @@ function currentBrowserTargetPath() {
     return currentLoadedBrowserPath();
 }
 
+function nextBrowserTreeVersion() {
+    browserTreeVersion += 1;
+    return browserTreeVersion;
+}
+
+function currentBrowserTreeVersion() {
+    return browserTreeVersion;
+}
+
+function isBrowserFolderActionPending(path) {
+    const key = String(path || "");
+    if (!key) {
+        return false;
+    }
+    return !!state.browserFolderActionPending.pending[key];
+}
+
+function isBrowserFolderActionHidden(path) {
+    const key = String(path || "");
+    if (!key) {
+        return false;
+    }
+    return !!state.browserFolderActionPending.hidden[key];
+}
+
+function visibleBrowserDirectories(directories) {
+    return normalizeDirectories(directories).filter((entry) => !isBrowserFolderActionHidden(entry.path));
+}
+
+function beginBrowserFolderAction(path) {
+    const key = String(path || "");
+    if (!key || isBrowserFolderActionPending(key)) {
+        return false;
+    }
+    state.browserFolderActionPending.pending[key] = true;
+    state.browserFolderActionPending.hidden[key] = true;
+    return true;
+}
+
+function clearBrowserFolderActionPending(path, keepHidden) {
+    const key = String(path || "");
+    if (!key) {
+        return;
+    }
+    delete state.browserFolderActionPending.pending[key];
+    if (!keepHidden) {
+        delete state.browserFolderActionPending.hidden[key];
+    }
+}
+
+function clearBrowserFolderActionHidden(path) {
+    const key = String(path || "");
+    if (!key) {
+        return;
+    }
+    delete state.browserFolderActionPending.hidden[key];
+}
+
 function clearCurrentBrowserPending(requestToken) {
     if (!state.browserPending.active || state.browserPending.requestToken !== requestToken) {
         return false;
@@ -642,6 +711,9 @@ async function performBrowserLoad(path, options) {
     const targetPath = path || "";
     const expandTree = settings.expandTree !== false;
     const requestToken = settings.requestToken || browserLoadToken;
+    const treeVersion = Number.isFinite(Number(settings.treeVersion))
+        ? Number(settings.treeVersion)
+        : currentBrowserTreeVersion();
     const previousMode = state.mode;
     const previousBrowserPath = currentLoadedBrowserPath();
     const hadBrowserState = !!state.browser;
@@ -675,8 +747,8 @@ async function performBrowserLoad(path, options) {
     browserView.hidden = false;
     slideshowView.hidden = true;
     try {
-        await refreshVisibleTreeNodes(data.currentPath, {requestToken, silent: true});
-        await syncTreeToCurrentPath(data, {expandTree, requestToken, silent: true});
+        await refreshVisibleTreeNodes(data.currentPath, {requestToken, silent: true, treeVersion});
+        await syncTreeToCurrentPath(data, {expandTree, requestToken, silent: true, treeVersion});
     } catch (error) {
         if (requestToken !== browserLoadToken) {
             return null;
@@ -708,11 +780,15 @@ async function performBrowserLoad(path, options) {
 
 async function loadBrowser(path, options) {
     cancelScheduledBrowserLoad(false);
-    return trackBrowserLoad(performBrowserLoad(path, {
+    const settings = {
         expandTree: true,
         requestToken: nextBrowserLoadToken(),
         ...options,
-    }));
+    };
+    if (!Number.isFinite(Number(settings.treeVersion))) {
+        settings.treeVersion = currentBrowserTreeVersion();
+    }
+    return trackBrowserLoad(performBrowserLoad(path, settings));
 }
 
 async function loadSlideshow(path, preferredIndex) {
@@ -744,18 +820,24 @@ async function loadTreeNode(path, options) {
     const key = path || "";
     const forceRefresh = !!options?.forceRefresh;
     const silent = !!options?.silent;
+    const treeVersion = Number.isFinite(Number(options?.treeVersion))
+        ? Number(options.treeVersion)
+        : currentBrowserTreeVersion();
     if (!forceRefresh && state.tree.nodes[key]) {
         return state.tree.nodes[key];
     }
-    if (state.tree.loading[key]) {
+    if (state.tree.loading[key] && state.tree.loading[key] === treeVersion) {
         return null;
     }
-    state.tree.loading[key] = true;
+    state.tree.loading[key] = treeVersion;
     if (!silent) {
         render();
     }
     try {
         const data = normalizeTreeData(await apiGet(`/api/tree?path=${encodeURIComponent(key)}`));
+        if (treeVersion !== currentBrowserTreeVersion()) {
+            return null;
+        }
         cacheTreeNode(
             data.currentPath,
             data.currentName,
@@ -766,7 +848,9 @@ async function loadTreeNode(path, options) {
         );
         return state.tree.nodes[key];
     } finally {
-        delete state.tree.loading[key];
+        if (state.tree.loading[key] === treeVersion) {
+            delete state.tree.loading[key];
+        }
         if (!silent) {
             render();
         }
@@ -776,6 +860,9 @@ async function loadTreeNode(path, options) {
 async function refreshVisibleTreeNodes(currentPath, options) {
     const requestToken = options?.requestToken || browserLoadToken;
     const silent = options?.silent !== false;
+    const treeVersion = Number.isFinite(Number(options?.treeVersion))
+        ? Number(options.treeVersion)
+        : currentBrowserTreeVersion();
     const paths = new Set([""]);
     pathChain(currentPath || "").forEach((path) => paths.add(path));
     Object.keys(state.tree.expanded || {}).forEach((path) => {
@@ -785,7 +872,7 @@ async function refreshVisibleTreeNodes(currentPath, options) {
         if (requestToken !== browserLoadToken) {
             return;
         }
-        await loadTreeNode(path, {forceRefresh: true, silent});
+        await loadTreeNode(path, {forceRefresh: true, silent, treeVersion});
     }
 }
 
@@ -796,6 +883,12 @@ async function syncTreeToCurrentPath(browserData, options) {
     };
     const requestToken = settings.requestToken || browserLoadToken;
     const silent = settings.silent !== false;
+    const treeVersion = Number.isFinite(Number(settings.treeVersion))
+        ? Number(settings.treeVersion)
+        : currentBrowserTreeVersion();
+    if (treeVersion !== currentBrowserTreeVersion()) {
+        return;
+    }
     cacheTreeNode(
         browserData.currentPath,
         browserData.currentName,
@@ -816,7 +909,7 @@ async function syncTreeToCurrentPath(browserData, options) {
             return;
         }
         if (!state.tree.nodes[ancestor]) {
-            await loadTreeNode(ancestor, {silent});
+            await loadTreeNode(ancestor, {silent, treeVersion});
         }
     }
 }
@@ -828,7 +921,7 @@ function cacheTreeNode(path, name, directories, imageCount, imageCountEstimated,
         imageCount: Number.isFinite(Number(imageCount)) ? Number(imageCount) : 0,
         imageCountEstimated: !!imageCountEstimated,
         decorations: Array.isArray(decorations) ? decorations : [],
-        directories: normalizeDirectories(directories),
+        directories: visibleBrowserDirectories(directories),
     };
 }
 
@@ -859,12 +952,14 @@ function scheduleKeyboardDirectoryLoad(path) {
     state.browserFolderMenuPath = "";
     state.tree.focusPath = nextPath;
     const requestToken = nextBrowserLoadToken();
+    const treeVersion = currentBrowserTreeVersion();
     render();
     browserLoadTimer = window.setTimeout(() => {
         browserLoadTimer = 0;
         trackBrowserLoad(performBrowserLoad(nextPath, {
             expandTree: false,
             requestToken,
+            treeVersion,
         })).catch((error) => showNotice(error.message, "error"));
     }, 100);
 }
@@ -879,6 +974,7 @@ async function flushScheduledBrowserLoad() {
     await trackBrowserLoad(performBrowserLoad(focusedPath, {
         expandTree: false,
         requestToken: nextBrowserLoadToken(),
+        treeVersion: currentBrowserTreeVersion(),
     }));
 }
 
@@ -1029,10 +1125,79 @@ function confirmBrowserFolderDelete(path) {
     }));
 }
 
-function invalidateBrowserLoads(clearFocus) {
-    cancelScheduledBrowserLoad(clearFocus);
-    nextBrowserLoadToken();
-    state.browserPending = createBrowserPendingState();
+function browserFolderActionNextPath(path) {
+    const targetPath = String(path || "");
+    if (!targetPath) {
+        return "";
+    }
+
+    const parentPath = parentTreePath(targetPath);
+    const siblings = Array.isArray(state.tree.nodes[parentPath || ""]?.directories)
+        ? state.tree.nodes[parentPath || ""].directories
+        : [];
+    const currentIndex = siblings.findIndex((entry) => entry.path === targetPath);
+    if (currentIndex === -1) {
+        return parentPath;
+    }
+    if (currentIndex + 1 < siblings.length) {
+        return siblings[currentIndex + 1].path || parentPath;
+    }
+    if (currentIndex - 1 >= 0) {
+        return siblings[currentIndex - 1].path || parentPath;
+    }
+    return parentPath;
+}
+
+function pruneTreeSubtree(path) {
+    const targetPath = String(path || "");
+    if (!targetPath) {
+        return;
+    }
+    Object.keys(state.tree.nodes).forEach((key) => {
+        if (key === targetPath || key.startsWith(`${targetPath}/`)) {
+            delete state.tree.nodes[key];
+        }
+    });
+    Object.keys(state.tree.expanded).forEach((key) => {
+        if (key === targetPath || key.startsWith(`${targetPath}/`)) {
+            delete state.tree.expanded[key];
+        }
+    });
+    Object.keys(state.tree.loading).forEach((key) => {
+        if (key === targetPath || key.startsWith(`${targetPath}/`)) {
+            delete state.tree.loading[key];
+        }
+    });
+}
+
+function hideBrowserFolderPathLocally(path) {
+    const targetPath = String(path || "");
+    if (!targetPath) {
+        return;
+    }
+    const parentPath = parentTreePath(targetPath);
+    const parentNode = state.tree.nodes[parentPath || ""];
+    if (parentNode?.directories?.length) {
+        parentNode.directories = parentNode.directories.filter((entry) => entry.path !== targetPath);
+    }
+    if (state.browser?.currentPath === parentPath && Array.isArray(state.browser.directories)) {
+        state.browser.directories = state.browser.directories.filter((entry) => entry.path !== targetPath);
+    }
+    pruneTreeSubtree(targetPath);
+}
+
+function refreshBrowserFolderTrees(parentPath, treeVersion) {
+    const currentPath = currentBrowserTargetPath();
+    return Promise.allSettled([
+        loadTreeNode(parentPath, {forceRefresh: true, silent: true, treeVersion}),
+        refreshVisibleTreeNodes(currentPath, {
+            requestToken: browserLoadToken,
+            silent: true,
+            treeVersion,
+        }),
+    ]).finally(() => {
+        render();
+    });
 }
 
 async function runBrowserFolderAction(path, actionKey) {
@@ -1051,18 +1216,39 @@ async function runBrowserFolderAction(path, actionKey) {
         return null;
     }
 
-    closeBrowserFolderMenu();
-    render();
-    invalidateBrowserLoads(false);
+    if (!beginBrowserFolderAction(targetPath)) {
+        return null;
+    }
+    const nextPath = browserFolderActionNextPath(targetPath);
+    const parentPath = parentTreePath(targetPath);
+    const startTreeVersion = nextBrowserTreeVersion();
 
-    return withBusy(t("busy.working"), async () => {
+    closeBrowserFolderMenu();
+    hideBrowserFolderPathLocally(targetPath);
+    loadBrowser(nextPath, {
+        expandTree: true,
+        treeVersion: startTreeVersion,
+    }).catch((error) => showNotice(error.message, "error"));
+    render();
+
+    try {
         const result = await apiPost("/api/browser/folder-action", {
             path: targetPath,
             actionKey,
         });
         showNotice(result.notice, "info");
-        await loadBrowser(result.nextPath || "", {expandTree: true});
-    });
+        const settleTreeVersion = nextBrowserTreeVersion();
+        clearBrowserFolderActionPending(targetPath, true);
+        await refreshBrowserFolderTrees(parentPath, settleTreeVersion);
+        clearBrowserFolderActionHidden(targetPath);
+        render();
+    } catch (error) {
+        const settleTreeVersion = nextBrowserTreeVersion();
+        clearBrowserFolderActionPending(targetPath, false);
+        showNotice(error.message, "error");
+        await refreshBrowserFolderTrees(parentPath, settleTreeVersion);
+    }
+    return null;
 }
 
 async function terminateCommandTerminal() {

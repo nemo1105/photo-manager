@@ -484,17 +484,13 @@ func TestHandleBrowserFolderActionMovesDirectory(t *testing.T) {
 	}
 
 	var payload struct {
-		Notice   string `json:"notice"`
-		NextPath string `json:"nextPath"`
+		Notice string `json:"notice"`
 	}
 	if err := json.Unmarshal(rec.Body.Bytes(), &payload); err != nil {
 		t.Fatalf("decode payload: %v", err)
 	}
 	if payload.Notice != "已移动文件夹 album。" {
 		t.Fatalf("unexpected move notice: %q", payload.Notice)
-	}
-	if payload.NextPath != "work" {
-		t.Fatalf("expected nextPath work, got %q", payload.NextPath)
 	}
 	if _, err := os.Stat(filepath.Join(root, "work", "0", "album", "a.jpg")); err != nil {
 		t.Fatalf("expected moved folder contents, stat err=%v", err)
@@ -522,17 +518,13 @@ func TestHandleBrowserFolderActionDeletesDirectory(t *testing.T) {
 	}
 
 	var payload struct {
-		Notice   string `json:"notice"`
-		NextPath string `json:"nextPath"`
+		Notice string `json:"notice"`
 	}
 	if err := json.Unmarshal(rec.Body.Bytes(), &payload); err != nil {
 		t.Fatalf("decode payload: %v", err)
 	}
 	if payload.Notice != "已将文件夹 empty 移到回收站。" {
 		t.Fatalf("unexpected delete notice: %q", payload.Notice)
-	}
-	if payload.NextPath != "work" {
-		t.Fatalf("expected nextPath work, got %q", payload.NextPath)
 	}
 	if len(trash.paths) != 1 || trash.paths[0] != filepath.Join(root, "work", "empty") {
 		t.Fatalf("unexpected trash paths: %+v", trash.paths)

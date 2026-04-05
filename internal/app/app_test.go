@@ -395,9 +395,6 @@ func TestPerformBrowserFolderActionMovesDirectoryUsingParentRelativeTarget(t *te
 		t.Fatalf("move folder: %v", err)
 	}
 
-	if result.NextPath != "work" {
-		t.Fatalf("expected next path work, got %q", result.NextPath)
-	}
 	if result.Notice != "已移动文件夹 album。" {
 		t.Fatalf("unexpected move notice: %q", result.Notice)
 	}
@@ -444,9 +441,6 @@ func TestPerformBrowserFolderActionDeletesDirectoryAndReturnsParent(t *testing.T
 		t.Fatalf("delete folder: %v", err)
 	}
 
-	if result.NextPath != "work" {
-		t.Fatalf("expected next path work, got %q", result.NextPath)
-	}
 	if result.Notice != "已将文件夹 empty 移到回收站。" {
 		t.Fatalf("unexpected delete notice: %q", result.Notice)
 	}

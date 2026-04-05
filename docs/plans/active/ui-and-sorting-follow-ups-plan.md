@@ -56,7 +56,7 @@ Track the remaining UI and reliability work after the browse/preview/sorting flo
 - Verify `zh-CN` and `en` both localize browser chrome, help, settings, preview, sorting-view copy, and backend notice / error responses.
 - Verify mixed portrait, square, landscape, and panorama folders render with full-image masonry cards, avoid large thumbnail whitespace, and relax the `350 px` target cleanly on narrow widths instead of overflowing horizontally.
 - Verify browse-gallery cards show a bottom-right overflow trigger, the popup offers `Delete`, and deleting from browser mode sends the file to the recycle bin / Trash without starting sorting.
-- Verify selected tree rows show a hover-only overflow trigger, the popup offers configured folder actions plus `Delete`, folder delete asks for confirmation, and successful folder actions return browsing to the original parent folder.
+- Verify selected tree rows show a hover-only overflow trigger, the popup offers configured folder actions plus `Delete`, folder delete asks for confirmation, and successful folder actions jump to the next visible sibling folder, otherwise the previous sibling, otherwise the parent.
 - Verify refreshing or reopening browser mode during an active slideshow ends the session silently and does not surface browser-side active-session controls.
 - Verify the directory tree shows right-aligned image counts for the browse root and visible folder rows, with an estimate marker when deeper visible subfolders exceed the 3-level scan cap.
 - Verify second- and third-level folders in browser mode render with distinct indentation so nesting remains readable in deeper trees.

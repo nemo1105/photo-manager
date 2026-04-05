@@ -72,7 +72,7 @@ Users need to start from an arbitrary directory, browse to a folder that contain
 - [x] `delete` sends the image to the platform recycle bin / Trash.
 - [x] Browser-mode per-photo `delete` also sends the image to the platform recycle bin / Trash and does not require starting sorting first.
 - [x] Browser-mode folder `delete` sends the selected folder to the platform recycle bin / Trash, does not require starting sorting first, and always asks for confirmation before execution.
-- [x] Browser-mode folder `move` uses the selected tree row instead of the currently opened photo pane, resolves relative targets from that folder's parent, and returns browsing to the original parent folder after success.
+- [x] Browser-mode folder `move` and `delete` use the selected tree row instead of the currently opened photo pane. After either action starts, the browser immediately picks the next visible sibling folder, otherwise the previous visible sibling folder, otherwise the parent folder; the server only returns the localized notice.
 - [x] Browser-mode custom action shortcuts operate on the selected folder in the tree, while sorting action shortcuts continue to operate only inside sorting view.
 - [x] `restore` is shown only inside configured move-target directories and returns the image to the session root.
 - [x] `command` opens a full-screen interactive terminal, starts in `sessionRoot`, and keeps the terminal visible until the user closes it after the process exits.

@@ -113,8 +113,7 @@ type BrowserImageActionResult struct {
 }
 
 type BrowserFolderActionResult struct {
-	Notice   string `json:"notice"`
-	NextPath string `json:"nextPath"`
+	Notice string `json:"notice"`
 }
 
 type CommandStartResult struct {
@@ -497,11 +496,6 @@ func (a *App) PerformBrowserFolderAction(dirRel, actionKey string, locale locali
 	}
 
 	parentAbs := filepath.Dir(dirAbs)
-	parentRel, err := filepath.Rel(a.launchRoot, parentAbs)
-	if err != nil || parentRel == "." {
-		parentRel = ""
-	}
-	nextPath := filepath.ToSlash(parentRel)
 	dirName := filepath.Base(dirAbs)
 
 	switch binding.Action {
@@ -527,16 +521,14 @@ func (a *App) PerformBrowserFolderAction(dirRel, actionKey string, locale locali
 			return nil, err
 		}
 		return &BrowserFolderActionResult{
-			Notice:   localize.MoveFolderNotice(locale, dirName),
-			NextPath: nextPath,
+			Notice: localize.MoveFolderNotice(locale, dirName),
 		}, nil
 	case "delete":
 		if err := a.trash.Trash(dirAbs); err != nil {
 			return nil, err
 		}
 		return &BrowserFolderActionResult{
-			Notice:   localize.DeleteFolderNotice(locale, dirName),
-			NextPath: nextPath,
+			Notice: localize.DeleteFolderNotice(locale, dirName),
 		}, nil
 	default:
 		return nil, errUnsupportedBrowserAction
