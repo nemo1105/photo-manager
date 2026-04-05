@@ -29,7 +29,7 @@ Users need to start from an arbitrary directory, browse to a folder that contain
 - Relative `browser_actions[].target` values are resolved from the selected folder's parent directory.
 - `command.command` is raw command-line text; the product does not support placeholders or inject current-image or current-directory variables.
 - `alias` is the user-facing label for `move` and `command` actions. New saves require it for those action types, but legacy configs without it still load and fall back to the old target-based or generic command labels until edited.
-- `browser_actions[]` shares the same `key` / `action` / `target` / `command` / `alias` shape as sorting `actions[]`, but current browser-mode execution supports only `move` and `delete`.
+- `browser_actions[]` shares the same `key` / `action` / `target` / `command` / `alias` shape as sorting `actions[]`, but current browser-mode execution supports only `move`.
 - Sorting state must not be created implicitly by image preview.
 - Browser mode and active work-session/slideshow mode are mutually exclusive. Entering browser mode ends any active session.
 - Starting a session from a configured relative move-target folder should treat that folder as a review view for already moved photos, while using its parent as `sessionRoot`.
@@ -39,7 +39,7 @@ Users need to start from an arbitrary directory, browse to a folder that contain
 - Slideshow mode is an immersive full-viewport viewer and must not introduce browser-level scrollbars during normal desktop use.
 - Browser and tree directory lists should sort naturally by numeric segments instead of pure lexicographic order.
 - Browser-gallery cards may expose per-photo browser-mode actions, but those actions must not implicitly create sorting state.
-- Folder-tree rows may expose hover-only per-folder browser-mode actions, and those actions must operate on the selected folder without creating sorting state.
+- Folder-tree rows may expose hover-only per-folder browser-mode actions, and mouse-triggered row actions must operate on that row without creating sorting state.
 - Browser UI localization supports only `zh-CN` and `en`; any browser locale starting with `zh` maps to `zh-CN`, and other browser locales fall back to `en`.
 - Manual language switching is browser-local only, takes precedence over browser-language detection, and must not require a config-file change.
 - The help modal should group shortcuts by mode, name arrow keys explicitly as arrow keys, show `Space` as the default slideshow exit, and use a two-column shortcut grid at common desktop widths.
@@ -63,7 +63,7 @@ Users need to start from an arbitrary directory, browse to a folder that contain
 - [x] Starting the CLI in any folder opens a browser UI rooted at that folder.
 - [x] Clicking an image opens preview only and does not start sorting.
 - [x] Browse-gallery cards expose a bottom-right `More actions` entry that opens a per-photo menu.
-- [x] The selected folder row in the tree exposes a hover-only `More actions` entry near the image count, and the image count shifts left only while that entry is shown.
+- [x] Any hovered folder row in the tree exposes a hover-only `More actions` entry near the image count, and the image count shifts left only while that entry is shown.
 - [x] Starting sorting is only possible from the browser view through the fixed button or its configured key.
 - [x] When the current folder is a configured relative move target, the browser frames it as reviewing already moved photos and starting there uses the parent folder as the work root.
 - [x] While sorting is active, the page shows clear sorting/review state and enables action buttons in the sorting view.
@@ -72,7 +72,7 @@ Users need to start from an arbitrary directory, browse to a folder that contain
 - [x] `delete` sends the image to the platform recycle bin / Trash.
 - [x] Browser-mode per-photo `delete` also sends the image to the platform recycle bin / Trash and does not require starting sorting first.
 - [x] Browser-mode folder `delete` sends the selected folder to the platform recycle bin / Trash, does not require starting sorting first, and always asks for confirmation before execution.
-- [x] Browser-mode folder `move` and `delete` use the selected tree row instead of the currently opened photo pane. After either action starts, the browser immediately picks the next visible sibling folder, otherwise the previous visible sibling folder, otherwise the parent folder; the server only returns the localized notice.
+- [x] Browser-mode keyboard folder `move` and `delete` use the selected tree row instead of the currently opened photo pane. Mouse row menus act on the clicked row. After either action starts, the browser immediately picks the next visible sibling folder, otherwise the previous visible sibling folder, otherwise the parent folder; the server only returns the localized notice.
 - [x] Browser-mode custom action shortcuts operate on the selected folder in the tree, while sorting action shortcuts continue to operate only inside sorting view.
 - [x] `restore` is shown only inside configured move-target directories and returns the image to the session root.
 - [x] `command` opens a full-screen interactive terminal, starts in `sessionRoot`, and keeps the terminal visible until the user closes it after the process exits.
@@ -83,7 +83,7 @@ Users need to start from an arbitrary directory, browse to a folder that contain
 - [x] Legacy `move` and `command` actions without `alias` still load, fall back to the old target-based or generic command labels in those same surfaces, and must be given an alias before settings can be saved again.
 - [x] Moving outside the current sorting range ends sorting automatically and informs the user.
 - [x] Config edits in the browser are validated and saved back to `~/.photo-manager/config.yaml`.
-- [x] Browser settings edit a dedicated `browser_actions[]` list inside the folder-browsing section, using the same row style and action-type model as sorting actions while currently offering only `move` and `delete`.
+- [x] Browser settings expose a fixed folder-delete key inside the folder-browsing section, and edit a dedicated `browser_actions[]` list using the same row style and action-type model as sorting actions while currently offering only `move`.
 - [x] Outside preview and slideshow, configurable browser tree keys move through the visible directory list with Up / Down and expand or collapse the current directory with Right / Left.
 - [x] Keyboard-driven directory changes keep the tree expansion state unchanged and debounce browser loading by about 100 ms so rapid scans across image folders do not trigger repeated heavy refreshes.
 - [x] Mouse-driven and keyboard-driven folder changes keep the tree clickable during loading, immediately preserve the latest target row as selected, clear the image pane into a loading state once the request starts, and ignore stale responses so an older folder cannot overwrite the newest choice.
@@ -116,7 +116,7 @@ Users need to start from an arbitrary directory, browse to a folder that contain
   - Keyboard-driven directory switches do not auto-expand the newly selected folder and wait about `100 ms` before reloading the browser pane.
   - Once a folder load starts, the latest target row stays selected, the tree remains clickable, and the browser pane switches to a loading state for that target instead of leaving the previous folder's photos visible.
   - Each browse-gallery card exposes a bottom-right overflow menu; today it contains only `Delete`, which sends that one photo to the recycle bin / Trash without starting sorting.
-  - Each selected folder row may also expose a hover-only overflow menu near the right edge; today it contains configured browser `move` actions plus `Delete`, and `Delete` always asks for confirmation first.
+  - Each hovered folder row may also expose a hover-only overflow menu near the right edge; today it contains configured browser `move` actions plus a built-in `Delete`, and `Delete` always asks for confirmation first.
   - Settings opens from the help modal header button instead of a dedicated keyboard shortcut.
   - Loading browser mode ends any active sorting state; folder browsing does not expose a separate exit-sorting key.
 - Preview:
@@ -130,7 +130,7 @@ Users need to start from an arbitrary directory, browse to a folder that contain
   - `delete` sends the photo to the recycle bin / Trash.
   - `arrowdown` moves the image to relative target `0`.
   - `arrowup` restores the image to `sessionRoot`.
-- Default browser actions:
+- Default folder-browsing delete:
   - `delete` sends the selected folder to the recycle bin / Trash after confirmation.
 - The default template does not add a command action; users opt into it by editing settings.
 - Move actions in settings require both an alias and target folder.

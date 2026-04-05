@@ -477,6 +477,12 @@ export function createEventHandlers(deps) {
       collapseCurrentTreeDirectory().catch((error) => showNotice(error.message, "error"));
       return;
     }
+    if (key === keys.deleteSelected) {
+      event.preventDefault();
+      runBrowserFolderAction(state.tree.focusPath || state.browserPending?.path || state.browser.currentPath || "", key)
+        .catch((error) => showNotice(error.message, "error"));
+      return;
+    }
 
     const folderAction = (state.config?.browserActions || []).find((item) => item.key === key);
     if (folderAction) {

@@ -22,7 +22,7 @@ This application is a single-binary Go tool that starts from an explicit launch 
 - All browser and image paths are expressed as launch-root-relative paths and are sanitized so they cannot escape `launchRoot`.
 - Browsing folders and previewing images never starts a work session. Only `POST /api/session/start` does.
 - Browser-mode single-image actions run without a work session; they stay constrained to the current browser directory and currently support only recycle-bin delete.
-- Browser-mode single-folder actions also run without a work session. They operate on the currently selected tree row, not on the current image list, and the current implementation supports `move` plus recycle-bin delete.
+- Browser-mode single-folder actions also run without a work session. Keyboard actions operate on the currently selected tree row, row-menu clicks operate on that row, and the current implementation supports custom `move` plus built-in recycle-bin delete.
 - Browser mode and active slideshow/work-session state are mutually exclusive. Any successful `GET /api/browser` clears the current session before returning browser data.
 - A work session owns one `sessionRoot`. Relative action targets are resolved from `sessionRoot` for the entire session.
 - Browser-mode relative folder-move targets resolve from the selected folder's parent directory, so moving `work/a` into relative target `0` produces `work/0/a`.
@@ -58,10 +58,10 @@ This application is a single-binary Go tool that starts from an explicit launch 
   - A local HTTP server is bound to `127.0.0.1:random-port` and the default browser is opened.
 - Config shape:
   - `keys.browser`, `keys.preview`, and `keys.slideshow` define single-key bindings per mode.
-  - `keys.browser` exposes session start plus tree up/down and tree expand/collapse keys.
+  - `keys.browser` exposes session start, tree up/down, tree expand/collapse, and a fixed folder-delete key.
   - `keys.slideshow` currently exposes `next`, `prev`, and `end_session`; slideshow no longer has a separate browser-return binding.
   - `actions[]` defines `move`, `delete`, `restore`, and `command` buttons/shortcuts.
-  - `browser_actions[]` reuses the same action object shape as `actions[]`, but browser-mode execution currently accepts only `move` and `delete`.
+  - `browser_actions[]` reuses the same action object shape as `actions[]`, but browser-mode execution currently accepts only `move`.
   - Directory decorations are not user-configurable in v1. The app registers them internally at startup.
   - `move.target` accepts relative or absolute paths.
   - `command.command` stores the raw command-line text to run via the platform shell.
@@ -70,7 +70,7 @@ This application is a single-binary Go tool that starts from an explicit launch 
 - HTTP API:
 - `GET /api/browser`: current directory listing, localized breadcrumbs, config, whether starting here should be framed as reviewing moved photos, current-directory bounded image-count metadata, localized current-directory decorations, and per-directory bounded image counts plus localized decorations for each visible child folder. Calling it also clears any active session so browser mode never renders with an active session. The payload intentionally omits legacy parent-navigation fields such as `parentPath` and `canGoUp`.
 - `POST /api/browser/action`: executes browser-mode single-image actions for the current directory without requiring a session. The current implementation supports `delete` only.
-- `POST /api/browser/folder-action`: executes browser-mode single-folder actions for the selected tree row without requiring a session. Requests use `path` plus `actionKey`, and the response returns only a localized `notice`; the frontend computes optimistic follow-up navigation as next visible sibling, otherwise previous visible sibling, otherwise parent.
+- `POST /api/browser/folder-action`: executes browser-mode single-folder actions for the requested tree row without requiring a session. Requests use `path` plus `actionKey`, and the response returns only a localized `notice`; the frontend computes optimistic follow-up navigation as next visible sibling, otherwise previous visible sibling, otherwise parent.
 - `GET /api/tree`: current directory path, request-localized current-directory decorations, current-directory bounded image-count metadata, and visible child directories with per-directory bounded image counts plus localized decorations.
   - `POST /api/session/start`: creates or reuses a session for the current directory.
   - `POST /api/session/end`: clears the active session.
@@ -111,7 +111,7 @@ This application is a single-binary Go tool that starts from an explicit launch 
 - The browser bundle remains dependency-light by vendoring browser-ready `xterm.js` assets into the embedded static tree instead of introducing a separate frontend build system.
 - The browse gallery keeps the backend payload unchanged and derives portrait/landscape layout from browser-decoded `naturalWidth` / `naturalHeight`, so supported image formats do not need matching Go-side metadata decoders.
 - The browse-gallery overflow trigger is a frontend-only affordance layered onto each card; it does not change gallery payload shape and uses a dedicated browser-action endpoint instead of the slideshow action-key path.
-- The tree row overflow trigger is also a frontend-only affordance. It appears only while the selected row is hovered, shifts the count badge left for that hover state, and routes through a dedicated browser-folder-action endpoint instead of the slideshow action-key path.
+- The tree row overflow trigger is also a frontend-only affordance. It appears only while that row is hovered or its popup is open, shifts the count badge left for that hover state, and routes through a dedicated browser-folder-action endpoint instead of the slideshow action-key path.
 - Review-folder entry is explained in the UI as checking already moved photos, rather than exposing the session-root fallback directly.
 - The default action template now favors a single hot folder, `0`, so a fresh install exposes one high-risk move target instead of several competing move destinations.
 - Browser-mode action configuration intentionally mirrors the sorting action object shape so later browser `command` support can extend the existing UI and transport model instead of introducing a third action schema.

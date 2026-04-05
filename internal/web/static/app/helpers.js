@@ -246,6 +246,7 @@ export function createAppHelpers({ state, t }) {
       "keys.browser.treeDown": t("capture.browser.treeDown"),
       "keys.browser.expandDir": t("capture.browser.expandDir"),
       "keys.browser.collapseDir": t("capture.browser.collapseDir"),
+      "keys.browser.deleteSelected": t("capture.browser.deleteSelected"),
       "keys.preview.close": t("capture.preview.close"),
       "keys.preview.next": t("capture.preview.next"),
       "keys.preview.prev": t("capture.preview.prev"),

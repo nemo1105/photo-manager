@@ -504,9 +504,11 @@ func TestHandleBrowserFolderActionDeletesDirectory(t *testing.T) {
 	}
 
 	trash := &deletingStubTrash{}
-	handler := NewHandler(app.New(root, filepath.Join(root, "config.yaml"), config.Default(), trash))
+	cfg := config.Default()
+	cfg.Keys.Browser.DeleteSel = "x"
+	handler := NewHandler(app.New(root, filepath.Join(root, "config.yaml"), cfg, trash))
 
-	req := httptest.NewRequest(http.MethodPost, "/api/browser/folder-action", bytes.NewBufferString(`{"path":"work/empty","actionKey":"delete"}`))
+	req := httptest.NewRequest(http.MethodPost, "/api/browser/folder-action", bytes.NewBufferString(`{"path":"work/empty","actionKey":"x"}`))
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("X-Photo-Manager-Locale", "zh-CN")
 
@@ -533,9 +535,11 @@ func TestHandleBrowserFolderActionDeletesDirectory(t *testing.T) {
 
 func TestHandleBrowserFolderActionRejectsBrowseRoot(t *testing.T) {
 	root := t.TempDir()
-	handler := NewHandler(app.New(root, filepath.Join(root, "config.yaml"), config.Default(), stubTrash{}))
+	cfg := config.Default()
+	cfg.Keys.Browser.DeleteSel = "x"
+	handler := NewHandler(app.New(root, filepath.Join(root, "config.yaml"), cfg, stubTrash{}))
 
-	req := httptest.NewRequest(http.MethodPost, "/api/browser/folder-action", bytes.NewBufferString(`{"path":"","actionKey":"delete"}`))
+	req := httptest.NewRequest(http.MethodPost, "/api/browser/folder-action", bytes.NewBufferString(`{"path":"","actionKey":"x"}`))
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("X-Photo-Manager-Locale", "zh-CN")
 

@@ -1207,7 +1207,10 @@ async function runBrowserFolderAction(path, actionKey) {
         return null;
     }
 
-    const action = (state.config?.browserActions || []).find((item) => item.key === actionKey);
+    const deleteKey = String(state.config?.keys?.browser?.deleteSelected || "");
+    const action = actionKey === deleteKey
+        ? {key: deleteKey, action: "delete"}
+        : (state.config?.browserActions || []).find((item) => item.key === actionKey);
     if (!action) {
         return null;
     }

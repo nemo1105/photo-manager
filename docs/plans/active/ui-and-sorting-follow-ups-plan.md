@@ -18,7 +18,7 @@ Track the remaining UI and reliability work after the browse/preview/sorting flo
 - [x] Add interactive `command` actions with alias-based labels, one active terminal session at a time, and stable output-before-exit delivery.
 - [x] Rework the folder-browsing gallery into an aspect-ratio-aware masonry layout that uses loaded image dimensions, keeps images uncropped, and treats `350 px` portrait-width / landscape-height targets as soft goals when space allows.
 - [x] Add a per-photo overflow menu on browse-gallery cards with browser-mode single-image delete routed through the recycle bin / Trash without starting sorting.
-- [x] Add browser-mode selected-folder actions with a work-action-shaped `browser_actions[]` config, hover-only tree-row overflow menus, selected-row hotkeys, parent-relative folder moves, and confirmed folder delete.
+- [x] Add browser-mode folder actions with a work-action-shaped `browser_actions[]` config, hover-only tree-row overflow menus, selected-row hotkeys, parent-relative folder moves, and confirmed folder delete.
 - [x] Restore visible indentation progression for deeper levels in the browser tree so third-level folders no longer visually collapse onto second-level rows.
 - [x] Add an internal directory-decoration plugin path for browser-tree status icons, including a built-in `done.txt` green check marker with locale-aware tooltips.
 - [x] Keep folder browsing interactive during directory loads so the latest mouse or keyboard target wins, the target row shows a light loading marker, the gallery switches to a loading state, and stale responses or stale errors do not roll the UI back.
@@ -46,7 +46,7 @@ Track the remaining UI and reliability work after the browse/preview/sorting flo
 - Directory rows show bounded image counts from the existing browser/tree payloads, with a 3-level scan cap and an estimate marker for deeper visible subtrees.
 - Directory status icons now ride on the existing browser/tree payloads through an internal decorator registry; v1 uses a localized `done-marker` for folders that directly contain `done.txt`.
 - Browser directory loads now use a latest-request-wins UI state: the tree stays clickable, the newest target row stays selected, the gallery clears to a loading state once the request starts, and stale responses or superseded request failures are ignored.
-- Browser-mode folder actions use a dedicated `browser_actions[]` list that mirrors the sorting action object shape, while current browser execution still limits types to `move` and `delete`.
+- Browser-mode folder actions use a dedicated `browser_actions[]` list that mirrors the sorting action object shape for custom moves, while fixed folder delete now lives under `keys.browser.delete_selected`.
 - `command` actions run as raw shell text with no placeholder DSL or injected current-image/current-directory variables; the only guaranteed execution context is the initial `sessionRoot` working directory.
 - `alias` is the user-facing label for move and command actions. Legacy configs without it may load, but save remains blocked until the alias is filled.
 
@@ -56,7 +56,7 @@ Track the remaining UI and reliability work after the browse/preview/sorting flo
 - Verify `zh-CN` and `en` both localize browser chrome, help, settings, preview, sorting-view copy, and backend notice / error responses.
 - Verify mixed portrait, square, landscape, and panorama folders render with full-image masonry cards, avoid large thumbnail whitespace, and relax the `350 px` target cleanly on narrow widths instead of overflowing horizontally.
 - Verify browse-gallery cards show a bottom-right overflow trigger, the popup offers `Delete`, and deleting from browser mode sends the file to the recycle bin / Trash without starting sorting.
-- Verify selected tree rows show a hover-only overflow trigger, the popup offers configured folder actions plus `Delete`, folder delete asks for confirmation, and successful folder actions jump to the next visible sibling folder, otherwise the previous sibling, otherwise the parent.
+- Verify hovered tree rows show a hover-only overflow trigger, the popup offers configured folder actions plus `Delete`, folder delete asks for confirmation, and successful folder actions jump to the next visible sibling folder, otherwise the previous sibling, otherwise the parent.
 - Verify refreshing or reopening browser mode during an active slideshow ends the session silently and does not surface browser-side active-session controls.
 - Verify the directory tree shows right-aligned image counts for the browse root and visible folder rows, with an estimate marker when deeper visible subfolders exceed the 3-level scan cap.
 - Verify second- and third-level folders in browser mode render with distinct indentation so nesting remains readable in deeper trees.

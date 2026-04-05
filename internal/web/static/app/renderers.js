@@ -118,22 +118,25 @@ export function createRenderers(deps) {
   }
 
   function browserFolderActions() {
-    return Array.isArray(state.config?.browserActions) ? state.config.browserActions : [];
+    return Array.isArray(state.config?.browserActions)
+      ? state.config.browserActions.filter((action) => action.action === "move")
+      : [];
   }
 
-  function browserFolderActionMenuHtml(path, selected) {
-    if (!selected || !path) {
+  function browserFolderActionMenuHtml(path) {
+    if (!path) {
       return "";
     }
 
     const actions = browserFolderActions();
-    if (!actions.length) {
+    const deleteKey = getConfig(["keys", "browser", "deleteSelected"]);
+    if (!actions.length && !deleteKey) {
       return "";
     }
 
     const menuOpen = state.browserFolderMenuPath === path;
     return `
-      <div class="tree-row-actions tree-row-actions--selected ${menuOpen ? "is-open" : ""}" data-browser-folder-menu>
+      <div class="tree-row-actions ${menuOpen ? "is-open" : ""}" data-browser-folder-menu>
         <button
           class="tree-row-menu-toggle"
           type="button"
@@ -151,7 +154,7 @@ export function createRenderers(deps) {
         <div class="tree-row-menu" role="menu" aria-label="${escapeHtml(t("browser.folderActions"))}" ${menuOpen ? "" : "hidden"}>
           ${actions.map((action) => `
             <button
-              class="tree-row-menu-item ${action.action === "delete" ? "tree-row-menu-item--danger" : ""}"
+              class="tree-row-menu-item"
               type="button"
               role="menuitem"
               data-browser-folder-action="${escapeHtml(path)}"
@@ -160,6 +163,17 @@ export function createRenderers(deps) {
               ${escapeHtml(shortActionLabel(action))}
             </button>
           `).join("")}
+          ${deleteKey ? `
+            <button
+              class="tree-row-menu-item tree-row-menu-item--danger"
+              type="button"
+              role="menuitem"
+              data-browser-folder-action="${escapeHtml(path)}"
+              data-browser-folder-action-key="${escapeHtml(deleteKey)}"
+            >
+              ${escapeHtml(t("browser.deleteFolder"))}
+            </button>
+          ` : ""}
         </div>
       </div>
     `;
@@ -258,6 +272,9 @@ export function createRenderers(deps) {
     const browserTargetPath = isBrowserLoading ? state.browserPending.path || "" : state.browser.currentPath;
     const isReviewStart = !isBrowserLoading && state.browser.currentDirStartsAsReview;
     const startLabel = isReviewStart ? t("browser.reviewHere") : t("browser.sortHere");
+    const previousTree = browserView.querySelector(".browser-tree-shell");
+    const treeScrollTop = previousTree ? previousTree.scrollTop : 0;
+    const treeScrollLeft = previousTree ? previousTree.scrollLeft : 0;
     const previousGallery = browserView.querySelector(".browser-gallery");
     const galleryScrollTop = previousGallery ? previousGallery.scrollTop : 0;
     const galleryScrollLeft = previousGallery ? previousGallery.scrollLeft : 0;
@@ -303,6 +320,11 @@ export function createRenderers(deps) {
     `;
 
     const nextGallery = browserView.querySelector(".browser-gallery");
+    const nextTree = browserView.querySelector(".browser-tree-shell");
+    if (nextTree) {
+      nextTree.scrollTop = treeScrollTop;
+      nextTree.scrollLeft = treeScrollLeft;
+    }
     if (nextGallery) {
       nextGallery.scrollTop = galleryScrollTop;
       nextGallery.scrollLeft = galleryScrollLeft;
@@ -393,7 +415,7 @@ export function createRenderers(deps) {
           >
             ${treeLabelHtml(entry.name, entry.imageCount || 0, !!entry.imageCountEstimated, entry.decorations, pending)}
           </button>
-          ${browserFolderActionMenuHtml(path, selected)}
+          ${browserFolderActionMenuHtml(path)}
         </div>
         ${childMarkup}
       </div>
@@ -527,7 +549,7 @@ export function createRenderers(deps) {
     const browserActionRows = (state.settingsDraft.browserActions || [])
       .map((action, index) => settingsActionRowHtml(action, index, {
         kind: "browser",
-        allowedActions: ["delete", "move"],
+        allowedActions: ["move"],
       }))
       .join("");
 
@@ -546,6 +568,7 @@ export function createRenderers(deps) {
           ${settingsFieldHtml(t("settings.treeDown"), ["keys", "browser", "treeDown"])}
           ${settingsFieldHtml(t("settings.expandDirectory"), ["keys", "browser", "expandDir"])}
           ${settingsFieldHtml(t("settings.collapseDirectory"), ["keys", "browser", "collapseDir"])}
+          ${settingsFieldHtml(t("settings.deleteFolder"), ["keys", "browser", "deleteSelected"])}
         </div>
         <div class="settings-subsection settings-subsection--actions">
           <div class="settings-section-head settings-section-head--nested">
@@ -625,6 +648,7 @@ export function createRenderers(deps) {
     ].filter(Boolean).join(" / ");
 
     const browserActionShortcuts = (state.config?.browserActions || [])
+      .filter((action) => action.action === "move")
       .map((action) => browserInfoKeyHtml(shortActionLabel(action), action.key));
 
     document.getElementById("helpSettingsButton").innerHTML = `
@@ -658,6 +682,7 @@ export function createRenderers(deps) {
               browserInfoKeyHtml(t("help.treeMove"), "", treeMoveKeys),
               browserInfoKeyHtml(t("help.expand"), getConfig(["keys", "browser", "expandDir"])),
               browserInfoKeyHtml(t("help.collapse"), getConfig(["keys", "browser", "collapseDir"])),
+              browserInfoKeyHtml(t("help.deleteFolder"), getConfig(["keys", "browser", "deleteSelected"])),
             ].concat(browserActionShortcuts))}
             ${shortcutGroupHtml(t("help.previewShortcuts"), [
               browserInfoKeyHtml(t("help.closePreview"), getConfig(["keys", "preview", "close"])),

@@ -434,9 +434,11 @@ func TestPerformBrowserFolderActionDeletesDirectoryAndReturnsParent(t *testing.T
 	mustMkdir(t, filepath.Join(root, "work", "empty"))
 
 	trash := &fakeTrash{}
-	app := New(root, filepath.Join(root, "config.yaml"), config.Default(), trash)
+	cfg := config.Default()
+	cfg.Keys.Browser.DeleteSel = "x"
+	app := New(root, filepath.Join(root, "config.yaml"), cfg, trash)
 
-	result, err := app.PerformBrowserFolderAction("work/empty", "delete", localize.ZHCN)
+	result, err := app.PerformBrowserFolderAction("work/empty", "x", localize.ZHCN)
 	if err != nil {
 		t.Fatalf("delete folder: %v", err)
 	}
@@ -455,8 +457,10 @@ func TestPerformBrowserFolderActionDeletesDirectoryAndReturnsParent(t *testing.T
 func TestPerformBrowserFolderActionRejectsBrowseRoot(t *testing.T) {
 	root := t.TempDir()
 
-	app := New(root, filepath.Join(root, "config.yaml"), config.Default(), &fakeTrash{})
-	if _, err := app.PerformBrowserFolderAction("", "delete", localize.EN); err == nil {
+	cfg := config.Default()
+	cfg.Keys.Browser.DeleteSel = "x"
+	app := New(root, filepath.Join(root, "config.yaml"), cfg, &fakeTrash{})
+	if _, err := app.PerformBrowserFolderAction("", "x", localize.EN); err == nil {
 		t.Fatal("expected browse root action to fail")
 	}
 }

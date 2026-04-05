@@ -31,6 +31,7 @@ type BrowserKeys struct {
 	TreeDown     string `yaml:"tree_down" json:"treeDown"`
 	ExpandDir    string `yaml:"expand_dir" json:"expandDir"`
 	CollapseDir  string `yaml:"collapse_dir" json:"collapseDir"`
+	DeleteSel    string `yaml:"delete_selected" json:"deleteSelected"`
 }
 
 type PreviewKeys struct {
@@ -146,9 +147,9 @@ func (e *ValidationError) UserMessage(locale localize.Locale) string {
 		return fmt.Sprintf("%s must be move, delete, restore, or command.", label)
 	case errors.Is(e.Err, errInvalidBrowserAction):
 		if locale == localize.ZHCN {
-			return fmt.Sprintf("%s必须是移动或删除。", label)
+			return fmt.Sprintf("%s必须是移动。", label)
 		}
-		return fmt.Sprintf("%s must be move or delete.", label)
+		return fmt.Sprintf("%s must be move.", label)
 	case errors.Is(e.Err, errMissingTarget):
 		if locale == localize.ZHCN {
 			return fmt.Sprintf("%s需要目标路径。", label)
@@ -191,7 +192,7 @@ var (
 	errEmptyKey             = localize.NewStaticError("key cannot be empty", "按键不能为空")
 	errInvalidKey           = localize.NewStaticError("key must be a single key", "按键必须是单个按键")
 	errInvalidAction        = localize.NewStaticError("action must be move, delete, restore, or command", "动作必须是 move、delete、restore 或 command")
-	errInvalidBrowserAction = localize.NewStaticError("browser action must be move or delete", "文件夹浏览动作必须是 move 或 delete")
+	errInvalidBrowserAction = localize.NewStaticError("browser action must be move", "文件夹浏览动作必须是 move")
 	errMissingTarget        = localize.NewStaticError("move action requires target", "move 动作需要目标路径")
 	errMissingCommand       = localize.NewStaticError("command action requires command text", "command 动作需要命令行")
 	errMissingAlias         = localize.NewStaticError("move or command action requires alias", "move 或 command 动作需要别名")
@@ -234,6 +235,7 @@ func Default() *Config {
 				TreeDown:     "arrowdown",
 				ExpandDir:    "arrowright",
 				CollapseDir:  "arrowleft",
+				DeleteSel:    "delete",
 			},
 			Preview: PreviewKeys{
 				Close: "escape",
@@ -251,9 +253,7 @@ func Default() *Config {
 			{Key: "arrowdown", Action: "move", Target: "0", Alias: "0"},
 			{Key: "arrowup", Action: "restore"},
 		},
-		BrowserActions: []ActionBinding{
-			{Key: "delete", Action: "delete"},
-		},
+		BrowserActions: []ActionBinding{},
 	}
 }
 
@@ -329,6 +329,8 @@ func (c *Config) validateAndNormalize(options validationOptions) error {
 		return errors.New("config is nil")
 	}
 
+	c.migrateLegacyBrowserDeleteBinding()
+
 	keyMaps := []struct {
 		name string
 		keys map[string]*string
@@ -336,11 +338,12 @@ func (c *Config) validateAndNormalize(options validationOptions) error {
 		{
 			name: "browser",
 			keys: map[string]*string{
-				"start_session": &c.Keys.Browser.StartSession,
-				"tree_up":       &c.Keys.Browser.TreeUp,
-				"tree_down":     &c.Keys.Browser.TreeDown,
-				"expand_dir":    &c.Keys.Browser.ExpandDir,
-				"collapse_dir":  &c.Keys.Browser.CollapseDir,
+				"start_session":   &c.Keys.Browser.StartSession,
+				"tree_up":         &c.Keys.Browser.TreeUp,
+				"tree_down":       &c.Keys.Browser.TreeDown,
+				"expand_dir":      &c.Keys.Browser.ExpandDir,
+				"collapse_dir":    &c.Keys.Browser.CollapseDir,
+				"delete_selected": &c.Keys.Browser.DeleteSel,
 			},
 		},
 		{
@@ -414,8 +417,7 @@ func (c *Config) validateAndNormalize(options validationOptions) error {
 		prefix:           "browser_actions",
 		invalidActionErr: errInvalidBrowserAction,
 		allowedActions: map[string]struct{}{
-			"move":   {},
-			"delete": {},
+			"move": {},
 		},
 	}); err != nil {
 		return err
@@ -427,7 +429,8 @@ func (c *Config) validateAndNormalize(options validationOptions) error {
 			key == c.Keys.Browser.TreeUp ||
 			key == c.Keys.Browser.TreeDown ||
 			key == c.Keys.Browser.ExpandDir ||
-			key == c.Keys.Browser.CollapseDir {
+			key == c.Keys.Browser.CollapseDir ||
+			key == c.Keys.Browser.DeleteSel {
 			return &ValidationError{
 				Path: bindingValidationPath("browser_actions", i, "key"),
 				Code: validationActionConflictBrowser,
@@ -540,6 +543,29 @@ func validateActionBindings(bindings []ActionBinding, options actionBindingValid
 	return nil
 }
 
+func (c *Config) migrateLegacyBrowserDeleteBinding() {
+	if c == nil {
+		return
+	}
+
+	deleteKey := strings.TrimSpace(c.Keys.Browser.DeleteSel)
+	filtered := make([]ActionBinding, 0, len(c.BrowserActions))
+	for _, binding := range c.BrowserActions {
+		if strings.EqualFold(strings.TrimSpace(binding.Action), "delete") {
+			if deleteKey == "" {
+				deleteKey = strings.TrimSpace(binding.Key)
+			}
+			continue
+		}
+		filtered = append(filtered, binding)
+	}
+	if deleteKey == "" {
+		deleteKey = "delete"
+	}
+	c.Keys.Browser.DeleteSel = deleteKey
+	c.BrowserActions = filtered
+}
+
 func NormalizeKey(key string) (string, error) {
 	key = strings.TrimSpace(strings.ToLower(key))
 	if key == "" {
@@ -580,6 +606,8 @@ func validationFieldLabel(locale localize.Locale, path string) string {
 		return localizedLabel(locale, "Folder browsing expand folder key", "文件夹浏览展开文件夹快捷键")
 	case "browser.collapse_dir":
 		return localizedLabel(locale, "Folder browsing collapse or parent key", "文件夹浏览折叠/返回父级快捷键")
+	case "browser.delete_selected":
+		return localizedLabel(locale, "Folder browsing delete folder key", "文件夹浏览删除文件夹快捷键")
 	case "preview.close":
 		return localizedLabel(locale, "Preview close key", "预览关闭快捷键")
 	case "preview.next":

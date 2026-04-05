@@ -490,13 +490,25 @@ func (a *App) PerformBrowserFolderAction(dirRel, actionKey string, locale locali
 	if err != nil {
 		return nil, err
 	}
+	parentAbs := filepath.Dir(dirAbs)
+	dirName := filepath.Base(dirAbs)
+	deleteKey, err := config.NormalizeKey(a.cfg.Keys.Browser.DeleteSel)
+	if err != nil {
+		return nil, err
+	}
+	if key == deleteKey {
+		if err := a.trash.Trash(dirAbs); err != nil {
+			return nil, err
+		}
+		return &BrowserFolderActionResult{
+			Notice: localize.DeleteFolderNotice(locale, dirName),
+		}, nil
+	}
+
 	binding, found := findAction(a.cfg.BrowserActions, key)
 	if !found {
 		return nil, errBrowserActionKeyNotConfigured
 	}
-
-	parentAbs := filepath.Dir(dirAbs)
-	dirName := filepath.Base(dirAbs)
 
 	switch binding.Action {
 	case "move":
@@ -522,13 +534,6 @@ func (a *App) PerformBrowserFolderAction(dirRel, actionKey string, locale locali
 		}
 		return &BrowserFolderActionResult{
 			Notice: localize.MoveFolderNotice(locale, dirName),
-		}, nil
-	case "delete":
-		if err := a.trash.Trash(dirAbs); err != nil {
-			return nil, err
-		}
-		return &BrowserFolderActionResult{
-			Notice: localize.DeleteFolderNotice(locale, dirName),
 		}, nil
 	default:
 		return nil, errUnsupportedBrowserAction

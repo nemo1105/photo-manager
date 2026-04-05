@@ -60,6 +60,9 @@ func TestDefaultUsesUpdatedSlideshowAndActionKeys(t *testing.T) {
 	if cfg.Keys.Browser.CollapseDir != "arrowleft" {
 		t.Fatalf("expected browser collapse-dir default to be arrowleft, got %q", cfg.Keys.Browser.CollapseDir)
 	}
+	if cfg.Keys.Browser.DeleteSel != "delete" {
+		t.Fatalf("expected browser delete-selected default to be delete, got %q", cfg.Keys.Browser.DeleteSel)
+	}
 	if cfg.Keys.Slideshow.Next != "arrowright" {
 		t.Fatalf("expected slideshow next default to be arrowright, got %q", cfg.Keys.Slideshow.Next)
 	}
@@ -84,11 +87,8 @@ func TestDefaultUsesUpdatedSlideshowAndActionKeys(t *testing.T) {
 	if cfg.Actions[2].Key != "arrowup" || cfg.Actions[2].Action != "restore" {
 		t.Fatalf("unexpected default restore action: %+v", cfg.Actions[2])
 	}
-	if len(cfg.BrowserActions) != 1 {
-		t.Fatalf("expected 1 default browser action, got %d", len(cfg.BrowserActions))
-	}
-	if cfg.BrowserActions[0].Key != "delete" || cfg.BrowserActions[0].Action != "delete" {
-		t.Fatalf("unexpected default browser delete action: %+v", cfg.BrowserActions[0])
+	if len(cfg.BrowserActions) != 0 {
+		t.Fatalf("expected no default browser actions, got %d", len(cfg.BrowserActions))
 	}
 }
 
@@ -161,6 +161,86 @@ func TestValidateAndNormalizeRejectsBrowserActionConflict(t *testing.T) {
 
 	if err := cfg.ValidateAndNormalize(); err == nil {
 		t.Fatal("expected browser action/browser key conflict")
+	}
+}
+
+func TestValidateAndNormalizeRejectsBrowserActionConflictWithDeleteSelected(t *testing.T) {
+	cfg := Default()
+	cfg.BrowserActions = append(cfg.BrowserActions, ActionBinding{
+		Key:    cfg.Keys.Browser.DeleteSel,
+		Action: "move",
+		Target: "0",
+		Alias:  "Inbox",
+	})
+
+	if err := cfg.ValidateAndNormalize(); err == nil {
+		t.Fatal("expected browser action/delete-selected conflict")
+	}
+}
+
+func TestLoadMigratesLegacyBrowserDeleteActionToDeleteSelected(t *testing.T) {
+	root := t.TempDir()
+	path := filepath.Join(root, "config.yaml")
+	data := []byte(`
+keys:
+  browser:
+    start_session: space
+    tree_up: arrowup
+    tree_down: arrowdown
+    expand_dir: arrowright
+    collapse_dir: arrowleft
+  preview:
+    close: escape
+    next: arrowright
+    prev: arrowleft
+  slideshow:
+    next: arrowright
+    prev: arrowleft
+    end_session: space
+actions:
+  - key: delete
+    action: delete
+  - key: arrowdown
+    action: move
+    target: 0
+    alias: Inbox
+  - key: arrowup
+    action: restore
+browser_actions:
+  - key: x
+    action: delete
+  - key: m
+    action: move
+    target: 0
+    alias: Inbox
+`)
+	if err := os.WriteFile(path, data, 0o644); err != nil {
+		t.Fatalf("write config: %v", err)
+	}
+
+	cfg, err := Load(path)
+	if err != nil {
+		t.Fatalf("load config: %v", err)
+	}
+
+	if cfg.Keys.Browser.DeleteSel != "x" {
+		t.Fatalf("expected migrated browser delete key x, got %q", cfg.Keys.Browser.DeleteSel)
+	}
+	if len(cfg.BrowserActions) != 1 || cfg.BrowserActions[0].Action != "move" {
+		t.Fatalf("expected only browser move actions after migration, got %+v", cfg.BrowserActions)
+	}
+	if err := Save(path, cfg); err != nil {
+		t.Fatalf("save migrated config: %v", err)
+	}
+	saved, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("read saved config: %v", err)
+	}
+	if !strings.Contains(string(saved), "delete_selected: x") {
+		t.Fatalf("expected delete_selected to be saved, got:\n%s", string(saved))
+	}
+	if strings.Contains(string(saved), "- key: x\n      action: delete") {
+		t.Fatalf("expected legacy browser delete action to be dropped, got:\n%s", string(saved))
 	}
 }
 
