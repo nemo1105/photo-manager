@@ -12,8 +12,8 @@ type Data struct {
 }
 
 const (
-	templateName          = "command"
-	validationCurrentFile = `D:\Photos\demo folder\a'b$c.png`
+	templateName                = "command"
+	validationSampleCurrentFile = `D:\Photos\demo folder\a'b$c.png`
 )
 
 func Render(command string, data Data) (string, error) {
@@ -21,7 +21,7 @@ func Render(command string, data Data) (string, error) {
 }
 
 func Validate(command string) error {
-	_, err := renderForGOOS(command, Data{CurrentFile: validationCurrentFile}, runtime.GOOS)
+	_, err := renderForGOOS(command, Data{CurrentFile: validationSampleCurrentFile}, runtime.GOOS)
 	return err
 }
 
