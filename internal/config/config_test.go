@@ -106,7 +106,7 @@ func TestValidateAndNormalizeAllowsCommandActions(t *testing.T) {
 	cfg.Actions = append(cfg.Actions, ActionBinding{
 		Key:     "c",
 		Action:  "command",
-		Command: "python script.py",
+		Command: "python script.py {{ shell .CurrentFile }}",
 		Alias:   "Python",
 	})
 
@@ -114,11 +114,48 @@ func TestValidateAndNormalizeAllowsCommandActions(t *testing.T) {
 		t.Fatalf("expected command action to validate, got %v", err)
 	}
 
-	if cfg.Actions[3].Command != "python script.py" {
+	if cfg.Actions[3].Command != "python script.py {{ shell .CurrentFile }}" {
 		t.Fatalf("expected command text to remain, got %q", cfg.Actions[3].Command)
 	}
 	if cfg.Actions[3].Alias != "Python" {
 		t.Fatalf("expected alias to remain, got %q", cfg.Actions[3].Alias)
+	}
+}
+
+func TestValidateAndNormalizeRejectsLegacyCurrentFilePlaceholder(t *testing.T) {
+	cfg := Default()
+	cfg.Actions = append(cfg.Actions, ActionBinding{
+		Key:     "c",
+		Action:  "command",
+		Command: "python script.py {{currentFile}}",
+		Alias:   "Python",
+	})
+
+	err := cfg.ValidateAndNormalize()
+	if err == nil {
+		t.Fatal("expected legacy placeholder to be rejected")
+	}
+
+	validationErr, ok := err.(*ValidationError)
+	if !ok {
+		t.Fatalf("expected validation error, got %T", err)
+	}
+	if validationErr.Path != "actions[3].command" {
+		t.Fatalf("expected invalid command path, got %q", validationErr.Path)
+	}
+}
+
+func TestValidateAndNormalizeRejectsUnknownCommandTemplateField(t *testing.T) {
+	cfg := Default()
+	cfg.Actions = append(cfg.Actions, ActionBinding{
+		Key:     "c",
+		Action:  "command",
+		Command: "python script.py {{ .CurrentDir }}",
+		Alias:   "Python",
+	})
+
+	if err := cfg.ValidateAndNormalize(); err == nil {
+		t.Fatal("expected invalid command template to be rejected")
 	}
 }
 

@@ -9,6 +9,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
+	"github.com/nemo1105/photo-manager/internal/commandtemplate"
 	"github.com/nemo1105/photo-manager/internal/localize"
 	"gopkg.in/yaml.v3"
 )
@@ -170,6 +171,18 @@ func (e *ValidationError) UserMessage(locale localize.Locale) string {
 			return fmt.Sprintf("%s只适用于执行命令动作。", label)
 		}
 		return fmt.Sprintf("%s is only used by command actions.", label)
+	case errors.Is(e.Err, errInvalidCommandTemplate):
+		detail := commandTemplateErrorDetail(e.Err)
+		if locale == localize.ZHCN {
+			if detail == "" {
+				return fmt.Sprintf("%s模板无效。", label)
+			}
+			return fmt.Sprintf("%s模板无效：%s", label, detail)
+		}
+		if detail == "" {
+			return fmt.Sprintf("%s has an invalid command template.", label)
+		}
+		return fmt.Sprintf("%s has an invalid command template: %s", label, detail)
 	case errors.Is(e.Err, errMissingAlias):
 		if locale == localize.ZHCN {
 			return fmt.Sprintf("%s不能为空。", label)
@@ -189,16 +202,17 @@ func (e *ValidationError) UserMessage(locale localize.Locale) string {
 }
 
 var (
-	errEmptyKey             = localize.NewStaticError("key cannot be empty", "按键不能为空")
-	errInvalidKey           = localize.NewStaticError("key must be a single key", "按键必须是单个按键")
-	errInvalidAction        = localize.NewStaticError("action must be move, delete, restore, or command", "动作必须是 move、delete、restore 或 command")
-	errInvalidBrowserAction = localize.NewStaticError("browser action must be move", "文件夹浏览动作必须是 move")
-	errMissingTarget        = localize.NewStaticError("move action requires target", "move 动作需要目标路径")
-	errMissingCommand       = localize.NewStaticError("command action requires command text", "command 动作需要命令行")
-	errMissingAlias         = localize.NewStaticError("move or command action requires alias", "move 或 command 动作需要别名")
-	errUnexpectedTarget     = localize.NewStaticError("only move actions can have target", "只有 move 动作可以包含目标路径")
-	errUnexpectedCommand    = localize.NewStaticError("only command actions can have command text", "只有 command 动作可以包含命令行")
-	errUnexpectedAlias      = localize.NewStaticError("only move or command actions can have alias", "只有 move 或 command 动作可以包含别名")
+	errEmptyKey               = localize.NewStaticError("key cannot be empty", "按键不能为空")
+	errInvalidKey             = localize.NewStaticError("key must be a single key", "按键必须是单个按键")
+	errInvalidAction          = localize.NewStaticError("action must be move, delete, restore, or command", "动作必须是 move、delete、restore 或 command")
+	errInvalidBrowserAction   = localize.NewStaticError("browser action must be move", "文件夹浏览动作必须是 move")
+	errMissingTarget          = localize.NewStaticError("move action requires target", "move 动作需要目标路径")
+	errMissingCommand         = localize.NewStaticError("command action requires command text", "command 动作需要命令行")
+	errMissingAlias           = localize.NewStaticError("move or command action requires alias", "move 或 command 动作需要别名")
+	errInvalidCommandTemplate = localize.NewStaticError("command template is invalid", "命令模板无效")
+	errUnexpectedTarget       = localize.NewStaticError("only move actions can have target", "只有 move 动作可以包含目标路径")
+	errUnexpectedCommand      = localize.NewStaticError("only command actions can have command text", "只有 command 动作可以包含命令行")
+	errUnexpectedAlias        = localize.NewStaticError("only move or command actions can have alias", "只有 move 或 command 动作可以包含别名")
 )
 
 type validationOptions struct {
@@ -507,6 +521,12 @@ func validateActionBindings(bindings []ActionBinding, options actionBindingValid
 					Err:  errMissingCommand,
 				}
 			}
+			if err := commandtemplate.Validate(bindings[i].Command); err != nil {
+				return &ValidationError{
+					Path: bindingValidationPath(options.prefix, i, "command"),
+					Err:  fmt.Errorf("%w: %v", errInvalidCommandTemplate, err),
+				}
+			}
 			if bindings[i].Alias == "" && !options.allowLegacyMissingAlias {
 				return &ValidationError{
 					Path: bindingValidationPath(options.prefix, i, "alias"),
@@ -541,6 +561,18 @@ func validateActionBindings(bindings []ActionBinding, options actionBindingValid
 		}
 	}
 	return nil
+}
+
+func commandTemplateErrorDetail(err error) string {
+	if err == nil || !errors.Is(err, errInvalidCommandTemplate) {
+		return ""
+	}
+	detail := err.Error()
+	prefix := errInvalidCommandTemplate.Error() + ": "
+	if strings.HasPrefix(detail, prefix) {
+		return strings.TrimSpace(detail[len(prefix):])
+	}
+	return ""
 }
 
 func (c *Config) migrateLegacyBrowserDeleteBinding() {

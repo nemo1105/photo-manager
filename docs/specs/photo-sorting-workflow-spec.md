@@ -1,6 +1,6 @@
 # Photo Sorting Workflow Spec
 
-Last updated: 2026-04-05
+Last updated: 2026-04-06
 
 ## Problem
 
@@ -27,7 +27,8 @@ Users need to start from an arbitrary directory, browse to a folder that contain
 - All configured keys are single keys; modifier combinations are not part of the current contract.
 - Relative `move.target` values are resolved from the active session root only.
 - Relative `browser_actions[].target` values are resolved from the selected folder's parent directory.
-- `command.command` is raw command-line text, but exact `{{currentFile}}` tokens expand at command start to the selected image's absolute path with shell-safe quoting. The product still does not inject current-directory variables or a broader placeholder DSL.
+- `command.command` is a Go `text/template` string that renders at command start. It exposes exactly one raw data field, `.CurrentFile`, for the selected image's absolute path.
+- Supported command-template helpers are `shell`, `powershell`, `sh`, `slash`, `urlquery`, `pssingle`, and `psdouble`. The product still does not inject current-directory variables or a broader placeholder DSL.
 - `alias` is the user-facing label for `move` and `command` actions. New saves require it for those action types, but legacy configs without it still load and fall back to the old target-based or generic command labels until edited.
 - `browser_actions[]` shares the same `key` / `action` / `target` / `command` / `alias` shape as sorting `actions[]`, but current browser-mode execution supports only `move`.
 - Sorting state must not be created implicitly by image preview.
@@ -77,14 +78,16 @@ Users need to start from an arbitrary directory, browse to a folder that contain
 - [x] `restore` is shown only inside configured move-target directories and returns the image to the session root.
 - [x] `command` opens a full-screen interactive terminal, starts in `sessionRoot`, and keeps the terminal visible until the user closes it after the process exits.
 - [x] Starting `command` from a review folder still uses the parent sort-starting folder as the working directory.
-- [x] When `command.command` contains exact `{{currentFile}}` tokens, command start expands all of them to the selected image's absolute path with shell-safe quoting while keeping the terminal working directory fixed to `sessionRoot`.
+- [x] When `command.command` contains Go-template expressions such as `{{ shell .CurrentFile }}`, command start renders them with the selected image path while keeping the terminal working directory fixed to `sessionRoot`.
 - [x] When a `command` writes output and then exits immediately, the terminal still renders that trailing output before showing the exited state.
 - [x] When `alias` is present on `move` or `command`, sorting action buttons and help action shortcuts show the alias itself with no `Move to / 移动到` or `Run Command / 执行命令` prefix.
 - [x] When `alias` is present on `command`, the command terminal title also shows that alias.
 - [x] Legacy `move` and `command` actions without `alias` still load, fall back to the old target-based or generic command labels in those same surfaces, and must be given an alias before settings can be saved again.
 - [x] Moving outside the current sorting range ends sorting automatically and informs the user.
 - [x] Config edits in the browser are validated and saved back to `~/.photo-manager/config.yaml`.
+- [x] Invalid `command` templates, including the old `{{currentFile}}` form or unknown fields such as `.CurrentDir`, are rejected during config validation and save.
 - [x] Browser settings expose a fixed folder-delete key inside the folder-browsing section, and edit a dedicated `browser_actions[]` list using the same row style and action-type model as sorting actions while currently offering only `move`.
+- [x] Each `command` row in settings exposes an inline info icon that documents the supported template variable, helper functions, and common examples.
 - [x] Outside preview and slideshow, configurable browser tree keys move through the visible directory list with Up / Down and expand or collapse the current directory with Right / Left.
 - [x] Keyboard-driven directory changes keep the tree expansion state unchanged and debounce browser loading by about 100 ms so rapid scans across image folders do not trigger repeated heavy refreshes.
 - [x] Mouse-driven and keyboard-driven folder changes keep the tree clickable during loading, immediately preserve the latest target row as selected, clear the image pane into a loading state once the request starts, and ignore stale responses so an older folder cannot overwrite the newest choice.
@@ -135,7 +138,7 @@ Users need to start from an arbitrary directory, browse to a folder that contain
   - `delete` sends the selected folder to the recycle bin / Trash after confirmation.
 - The default template does not add a command action; users opt into it by editing settings.
 - Move actions in settings require both an alias and target folder.
-- Command actions in settings require both an alias and command text, and may use `{{currentFile}}` for the selected image path.
+- Command actions in settings require both an alias and command text, and the command text uses Go-template syntax with `.CurrentFile` plus the documented helper functions.
 - Browser move actions in settings require both an alias and target folder.
 
 ## Open questions

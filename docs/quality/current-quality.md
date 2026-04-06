@@ -1,6 +1,6 @@
 # Current Quality
 
-Last updated: 2026-04-05
+Last updated: 2026-04-06
 Status: active
 
 ## Quality goals
@@ -15,7 +15,7 @@ Status: active
 - Keep directory decorations lightweight and isolated: browser/tree status icons should remain localized, should not bubble unexpectedly across folders, and must not break browsing when a decorator fails.
 - Keep folder-browsing image cards aligned to decoded image ratios so mixed portrait and landscape folders do not waste large thumbnail areas on empty frame space.
 - Keep user-facing copy consistent within the selected locale and centered on sorting/review terminology rather than internal implementation terms.
-- Keep the command-terminal flow modal and ordered so terminal input does not leak back to sorting, fast-exiting commands still show their final output before exit, and `{{currentFile}}` expands to a shell-safe current-image path.
+- Keep the command-terminal flow modal and ordered so terminal input does not leak back to sorting, fast-exiting commands still show their final output before exit, and command templates render `.CurrentFile` through the documented helper functions without ambiguous quoting behavior.
 - Keep move and command aliases consistent across sorting-facing UI while still tolerating legacy configs until the next save.
 
 ## Known issues
@@ -31,7 +31,7 @@ Status: active
   - Default shortcut template for browser, slideshow, and action keys.
   - Session-root-based `move` and `restore` behavior.
   - Session-start fallback from target folders to the parent work root.
-  - Session-root-based `command` working directory selection and `{{currentFile}}` expansion to the selected image's absolute path.
+  - Session-root-based `command` working directory selection and command-template rendering from `.CurrentFile` to the selected image's absolute path.
   - Review-folder slideshow filtering that hides the current target move action while keeping restore and other actions available there, and hides restore entirely outside target folders.
   - Ending sessions when browser mode is loaded, and auto-ending sessions when slideshow/action requests leave the session subtree.
   - Directory and current-node image counts in browser/tree payloads, including the 3-level scan cap, hidden-entry filtering, unsupported-file filtering, and estimate marking for deeper visible branches.
@@ -42,7 +42,7 @@ Status: active
   - Legacy config loading after removing the slideshow back-to-browser binding.
   - Request-locale parsing for `X-Photo-Manager-Locale` and `Accept-Language`.
   - Localized breadcrumbs, action labels, notices, and validation-error responses in `zh-CN`.
-  - Command-action config validation, `{{currentFile}}` placeholder expansion, reservation start path, and WebSocket output/exit streaming, including repeated-placeholder expansion, review-folder launches, the fast-exit case where trailing output must arrive before the exit frame, and the Windows-style PTY close path where `The pipe has been ended.` must not be surfaced as a terminal failure after a normal exit.
+  - Command-action config validation, Go-template rendering, reservation start path, and WebSocket output/exit streaming, including repeated `.CurrentFile` usage, review-folder launches, helper-function coverage, the fast-exit case where trailing output must arrive before the exit frame, and the Windows-style PTY close path where `The pipe has been ended.` must not be surfaced as a terminal failure after a normal exit.
   - Move/command alias validation, including strict save-time requirement, legacy load compatibility, and alias rejection on delete/restore actions.
   - Alias-based move and command labels in slideshow data, plus alias-based terminal titles in command-start responses.
   - Task-first user terminology across UI dictionaries, backend notices, and settings validation labels.
@@ -74,7 +74,7 @@ Status: active
   - Browser-storage persistence and no-reload locale switching in the live UI.
   - Repeated-action protection for stale slideshow state.
   - Settings capture-state UX, explicit settings-entry flow, and config-edit browser flows.
-  - Manual runtime verification of the full-screen interactive command terminal with real shell programs, including `{{currentFile}}` paths that contain spaces or quotes.
+  - Manual runtime verification of the full-screen interactive command terminal with real shell programs, including `.CurrentFile` templates that pass paths containing spaces or quotes, and the inline help popover in settings.
 
 ## Debt and follow-ups
 

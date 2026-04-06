@@ -290,6 +290,84 @@ export function createViewHelpers({
     `;
   }
 
+  function commandTemplateHelpHtml() {
+    const syntaxItems = [
+      "{{ .CurrentFile }}",
+      "{{ shell .CurrentFile }}",
+      "{{ .CurrentFile | slash | pssingle }}",
+    ];
+    const functionItems = [
+      { name: "shell", description: t("settings.commandTemplateFuncShell") },
+      { name: "powershell", description: t("settings.commandTemplateFuncPowershell") },
+      { name: "sh", description: t("settings.commandTemplateFuncSh") },
+      { name: "slash", description: t("settings.commandTemplateFuncSlash") },
+      { name: "urlquery", description: t("settings.commandTemplateFuncURLQuery") },
+      { name: "pssingle", description: t("settings.commandTemplateFuncPSSingle") },
+      { name: "psdouble", description: t("settings.commandTemplateFuncPSDouble") },
+    ];
+    const exampleItems = [
+      {
+        description: t("settings.commandTemplateExampleArg"),
+        code: "python script.py {{ shell .CurrentFile }}",
+      },
+      {
+        description: t("settings.commandTemplateExamplePhotos"),
+        code: `Start-Process 'ms-photos:viewer?fileName="{{ .CurrentFile | slash | pssingle }}"'`,
+      },
+    ];
+
+    return `
+      <span class="settings-command-help">
+        <button
+          class="settings-inline-help-button"
+          type="button"
+          aria-label="${escapeHtml(t("settings.commandTemplateInfoAria"))}"
+          aria-haspopup="dialog"
+        >
+          ${browserInfoIconHtml()}
+        </button>
+        <div class="settings-command-help-popover" role="note">
+          <strong class="settings-command-help-title">${escapeHtml(t("settings.commandTemplateTitle"))}</strong>
+          <p class="settings-command-help-copy">${escapeHtml(t("settings.commandTemplateIntro"))}</p>
+          <section class="settings-command-help-section">
+            <span class="settings-command-help-heading">${escapeHtml(t("settings.commandTemplateSyntax"))}</span>
+            <ul class="settings-command-help-list settings-command-help-list--code">
+              ${syntaxItems.map((item) => `<li><code>${escapeHtml(item)}</code></li>`).join("")}
+            </ul>
+          </section>
+          <section class="settings-command-help-section">
+            <span class="settings-command-help-heading">${escapeHtml(t("settings.commandTemplateVariables"))}</span>
+            <ul class="settings-command-help-list">
+              <li><code>.CurrentFile</code><span>${escapeHtml(t("settings.commandTemplateVariableCurrentFile"))}</span></li>
+            </ul>
+          </section>
+          <section class="settings-command-help-section">
+            <span class="settings-command-help-heading">${escapeHtml(t("settings.commandTemplateFunctions"))}</span>
+            <ul class="settings-command-help-list">
+              ${functionItems.map((item) => `
+                <li>
+                  <code>${escapeHtml(item.name)}</code>
+                  <span>${escapeHtml(item.description)}</span>
+                </li>
+              `).join("")}
+            </ul>
+          </section>
+          <section class="settings-command-help-section">
+            <span class="settings-command-help-heading">${escapeHtml(t("settings.commandTemplateExamples"))}</span>
+            <ul class="settings-command-help-list settings-command-help-list--examples">
+              ${exampleItems.map((item) => `
+                <li>
+                  <span>${escapeHtml(item.description)}</span>
+                  <code>${escapeHtml(item.code)}</code>
+                </li>
+              `).join("")}
+            </ul>
+          </section>
+        </div>
+      </span>
+    `;
+  }
+
   function settingsActionRowHtml(action, index, options = {}) {
     const {
       kind = "sorting",
@@ -317,7 +395,10 @@ export function createViewHelpers({
             <input data-action-kind="${escapeHtml(kind)}" data-action-field="alias" data-action-index="${index}" value="${escapeHtml(action.alias || "")}" placeholder="${escapeHtml(t("settings.commandAliasPlaceholder"))}">
           ` : ""}
           ${showCommand ? `
-            <span class="settings-action-separator">${escapeHtml(t("settings.commandLine"))}</span>
+            <span class="settings-command-label">
+              <span class="settings-action-separator">${escapeHtml(t("settings.commandLine"))}</span>
+              ${commandTemplateHelpHtml()}
+            </span>
             <input data-action-kind="${escapeHtml(kind)}" data-action-field="command" data-action-index="${index}" value="${escapeHtml(action.command || "")}" placeholder="${escapeHtml(t("settings.commandPlaceholder"))}">
           ` : ""}
         </div>

@@ -11,6 +11,7 @@ import (
 	"unicode"
 	"unicode/utf8"
 
+	"github.com/nemo1105/photo-manager/internal/commandtemplate"
 	"github.com/nemo1105/photo-manager/internal/config"
 	"github.com/nemo1105/photo-manager/internal/localize"
 	"github.com/nemo1105/photo-manager/internal/terminal"
@@ -576,7 +577,12 @@ func (a *App) StartCommandAction(currentDirRel, imageRel, actionKey string, loca
 	if binding.Action != "command" {
 		return nil, errActionNotCommand
 	}
-	expandedCommand := expandCommandTemplate(binding.Command, imageAbs)
+	expandedCommand, err := commandtemplate.Render(binding.Command, commandtemplate.Data{
+		CurrentFile: imageAbs,
+	})
+	if err != nil {
+		return nil, err
+	}
 
 	rootRel, err := filepath.Rel(a.launchRoot, a.session.RootAbs)
 	if err != nil || rootRel == "." {

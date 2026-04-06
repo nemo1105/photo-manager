@@ -19,6 +19,7 @@ import (
 	"github.com/coder/websocket"
 	"github.com/coder/websocket/wsjson"
 	"github.com/nemo1105/photo-manager/internal/app"
+	"github.com/nemo1105/photo-manager/internal/commandtemplate"
 	"github.com/nemo1105/photo-manager/internal/config"
 	"github.com/nemo1105/photo-manager/internal/localize"
 	"github.com/nemo1105/photo-manager/internal/terminal"
@@ -371,6 +372,44 @@ func TestHandleConfigRequiresLocalizedMoveAlias(t *testing.T) {
 	}
 }
 
+func TestHandleConfigReturnsLocalizedInvalidCommandTemplateError(t *testing.T) {
+	root := t.TempDir()
+	cfg := config.Default()
+	handler := NewHandler(app.New(root, filepath.Join(root, "config.yaml"), cfg, stubTrash{}))
+
+	reqCfg := config.Default()
+	reqCfg.Actions = append(reqCfg.Actions, config.ActionBinding{
+		Key:     "c",
+		Action:  "command",
+		Command: "python script.py {{currentFile}}",
+		Alias:   "Python",
+	})
+
+	body, err := json.Marshal(reqCfg)
+	if err != nil {
+		t.Fatalf("marshal config: %v", err)
+	}
+
+	req := httptest.NewRequest(http.MethodPost, "/api/config", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-Photo-Manager-Locale", "zh-CN")
+
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400, got %d body=%s", rec.Code, rec.Body.String())
+	}
+
+	var payload map[string]string
+	if err := json.Unmarshal(rec.Body.Bytes(), &payload); err != nil {
+		t.Fatalf("decode payload: %v", err)
+	}
+	if !strings.Contains(payload["error"], "动作 4 的命令行模板无效") {
+		t.Fatalf("unexpected localized error: %q", payload["error"])
+	}
+}
+
 func TestHandleSessionStartUsesAcceptLanguageFallback(t *testing.T) {
 	root := t.TempDir()
 	cfg := config.Default()
@@ -567,7 +606,7 @@ func TestHandleCommandStartReturnsReservation(t *testing.T) {
 	cfg.Actions = append(cfg.Actions, config.ActionBinding{
 		Key:     "c",
 		Action:  "command",
-		Command: "python script.py {{currentFile}}",
+		Command: "python script.py {{ shell .CurrentFile }}",
 		Alias:   "Python",
 	})
 	manager := &fakeHandlerTerminalManager{}
@@ -605,7 +644,12 @@ func TestHandleCommandStartReturnsReservation(t *testing.T) {
 	if payload.Title != "Python" {
 		t.Fatalf("expected title Python, got %q", payload.Title)
 	}
-	expectedCommand := "python script.py '" + filepath.Join(root, "work", "a.jpg") + "'"
+	expectedCommand, err := commandtemplate.Render("python script.py {{ shell .CurrentFile }}", commandtemplate.Data{
+		CurrentFile: filepath.Join(root, "work", "a.jpg"),
+	})
+	if err != nil {
+		t.Fatalf("render expected command: %v", err)
+	}
 	if payload.Command != expectedCommand {
 		t.Fatalf("expected command %q, got %q", expectedCommand, payload.Command)
 	}

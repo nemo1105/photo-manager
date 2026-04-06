@@ -11,6 +11,7 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/nemo1105/photo-manager/internal/commandtemplate"
 	"github.com/nemo1105/photo-manager/internal/config"
 	"github.com/nemo1105/photo-manager/internal/localize"
 	"github.com/nemo1105/photo-manager/internal/terminal"
@@ -184,7 +185,7 @@ func TestStartCommandActionUsesSessionRoot(t *testing.T) {
 	cfg.Actions = append(cfg.Actions, config.ActionBinding{
 		Key:     "c",
 		Action:  "command",
-		Command: "python script.py {{currentFile}}",
+		Command: "python script.py {{ shell .CurrentFile }}",
 		Alias:   "Python",
 	})
 	manager := &fakeTerminalManager{}
@@ -202,7 +203,12 @@ func TestStartCommandActionUsesSessionRoot(t *testing.T) {
 	if len(manager.reserved) != 1 {
 		t.Fatalf("expected one reservation, got %d", len(manager.reserved))
 	}
-	expectedCommand := "python script.py " + quotePathForShell(filepath.Join(root, "work", "photo.jpg"))
+	expectedCommand, err := commandtemplate.Render("python script.py {{ shell .CurrentFile }}", commandtemplate.Data{
+		CurrentFile: filepath.Join(root, "work", "photo.jpg"),
+	})
+	if err != nil {
+		t.Fatalf("render expected command: %v", err)
+	}
 	if manager.reserved[0].Command != expectedCommand {
 		t.Fatalf("expected command %q, got %q", expectedCommand, manager.reserved[0].Command)
 	}
@@ -228,7 +234,7 @@ func TestStartCommandActionFromReviewFolderUsesParentSessionRoot(t *testing.T) {
 	cfg.Actions = append(cfg.Actions, config.ActionBinding{
 		Key:     "c",
 		Action:  "command",
-		Command: "python script.py {{currentFile}}",
+		Command: "python script.py {{ shell .CurrentFile }}",
 		Alias:   "Python",
 	})
 	manager := &fakeTerminalManager{}
@@ -245,7 +251,12 @@ func TestStartCommandActionFromReviewFolderUsesParentSessionRoot(t *testing.T) {
 	if len(manager.reserved) != 1 {
 		t.Fatalf("expected one reservation, got %d", len(manager.reserved))
 	}
-	expectedCommand := "python script.py " + quotePathForShell(filepath.Join(root, "work", "0", "review.jpg"))
+	expectedCommand, err := commandtemplate.Render("python script.py {{ shell .CurrentFile }}", commandtemplate.Data{
+		CurrentFile: filepath.Join(root, "work", "0", "review.jpg"),
+	})
+	if err != nil {
+		t.Fatalf("render expected review command: %v", err)
+	}
 	if manager.reserved[0].Command != expectedCommand {
 		t.Fatalf("expected review command %q, got %q", expectedCommand, manager.reserved[0].Command)
 	}
@@ -265,7 +276,7 @@ func TestStartCommandActionExpandsCurrentFilePlaceholderMultipleTimes(t *testing
 	cfg.Actions = append(cfg.Actions, config.ActionBinding{
 		Key:     "c",
 		Action:  "command",
-		Command: "tool {{currentFile}} --again {{currentFile}}",
+		Command: "tool {{ shell .CurrentFile }} --again {{ shell .CurrentFile }}",
 		Alias:   "Tool",
 	})
 	manager := &fakeTerminalManager{}
@@ -279,8 +290,12 @@ func TestStartCommandActionExpandsCurrentFilePlaceholderMultipleTimes(t *testing
 		t.Fatalf("start command action: %v", err)
 	}
 
-	expectedPath := quotePathForShell(filepath.Join(root, "work", "photo.jpg"))
-	expectedCommand := "tool " + expectedPath + " --again " + expectedPath
+	expectedCommand, err := commandtemplate.Render("tool {{ shell .CurrentFile }} --again {{ shell .CurrentFile }}", commandtemplate.Data{
+		CurrentFile: filepath.Join(root, "work", "photo.jpg"),
+	})
+	if err != nil {
+		t.Fatalf("render expected repeated command: %v", err)
+	}
 	if len(manager.reserved) != 1 || manager.reserved[0].Command != expectedCommand {
 		t.Fatalf("expected expanded command %q, got %+v", expectedCommand, manager.reserved)
 	}
