@@ -56,7 +56,9 @@ body.command-terminal-open {
 }
 
 .command-terminal-body {
+  display: flex;
   min-height: 0;
+  padding: 16px;
   border-radius: 22px;
   border: 1px solid rgba(180, 201, 219, 0.24);
   background: linear-gradient(180deg, rgba(7, 13, 23, 0.96) 0%, rgba(14, 23, 36, 0.98) 100%);
@@ -65,33 +67,38 @@ body.command-terminal-open {
 }
 
 .command-terminal-viewport {
+  flex: 1;
+  min-height: 0;
   width: 100%;
-  height: 100%;
-  padding: 16px;
 }
 
 .command-terminal-viewport .terminal,
 .command-terminal-viewport .xterm {
   height: 100%;
+  background: transparent;
 }
 
 .command-terminal-viewport .xterm-viewport {
-  scrollbar-width: thin;
-  scrollbar-color: rgba(148, 163, 184, 0.72) rgba(15, 23, 42, 0.28);
+  background-color: transparent;
+  scrollbar-width: auto;
+  scrollbar-color: auto;
 }
 
 .command-terminal-viewport .xterm-viewport::-webkit-scrollbar {
-  width: 11px;
+  width: auto;
+  height: auto;
 }
 
 .command-terminal-viewport .xterm-viewport::-webkit-scrollbar-track {
-  background: rgba(15, 23, 42, 0.24);
+  background: initial;
+  border-radius: 0;
 }
 
 .command-terminal-viewport .xterm-viewport::-webkit-scrollbar-thumb {
-  background: rgba(148, 163, 184, 0.72);
-  border-radius: 999px;
-  border: 2px solid rgba(15, 23, 42, 0.24);
+  background: initial;
+  border-radius: 0;
+  border: 0;
+  background-clip: border-box;
 }
 
 @media (max-width: 720px) {
@@ -107,7 +114,7 @@ body.command-terminal-open {
     border-radius: 20px;
   }
 
-  .command-terminal-viewport {
+  .command-terminal-body {
     padding: 12px;
   }
 }

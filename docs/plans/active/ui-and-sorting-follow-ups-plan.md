@@ -25,6 +25,8 @@ Track the remaining UI and reliability work after the browse/preview/sorting flo
 - [x] Add an internal directory-decoration plugin path for browser-tree status icons, including a built-in `done.txt` green check marker with locale-aware tooltips.
 - [x] Keep folder browsing interactive during directory loads so the latest mouse or keyboard target wins, the target row shows a light loading marker, the gallery switches to a loading state, and stale responses or stale errors do not roll the UI back.
 - [x] Switch back to browser-mode chrome immediately when exiting sorting so the browser loading panel does not flash with stale slideshow or default light-theme styling before the folder view finishes reloading.
+- [x] Keep the command-terminal viewport padding visually balanced so the terminal surface has matching top and bottom inset.
+- [x] Restore the command-terminal native scrollbar appearance so the right-side width and arrow affordances stay readable.
 - [ ] Prevent repeated operations on stale slideshow state from surfacing as user-visible errors.
 - [ ] Make the settings key-capture state more obvious while waiting for the next key press.
 
@@ -69,6 +71,8 @@ Track the remaining UI and reliability work after the browse/preview/sorting flo
 - Verify exiting sorting no longer flashes a light or partially unthemed browser loading surface before the dark browser shell returns.
 - Verify browser help and settings no longer surface `up_dir`, browser-side `end_session`, or browser-side `open_settings`, and `/api/browser` omits `parentPath` and `canGoUp`.
 - Verify `command` opens an interactive full-screen terminal, starts in the sort-starting folder even from review mode, renders `.CurrentFile` templates to the selected image path, and still delivers trailing output before the terminal reports exit.
+- Verify the command terminal surface keeps matching top and bottom inset on desktop and narrow-width layouts.
+- Verify the command terminal keeps a normal native scrollbar width and readable top/bottom arrow affordances.
 - Verify move and command aliases render directly in sorting-facing UI and the command terminal title, while legacy configs without aliases still fail save until corrected.
 
 ## Next update trigger

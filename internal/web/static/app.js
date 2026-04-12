@@ -445,11 +445,31 @@ function disposeCommandTerminalRuntime() {
     }
 }
 
+function balanceCommandTerminalInset() {
+    const viewport = document.getElementById("commandTerminalViewport");
+    const xterm = viewport?.querySelector(".xterm");
+    const scrollable = viewport?.querySelector(".xterm-scrollable-element");
+    if (!xterm || !scrollable) {
+        return;
+    }
+
+    const extraHeight = xterm.getBoundingClientRect().height - scrollable.getBoundingClientRect().height;
+    if (!Number.isFinite(extraHeight) || extraHeight <= 1) {
+        scrollable.style.marginTop = "";
+        scrollable.style.transform = "";
+        return;
+    }
+
+    scrollable.style.marginTop = "";
+    scrollable.style.transform = `translateY(${extraHeight / 2}px)`;
+}
+
 function sendCommandResize() {
     if (!state.commandTerminal.open || !state.commandTerminal.terminal || !state.commandTerminal.fitAddon) {
         return;
     }
     state.commandTerminal.fitAddon.fit();
+    balanceCommandTerminalInset();
     const socket = state.commandTerminal.socket;
     if (!socket || socket.readyState !== window.WebSocket.OPEN) {
         return;
@@ -506,6 +526,7 @@ function ensureCommandTerminalRuntime() {
     terminal.loadAddon(fitAddon);
     terminal.open(viewport);
     fitAddon.fit();
+    balanceCommandTerminalInset();
     terminal.onData((data) => {
         const socket = state.commandTerminal.socket;
         if (!socket || socket.readyState !== window.WebSocket.OPEN) {
