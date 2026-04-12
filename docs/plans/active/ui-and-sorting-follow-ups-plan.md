@@ -1,6 +1,6 @@
 # UI And Sorting Follow-Ups Plan
 
-Last updated: 2026-04-06
+Last updated: 2026-04-12
 Status: active
 Plan class: Standard
 
@@ -24,6 +24,7 @@ Track the remaining UI and reliability work after the browse/preview/sorting flo
 - [x] Restore visible indentation progression for deeper levels in the browser tree so third-level folders no longer visually collapse onto second-level rows.
 - [x] Add an internal directory-decoration plugin path for browser-tree status icons, including a built-in `done.txt` green check marker with locale-aware tooltips.
 - [x] Keep folder browsing interactive during directory loads so the latest mouse or keyboard target wins, the target row shows a light loading marker, the gallery switches to a loading state, and stale responses or stale errors do not roll the UI back.
+- [x] Switch back to browser-mode chrome immediately when exiting sorting so the browser loading panel does not flash with stale slideshow or default light-theme styling before the folder view finishes reloading.
 - [ ] Prevent repeated operations on stale slideshow state from surfacing as user-visible errors.
 - [ ] Make the settings key-capture state more obvious while waiting for the next key press.
 
@@ -65,6 +66,7 @@ Track the remaining UI and reliability work after the browse/preview/sorting flo
 - Verify second- and third-level folders in browser mode render with distinct indentation so nesting remains readable in deeper trees.
 - Verify adding or removing `done.txt` changes the tree decoration after the next browser or tree refresh, and verify the green check stays aligned with counts and selected-row styling.
 - Verify rapid tree clicks and debounced keyboard scans keep the latest target selected, keep the tree clickable, switch the gallery to a loading state instead of showing stale photos, and avoid stale error toasts or hover flashing.
+- Verify exiting sorting no longer flashes a light or partially unthemed browser loading surface before the dark browser shell returns.
 - Verify browser help and settings no longer surface `up_dir`, browser-side `end_session`, or browser-side `open_settings`, and `/api/browser` omits `parentPath` and `canGoUp`.
 - Verify `command` opens an interactive full-screen terminal, starts in the sort-starting folder even from review mode, renders `.CurrentFile` templates to the selected image path, and still delivers trailing output before the terminal reports exit.
 - Verify move and command aliases render directly in sorting-facing UI and the command terminal title, while legacy configs without aliases still fail save until corrected.

@@ -757,6 +757,10 @@ async function performBrowserLoad(path, options) {
     state.browserFolderMenuPath = "";
     browserView.hidden = false;
     slideshowView.hidden = true;
+    // Render browser-mode shell classes before async tree refresh work so exit
+    // from sorting does not briefly show browser loading content with stale
+    // slideshow/light-theme chrome.
+    render();
     try {
         await refreshVisibleTreeNodes(data.currentPath, {requestToken, silent: true, treeVersion});
         await syncTreeToCurrentPath(data, {expandTree, requestToken, silent: true, treeVersion});
