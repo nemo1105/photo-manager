@@ -266,7 +266,25 @@ export function createRenderers(deps) {
     `;
   }
 
+  function readScrollOffset(value) {
+    const offset = Number(value);
+    return Number.isFinite(offset) && offset > 0 ? offset : 0;
+  }
+
+  function readBrowserTreeScroll() {
+    return {
+      top: readScrollOffset(state.browserTreeScroll?.top),
+      left: readScrollOffset(state.browserTreeScroll?.left),
+      restorePending: !!state.browserTreeScroll?.restorePending,
+    };
+  }
+
   function renderBrowser() {
+    if (state.mode !== "browser") {
+      galleryLayout.clear();
+      return;
+    }
+
     if (!state.browser) {
       galleryLayout.clear();
       browserView.innerHTML = `<div class="empty-state">${escapeHtml(t("browser.loading"))}</div>`;
@@ -278,8 +296,10 @@ export function createRenderers(deps) {
     const isReviewStart = !isBrowserLoading && state.browser.currentDirStartsAsReview;
     const startLabel = isReviewStart ? t("browser.reviewHere") : t("browser.sortHere");
     const previousTree = browserView.querySelector(".browser-tree-shell");
-    const treeScrollTop = previousTree ? previousTree.scrollTop : 0;
-    const treeScrollLeft = previousTree ? previousTree.scrollLeft : 0;
+    const savedTreeScroll = readBrowserTreeScroll();
+    const restoreTreeScroll = savedTreeScroll.restorePending;
+    const treeScrollTop = restoreTreeScroll ? savedTreeScroll.top : (previousTree ? previousTree.scrollTop : savedTreeScroll.top);
+    const treeScrollLeft = restoreTreeScroll ? savedTreeScroll.left : (previousTree ? previousTree.scrollLeft : savedTreeScroll.left);
     const previousGallery = browserView.querySelector(".browser-gallery");
     const galleryScrollTop = previousGallery ? previousGallery.scrollTop : 0;
     const galleryScrollLeft = previousGallery ? previousGallery.scrollLeft : 0;
@@ -329,6 +349,12 @@ export function createRenderers(deps) {
     if (nextTree) {
       nextTree.scrollTop = treeScrollTop;
       nextTree.scrollLeft = treeScrollLeft;
+      const continueTreeRestore = restoreTreeScroll && !!state.browserPending?.active;
+      state.browserTreeScroll = {
+        top: continueTreeRestore ? savedTreeScroll.top : readScrollOffset(nextTree.scrollTop),
+        left: continueTreeRestore ? savedTreeScroll.left : readScrollOffset(nextTree.scrollLeft),
+        restorePending: continueTreeRestore,
+      };
     }
     if (nextGallery) {
       nextGallery.scrollTop = galleryScrollTop;

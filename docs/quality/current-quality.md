@@ -1,6 +1,6 @@
 # Current Quality
 
-Last updated: 2026-04-06
+Last updated: 2026-05-07
 Status: active
 
 ## Quality goals
@@ -11,6 +11,7 @@ Status: active
 - Keep browser-mode single-image actions constrained and explicit: the browse-gallery overflow menu must not start sorting and delete must still use the recycle bin / Trash.
 - Keep browser-mode single-folder actions explicit and bounded: keyboard folder actions must target the selected folder, row-menu clicks must target the clicked row, root-folder actions must stay blocked, and folder delete must always require confirmation.
 - Keep the browser tree predictable and bounded: natural directory ordering, keyboard/tree behavior alignment, and image counts capped at 3 descendant levels with explicit estimate marking.
+- Keep the browser tree scroll position stable across sorting entry and exit; hidden browser DOM must not clamp the saved tree offset while sorting is active.
 - Keep folder browsing responsive while directories load: the tree should remain clickable, the latest target should win, stale responses must not restore older content, and the gallery should not keep showing the previous folder once a new load starts.
 - Keep directory decorations lightweight and isolated: browser/tree status icons should remain localized, should not bubble unexpectedly across folders, and must not break browsing when a decorator fails.
 - Keep folder-browsing image cards aligned to decoded image ratios so mixed portrait and landscape folders do not waste large thumbnail areas on empty frame space.
@@ -59,6 +60,7 @@ Status: active
   - Automated browser verification that browser folder delete always shows a confirmation prompt before the request is sent.
   - Automated browser verification that rapid tree clicks and debounced keyboard scans follow latest-request-wins browse loading, clear the gallery into a loading state, and suppress stale request errors.
   - Automated browser verification that deeper browser-tree levels keep increasing indentation instead of visually collapsing onto the same column.
+  - Automated browser verification that the browser tree restores its scroll offset after entering and exiting sorting, including expanded folders near the bottom of a tall tree.
   - Automated browser verification that tree decoration chips stay aligned with folder labels and counts across current, ancestor, and collapsed states.
   - Automated browser verification that move and command aliases render in the sorting footer and help modal, and that command aliases render in the command terminal title.
 - Layout verification that browser mode keeps the tree and image list inside the viewport without a large header shell.
@@ -67,6 +69,7 @@ Status: active
   - Manual verification that the regrouped help modal keeps its two-column shortcut layout and header actions readable across browser widths.
   - Manual verification that directory-tree count badges and decoration chips stay aligned and refresh after sorting actions or `done.txt` marker changes.
   - Manual verification that hovering and clicking through the tree during gallery loads no longer causes row flashing, and that the latest clicked folder remains selected until its response arrives or is superseded.
+  - Manual verification on 2026-05-07 confirmed browser tree scroll offsets `1250` and `1500` were restored after starting and ending sorting from a tall temporary tree, including the selected expanded `folder-80` case near the bottom.
   - Manual verification that the hovered-row folder-action trigger appears only on mouse hover, that the count shifts left only for that hover state, and that the popup dismisses correctly on outside click.
   - Manual verification that refreshing during slideshow ends the session and reopens browser mode without browser-side active-session controls.
   - End-to-end verification of delete-to-recycle-bin behavior.

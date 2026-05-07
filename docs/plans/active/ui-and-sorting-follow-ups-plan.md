@@ -1,6 +1,6 @@
 # UI And Sorting Follow-Ups Plan
 
-Last updated: 2026-04-12
+Last updated: 2026-05-07
 Status: active
 Plan class: Standard
 
@@ -25,6 +25,7 @@ Track the remaining UI and reliability work after the browse/preview/sorting flo
 - [x] Add an internal directory-decoration plugin path for browser-tree status icons, including a built-in `done.txt` green check marker with locale-aware tooltips.
 - [x] Keep folder browsing interactive during directory loads so the latest mouse or keyboard target wins, the target row shows a light loading marker, the gallery switches to a loading state, and stale responses or stale errors do not roll the UI back.
 - [x] Switch back to browser-mode chrome immediately when exiting sorting so the browser loading panel does not flash with stale slideshow or default light-theme styling before the folder view finishes reloading.
+- [x] Preserve the browser tree scroll position across entry to and exit from sorting, including expanded folders near the bottom of the tree.
 - [x] Keep the command-terminal viewport padding visually balanced so the terminal surface has matching top and bottom inset.
 - [x] Restore the command-terminal native scrollbar appearance so the right-side width and arrow affordances stay readable.
 - [ ] Prevent repeated operations on stale slideshow state from surfacing as user-visible errors.
@@ -52,6 +53,7 @@ Track the remaining UI and reliability work after the browse/preview/sorting flo
 - Directory rows show bounded image counts from the existing browser/tree payloads, with a 3-level scan cap and an estimate marker for deeper visible subtrees.
 - Directory status icons now ride on the existing browser/tree payloads through an internal decorator registry; v1 uses a localized `done-marker` for folders that directly contain `done.txt`.
 - Browser directory loads now use a latest-request-wins UI state: the tree stays clickable, the newest target row stays selected, the gallery clears to a loading state once the request starts, and stale responses or superseded request failures are ignored.
+- Browser tree scroll is captured from the visible `.browser-tree-shell` before sorting hides browser mode; hidden browser DOM is not rebuilt while sorting is active, and the saved tree offset is restored when browser mode renders again.
 - Browser-mode folder actions use a dedicated `browser_actions[]` list that mirrors the sorting action object shape for custom moves, while fixed folder delete now lives under `keys.browser.delete_selected`.
 - `command` actions still run as a single shell string, but that string is now rendered from a Go template with one raw field, `.CurrentFile`, plus documented helper functions; the only guaranteed execution context is still the initial `sessionRoot` working directory.
 - `alias` is the user-facing label for move and command actions. Legacy configs without it may load, but save remains blocked until the alias is filled.
@@ -69,6 +71,7 @@ Track the remaining UI and reliability work after the browse/preview/sorting flo
 - Verify adding or removing `done.txt` changes the tree decoration after the next browser or tree refresh, and verify the green check stays aligned with counts and selected-row styling.
 - Verify rapid tree clicks and debounced keyboard scans keep the latest target selected, keep the tree clickable, switch the gallery to a loading state instead of showing stale photos, and avoid stale error toasts or hover flashing.
 - Verify exiting sorting no longer flashes a light or partially unthemed browser loading surface before the dark browser shell returns.
+- Verified on 2026-05-07 with a temporary launch root containing 80 folders: tree offsets of `1250` at root and `1500` with `folder-80` expanded and selected were restored after starting and ending sorting, even though the hidden tree element reported `scrollTop: 0` during sorting.
 - Verify browser help and settings no longer surface `up_dir`, browser-side `end_session`, or browser-side `open_settings`, and `/api/browser` omits `parentPath` and `canGoUp`.
 - Verify `command` opens an interactive full-screen terminal, starts in the sort-starting folder even from review mode, renders `.CurrentFile` templates to the selected image path, and still delivers trailing output before the terminal reports exit.
 - Verify the command terminal surface keeps matching top and bottom inset on desktop and narrow-width layouts.

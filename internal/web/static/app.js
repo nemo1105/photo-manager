@@ -69,6 +69,7 @@ const state = {
     commandTerminal: createCommandTerminalState(),
     browserPending: createBrowserPendingState(),
     browserFolderActionPending: createBrowserFolderActionPendingState(),
+    browserTreeScroll: {top: 0, left: 0, restorePending: false},
     busy: false,
     busyLabel: "",
     tree: {
@@ -659,6 +660,26 @@ function currentBrowserTreeVersion() {
     return browserTreeVersion;
 }
 
+function readScrollOffset(value) {
+    const offset = Number(value);
+    return Number.isFinite(offset) && offset > 0 ? offset : 0;
+}
+
+function rememberVisibleBrowserTreeScroll(restorePending) {
+    if (state.mode !== "browser" || browserView.hidden) {
+        return;
+    }
+    const treeShell = browserView.querySelector(".browser-tree-shell");
+    if (!treeShell) {
+        return;
+    }
+    state.browserTreeScroll = {
+        top: readScrollOffset(treeShell.scrollTop),
+        left: readScrollOffset(treeShell.scrollLeft),
+        restorePending: !!restorePending,
+    };
+}
+
 function isBrowserFolderActionPending(path) {
     const key = String(path || "");
     if (!key) {
@@ -841,6 +862,7 @@ async function loadSlideshow(path, preferredIndex) {
         }
         return;
     }
+    rememberVisibleBrowserTreeScroll(true);
     state.mode = "slideshow";
     state.slideshow.index = clamp(preferredIndex || 0, 0, Math.max(0, data.images.length - 1));
     browserView.hidden = true;
